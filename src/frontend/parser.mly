@@ -67,7 +67,7 @@ sentence:
   (* query *)
   | QRY body=subgoal DOT { 
     let region = Subgoal.region body in     
-    let elem = Query.{ body } in 
+    let elem = Query.{ head = None; body } in 
     Sentence.SQuery Located.{ elem ; region }
   }
 

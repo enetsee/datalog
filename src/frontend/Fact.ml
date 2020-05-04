@@ -3,10 +3,13 @@ open Reporting
 open Lib
 
 module X = struct
-  type t = { head : Subgoal.t } [@@deriving eq, compare]
+  type t = { head : Core.Term.t Subgoal.t } [@@deriving eq, compare]
 
-  let pp ppf { head } = Fmt.(Subgoal.pp ++ any ".") ppf head
+  let fact head = {head}
+  
+  let pp ppf { head } = Fmt.(Subgoal.pp Core.Term.pp ++ any ".") ppf head
   let pp = `NoPrec pp
+
 end
 
 include X

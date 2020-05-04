@@ -13,15 +13,15 @@ open Lib
 
 module Shape = struct
   module Raw = struct
-    type 'a t =
-      | SAtom of Atom.t
+    type ('a,'term) t =
+      | SAtom of 'term Atom.t
       | SNullOp of Op.t
       | SUnOp of Op.t Located.t * 'a
       | SBinOp of Op.t Located.t * 'a * 'a
-    [@@deriving eq, compare, map]
+    [@@deriving eq, compare]
 
-    let pp_prec prec pp_a ppf = function
-      | SAtom a -> Atom.pp ppf a
+    let pp_prec prec pp_a pp_b ppf = function
+      | SAtom a -> Atom.pp_prec prec pp_b ppf a
       | SNullOp op -> Op.pp ppf op
       | SUnOp (op, f) ->
         let prec' = Op.precedence op.elem in
@@ -45,16 +45,21 @@ module Shape = struct
         fmt ppf (p, (op, q))
     ;;
 
-    include Pretty.Make1 (struct
-      type nonrec 'a t = 'a t
+    include Pretty.Make2 (struct
+      type nonrec ('a,'b) t = ('a,'b) t
 
       let pp = `WithPrec pp_prec
     end)
 
-    include Functor.Make1 (struct
-      type nonrec 'a t = 'a t
+    include Functor.Make2 (struct
+      type nonrec ('a,'b) t = ('a,'b) t
 
-      let map t ~f = map f t
+      let map t ~f = 
+        match t with 
+        | SAtom a -> SAtom a 
+        | SNullOp op -> SNullOp op 
+        | SUnOp(op,a) -> SUnOp(op,f a)
+        | SBinOp(op,a,b) -> SBinOp(op,f a,f b)
     end)
 
     module Traversable (A : Applicative.S) = struct
@@ -72,18 +77,18 @@ module Shape = struct
   end
 
   module Located = struct
-    type 'a t = 'a Raw.t Located.t
+    type ('a,'term) t = ('a,'term) Raw.t Located.t
 
-    let pp_prec prec pp_a ppf Located.{ elem; _ } =
-      Raw.pp_prec prec pp_a ppf elem
+    let pp_prec prec pp_a pp_b ppf Located.{ elem; _ } =
+      Raw.pp_prec prec pp_a pp_b ppf elem
     ;;
 
-    let equal eq_a Located.{ elem = a; _ } Located.{ elem = b; _ } =
-      Raw.equal eq_a a b
+    let equal eq_a eq_b Located.{ elem = a; _ } Located.{ elem = b; _ } =
+      Raw.equal eq_a eq_b a b
     ;;
 
-    let compare cmp_a Located.{ elem = a; _ } Located.{ elem = b; _ } =
-      Raw.compare cmp_a a b
+    let compare cmp_a cmp_b Located.{ elem = a; _ } Located.{ elem = b; _ } =
+      Raw.compare cmp_a cmp_b a b
     ;;
 
     let atom a ~region = Located.{ elem = Raw.SAtom a; region }
@@ -92,14 +97,14 @@ module Shape = struct
     let elem Located.{ elem; _ } = elem
     let region Located.{ region; _ } = region
 
-    include Pretty.Make1 (struct
-      type nonrec 'a t = 'a t
+    include Pretty.Make2 (struct
+      type nonrec ('a,'b) t = ('a,'b) t
 
       let pp = `WithPrec pp_prec
     end)
 
-    include Functor.Make1 (struct
-      type nonrec 'a t = 'a t
+    include Functor.Make2 (struct
+      type nonrec ('a,'b) t = ('a,'b) t
 
       let map t ~f = Located.{ t with elem = Raw.map ~f t.elem }
     end)
@@ -118,11 +123,11 @@ module Shape = struct
   end
 end
 
-include Fix.Make (Shape.Located)
+include Fix.Make2 (Shape.Located)
 
-let rec equal a b = Shape.Located.equal equal (proj a) (proj b)
-let rec compare a b = Shape.Located.compare compare (proj a) (proj b)
-let rec pp ppf t = Shape.Located.pp pp ppf @@ proj t
+let rec equal eq_term a b = Shape.Located.equal (equal eq_term) eq_term (proj a) (proj b)
+let rec compare cmp_term a b = Shape.Located.compare (compare cmp_term) cmp_term  (proj a) (proj b)
+let rec pp pp_term ppf t = Shape.Located.pp (pp pp_term ) pp_term  ppf @@ proj t
 
 module Traversable (A : Applicative.S) = struct
   module T = Shape.Located.Traversable (A)
@@ -171,7 +176,7 @@ struct
      ) *)
 
   (** Effectful bottom-up transformation of atoms within a subgoal *)
-  let transform_atom (t : t) ~f : t M.t =
+  let transform_atom t ~f  =
     let rec aux = function
       | Located.{ elem = Shape.Raw.SAtom a; region } ->
         M.map ~f:(atom ~region) @@ f a

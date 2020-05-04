@@ -3,10 +3,21 @@ open Reporting
 open Lib
 
 module X = struct
-  type t = { body : Subgoal.t } [@@deriving eq, compare]
+  type t = 
+    { head : Core.Tmvar.t Subgoal.t option
+    ; body : Core.Term.t Subgoal.t 
+    } [@@deriving eq, compare]
 
-  let pp ppf { body } =
-    Fmt.(hovbox @@ (any " ?-@, " ++ Subgoal.pp ++ any ".")) ppf body
+  let query ?(head = None) body = { head ; body }
+  let pp ppf { head;body } =
+    match head with 
+    | None -> 
+      Fmt.(hovbox @@ (any " ?-@, " ++ Subgoal.pp Core.Term.pp ++ any ".")) ppf body
+
+    | Some head -> 
+      Fmt.(hovbox @@ pair ~sep:(any " ?-@, ") 
+        (Subgoal.pp Core.Tmvar.pp)
+        (Subgoal.pp Core.Term.pp ++ any ".")) ppf (head,body)
   ;;
 
   let pp = `NoPrec pp

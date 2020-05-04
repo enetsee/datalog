@@ -35,9 +35,9 @@ let transform_atom t ~f =
     let head = Subgoal.transform_atom ~f head
     and body = Subgoal.transform_atom ~f body in
     clause Clause.{ head; body } ~region
-  | SQuery { elem = { body }; region } ->
+  | SQuery { elem = { head; body }; region } ->    
     let body = Subgoal.transform_atom ~f body in
-    query Query.{ body } ~region
+    query Query.{ head ; body } ~region
   | SFact { elem = { head }; region } ->
     let head = Subgoal.transform_atom ~f head in
     fact Fact.{ head } ~region
@@ -47,14 +47,14 @@ let transform_body t ~f =
   match t with
   | SClause { elem; region } -> clause ~region { elem with body = f elem.body }
   | SQuery { elem; region } -> query ~region { elem with body = f elem.body }
-  | _ -> t
+  | SFact _ -> t
 ;;
 
 let transform_head t ~f =
   match t with
   | SClause { elem; region } -> clause ~region { elem with head = f elem.head }
   | SFact { elem; region } -> fact ~region { elem with head = f elem.head }
-  | _ -> t
+  | SQuery _ -> t
 ;;
 
 let transform_clause t ~f =
@@ -89,9 +89,9 @@ struct
         (S.transform_atom ~f head)
         (S.transform_atom ~f body)
         ~f:(fun head body -> clause Clause.{ head; body } ~region)
-    | SQuery { elem = { body }; region } ->
+    | SQuery { elem = { head; body }; region } ->
       M.map (S.transform_atom ~f body) ~f:(fun body ->
-          query Query.{ body } ~region)
+          query Query.{ head ; body } ~region)
     | SFact { elem = { head }; region } ->
       M.map (S.transform_atom ~f head) ~f:(fun head ->
           fact Fact.{ head } ~region)

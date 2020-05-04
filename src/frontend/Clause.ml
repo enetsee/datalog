@@ -4,13 +4,14 @@ open Lib
 
 module X = struct
   type t =
-    { head : Subgoal.t
-    ; body : Subgoal.t
+    { head : Core.Term.t Subgoal.t
+    ; body : Core.Term.t Subgoal.t
     }
   [@@deriving eq, compare]
 
+  let clause head body = {head;body}
   let pp ppf { head; body } =
-    Fmt.(hovbox @@ pair ~sep:(any " :-@, ") Subgoal.pp (Subgoal.pp ++ any "."))
+    Fmt.(hovbox @@ pair ~sep:(any " :-@, ") (Subgoal.pp Core.Term.pp) (Subgoal.pp Core.Term.pp ++ any "."))
       ppf
       (head, body)
   ;;
