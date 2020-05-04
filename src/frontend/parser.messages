@@ -1,0 +1,214 @@
+program: PREDSYM LPAREN RPAREN DOT WILDCARD
+##
+## Ends in an error in state: 32.
+##
+## list(statement) -> statement . list(statement) [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## statement
+##
+
+Expected a statement.
+
+program: PREDSYM LPAREN RPAREN IMPL PREDSYM LPAREN RPAREN WILDCARD
+##
+## Ends in an error in state: 37.
+##
+## sentence -> atom IMPL subgoal . DOT [ QRY PREDSYM EOF ]
+## subgoal -> subgoal . COMMA subgoal [ SEMICOLON DOT COMMA ]
+## subgoal -> subgoal . SEMICOLON subgoal [ SEMICOLON DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## atom IMPL subgoal
+##
+
+Expected a conjunction (","), a disjunction (";") or the end of the clause (".").
+
+program: PREDSYM LPAREN RPAREN IMPL WILDCARD
+##
+## Ends in an error in state: 36.
+##
+## sentence -> atom IMPL . subgoal DOT [ QRY PREDSYM EOF ]
+##
+## The known suffix of the stack is as follows:
+## atom IMPL
+##
+
+Expected an atomic formula.
+
+program: PREDSYM LPAREN RPAREN WILDCARD
+##
+## Ends in an error in state: 35.
+##
+## sentence -> atom . IMPL subgoal DOT [ QRY PREDSYM EOF ]
+## sentence -> atom . DOT [ QRY PREDSYM EOF ]
+##
+## The known suffix of the stack is as follows:
+## atom
+##
+
+Expected end of statement (".") or a clause (":- ... ").
+
+program: PREDSYM LPAREN SEMICOLON
+##
+## Ends in an error in state: 8.
+##
+## atom -> predSym LPAREN . loption(separated_nonempty_list(COMMA,term)) RPAREN [ SEMICOLON RPAREN IMPL DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## predSym LPAREN
+##
+
+Expected a term or closing parenthesis.
+
+program: PREDSYM LPAREN WILDCARD COMMA SEMICOLON
+##
+## Ends in an error in state: 17.
+##
+## separated_nonempty_list(COMMA,term) -> term COMMA . separated_nonempty_list(COMMA,term) [ RPAREN ]
+##
+## The known suffix of the stack is as follows:
+## term COMMA
+##
+
+Expected a variable, symbol or wildcard.
+
+program: PREDSYM LPAREN WILDCARD WILDCARD
+##
+## Ends in an error in state: 16.
+##
+## separated_nonempty_list(COMMA,term) -> term . [ RPAREN ]
+## separated_nonempty_list(COMMA,term) -> term . COMMA separated_nonempty_list(COMMA,term) [ RPAREN ]
+##
+## The known suffix of the stack is as follows:
+## term
+##
+
+Expected a comma.
+
+program: PREDSYM WILDCARD
+##
+## Ends in an error in state: 7.
+##
+## atom -> predSym . LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN [ SEMICOLON RPAREN IMPL DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## predSym
+##
+
+Expected a left-hand parenthesis.
+
+program: QRY BANG WILDCARD
+##
+## Ends in an error in state: 5.
+##
+## subgoal -> unop . subgoal [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## unop
+##
+
+Expected an atomic formula.
+
+program: QRY LPAREN PREDSYM LPAREN RPAREN WILDCARD
+##
+## Ends in an error in state: 24.
+##
+## subgoal -> subgoal . COMMA subgoal [ SEMICOLON RPAREN COMMA ]
+## subgoal -> subgoal . SEMICOLON subgoal [ SEMICOLON RPAREN COMMA ]
+## subgoal -> LPAREN subgoal . RPAREN [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## LPAREN subgoal
+##
+
+Expected a conjunction (","), a disjunction (";") or the end of the clause (".").
+
+program: QRY LPAREN WILDCARD
+##
+## Ends in an error in state: 3.
+##
+## subgoal -> LPAREN . subgoal RPAREN [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## LPAREN
+##
+
+Expected a clause.
+
+program: QRY PREDSYM LPAREN RPAREN COMMA WILDCARD
+##
+## Ends in an error in state: 27.
+##
+## subgoal -> subgoal COMMA . subgoal [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## subgoal COMMA
+##
+
+Expected an atomic formula.
+
+program: QRY PREDSYM LPAREN RPAREN SEMICOLON PREDSYM LPAREN RPAREN WILDCARD
+##
+## Ends in an error in state: 26.
+##
+## subgoal -> subgoal . COMMA subgoal [ SEMICOLON RPAREN DOT COMMA ]
+## subgoal -> subgoal . SEMICOLON subgoal [ SEMICOLON RPAREN DOT COMMA ]
+## subgoal -> subgoal SEMICOLON subgoal . [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## subgoal SEMICOLON subgoal
+##
+
+Expected a conjunction (","), a disjunction (";") or the end of the clause (".").
+
+program: QRY PREDSYM LPAREN RPAREN SEMICOLON WILDCARD
+##
+## Ends in an error in state: 25.
+##
+## subgoal -> subgoal SEMICOLON . subgoal [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## subgoal SEMICOLON
+##
+
+Expected a conjunction (","), a disjunction (";") or the end of the clause (".").
+
+program: QRY PREDSYM LPAREN RPAREN WILDCARD
+##
+## Ends in an error in state: 30.
+##
+## sentence -> QRY subgoal . DOT [ QRY PREDSYM EOF ]
+## subgoal -> subgoal . COMMA subgoal [ SEMICOLON DOT COMMA ]
+## subgoal -> subgoal . SEMICOLON subgoal [ SEMICOLON DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## QRY subgoal
+##
+
+Expected a conjunction (","), a disjunction (";") or the end of the clause (".").
+
+program: QRY WILDCARD
+##
+## Ends in an error in state: 1.
+##
+## sentence -> QRY . subgoal DOT [ QRY PREDSYM EOF ]
+##
+## The known suffix of the stack is as follows:
+## QRY
+##
+
+Expected an atomic formula.
+
+program: WILDCARD
+##
+## Ends in an error in state: 0.
+##
+## program' -> . program [ # ]
+##
+## The known suffix of the stack is as follows:
+##
+##
+
+Expected a statement.
+

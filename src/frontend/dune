@@ -1,0 +1,49 @@
+
+(library
+  (name frontend)
+  (libraries core_kernel str fmt menhirLib lib reporting core)
+  (inline_tests)
+  (preprocess (pps ppx_jane ppx_deriving.map ppx_deriving.eq ppx_deriving.fold ppx_deriving.create))
+)
+
+;; Suppress warnings in auto-generated files
+(env
+  (dev
+    (flags (:standard -w -A))))
+
+;; Process `lexer.mll` with `ocamllex`, generating `lexer.ml`
+(ocamllex lexer)
+
+;; Read `parser.messages` and to compile it to an OCaml function that maps 
+;; a state number to a message, written to `parsing_errors.ml`
+;; `--explain` causes conflict explanations to be written to `parser.conflicts`
+(rule
+ (targets parsing_errors.ml)
+ (deps parser.mly parser.messages)
+ (action
+  (with-stdout-to %{targets}
+   (run menhir
+    --explain
+    --strict
+    --unused-tokens parser.mly --compile-errors parser.messages))))
+
+;; Run Menhir on `parser.mll` generating `parser.ml`
+;; `--table` switch makes incremental API available
+;; `--strict` causes several warnings about the grammar and about the automaton 
+;;            to be considered errors
+;; `--unused-tokens` suppresses warning about unused terminals
+(menhir
+ (modules parser)
+ (flags :standard --table --strict --unused-tokens --fixed-exception))
+
+;; Read the `parser.messages` file and produce a new .messages file that is 
+;; identical, except the auto-generated comments have been re-generated
+(rule
+ (with-stdout-to parser_updated.messages
+  (run menhir %{dep:parser.mly} --update-errors %{dep:parser.messages}))
+)
+
+;; Diff old and new parser messages
+(rule
+ (alias update_messages)
+  (action (diff parser.messages parser_updated.messages)))
