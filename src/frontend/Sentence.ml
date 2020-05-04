@@ -18,8 +18,6 @@ module X = struct
   let pp = `NoPrec pp
 end
 
-exception UnnamedQuery
-
 include X
 include Pretty.Make0 (X)
 
@@ -220,17 +218,44 @@ struct
 end
 
 (* -- Normalization transforms ---------------------------------------------- *)
+module Logged = Effect (Logger)
+
+let set_foreign_func t ~ffns =
+  Logger.(
+    match t with
+    | SFact { elem = { head }; region } ->
+      Subgoal.Logged.transform_atom ~f:Atom.(ffn_clash ~ffns) head
+      >>= fun head -> return @@ fact Fact.{ head } ~region
+    | SClause { elem = { head; body }; region } ->
+      Subgoal.Logged.transform_atom ~f:Atom.(ffn_clash ~ffns) head
+      >>= fun head ->
+      let body = Subgoal.transform_atom ~f:Atom.(set_foreign_func ~ffns) body in
+      return @@ clause Clause.{ head; body } ~region
+    | SQuery { elem = { head = Some head; body }; region } ->
+      Subgoal.Logged.transform_atom ~f:Atom.(ffn_clash ~ffns) head
+      >>= fun head ->
+      let body = Subgoal.transform_atom ~f:Atom.(set_foreign_func ~ffns) body in
+      return @@ query Query.{ head = Some head; body } ~region
+    | SQuery { elem = { head ; body }; region } ->
+
+      let body = Subgoal.transform_atom ~f:Atom.(set_foreign_func ~ffns) body in
+      return @@ query Query.{ head = head; body } ~region)
+    
+;;
 
 let split_disj t =
-  match t with
-  | SFact _ -> [ t ]
-  | SClause { elem = { head; body }; region } ->
-    List.map ~f:(fun body -> clause Clause.{ head; body } ~region)
-    @@ Subgoal.split_disj body
-  | SQuery { elem = { head = Some _ as head; body }; region } ->
-    List.map ~f:(fun body -> query Query.{ head; body } ~region)
-    @@ Subgoal.split_disj body
-  | SQuery _ -> raise UnnamedQuery
+  Logger.(
+    match t with
+    | SFact _ -> return [ t ]
+    | SClause { elem = { head; body }; region } ->
+      return
+      @@ List.map ~f:(fun body -> clause Clause.{ head; body } ~region)
+      @@ Subgoal.split_disj body
+    | SQuery { elem = { head = Some _ as head; body }; region } ->
+      return
+      @@ List.map ~f:(fun body -> query Query.{ head; body } ~region)
+      @@ Subgoal.split_disj body
+    | SQuery { region; _ } -> fail @@ query_not_named region)
 ;;
 
 let name_query t : t Logger.t =
@@ -238,19 +263,18 @@ let name_query t : t Logger.t =
     match t with
     | SQuery { elem = { head; body }; region } ->
       (match head with
-      | Some _ -> query_already_named region
+      | Some _ -> fail @@ query_already_named region
       | _ ->
         fresh ()
         >>= fun nm ->
         let predSym =
-          Located.locate ~region:Region.empty @@
-            Core.PredSymbol.from_string nm
+          Located.locate ~region:Region.empty @@ Core.PredSymbol.from_string nm
         in
         let terms =
           List.map ~f:Located.(locate ~region)
           @@ Subgoal.tmvars Core.Term.tmvars body
         in
-        let atom = Atom.atom predSym terms in 
+        let atom = Atom.atom predSym terms in
         let head = Subgoal.atom atom ~region in
         return @@ query Query.{ head = Some head; body } ~region)
     | _ -> return t)

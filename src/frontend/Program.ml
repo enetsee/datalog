@@ -12,24 +12,6 @@ end
 include X
 include Pretty.Make0 (X)
 
-let test =
-  "\n\
-   edge(A,B).\n\
-   edge(B,C).\n\
-   edge(A,D).\n\
-   edge(B,D).\n\n\
-   connected(?X,?Y) \n\
-  \  :- edge(?X,?Y) \n\
-  \  ;  edge(?X,?Z) , connected(?Z,?Y). \n\n\
-  \  complement(?X,?Y) :- !connected(?X,?Y)."
-;;
-
-let test_bad =
-  "\n\
-   edge(A,B)\n\
-   connected(?X,?Y) := edge(?X,?Y) ; edge(?X,?Z), connected(?Z,?Y).\n"
-;;
-
 (* -- Query ----------------------------------------------------------------- *)
 
 let atoms { stmts } = List.concat_map ~f:Statement.atoms stmts
@@ -130,13 +112,26 @@ struct
   ;;
 end
 
-(* -- Normalization transforms ---------------------------------------------- *)
+module Logged = Effect (Logger)
 
+(* -- Normalization and preprocessing --------------------------------------- *)
+let set_foreign_func prog ~ffns =
+  Logged.transform_sentence ~f:Sentence.(set_foreign_func ~ffns) prog
+;;
+
+let name_query prog = Logged.transform_sentence ~f:Sentence.name_query prog
 let push_neg prog = transform_body ~f:Subgoal.push_neg prog
 let collect_disj prog = transform_body ~f:Subgoal.collect_disj prog
 
 let split_disj { stmts } =
-  { stmts = List.concat_map ~f:Statement.split_disj stmts }
+  Logger.(
+    List.map ~f:Statement.split_disj stmts
+    |> all
+    >>= fun stmtss -> return { stmts = List.concat stmtss })
 ;;
 
 let normalize prog = split_disj @@ collect_disj @@ push_neg prog
+
+(* -- Translate to `Core` language ------------------------------------------ *)
+
+let to_core t = Logger.return t

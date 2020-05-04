@@ -14,7 +14,7 @@ module X = struct
   let pp ppf { head; body } =
     match head with
     | None ->
-      Fmt.(hovbox @@ (any " ?-@, " ++ Subgoal.pp Core.Term.pp ++ any "."))
+      Fmt.(hovbox @@ (any "?-@, " ++ Subgoal.pp Core.Term.pp ++ any "."))
         ppf
         body
     | Some head ->

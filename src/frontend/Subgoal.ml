@@ -246,6 +246,8 @@ struct
   ;;
 end
 
+module Logged = Effect (Logger)
+
 module Effect2 (M : sig
   include Monad.S2
   include Applicative.S2 with type ('a, 'b) t := ('a, 'b) t

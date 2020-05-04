@@ -113,6 +113,13 @@ end
 (* -- Normalization transforms ---------------------------------------------- *)
 
 let split_disj t =
-  match t with
-  | StSentence s -> List.map ~f:sentence @@ Sentence.split_disj s
+  Logger.(
+    match t with
+    | StSentence s -> map ~f:(List.map ~f:sentence) @@ Sentence.split_disj s)
+;;
+
+let name_query t =
+  Logger.(
+    match t with
+    | StSentence s -> map ~f:sentence @@ Sentence.name_query s)
 ;;

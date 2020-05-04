@@ -1,23 +1,71 @@
 open Core_kernel
+open Lib
 
 (* A wrapper around StateT Result to hide complexity and provide some helpers *)
 
 (** TODO: flatten this down and possibly add reader? *)
 module M = Mtl.StateT.Make2 (Result)
 
+module Warning = struct
+  type t = PredSymClash of Reporting.Region.t
+
+  let pp ppf = function
+    | PredSymClash region ->
+      Fmt.(
+        any "Predicate symbol clashes with a reserved name "
+        ++ parens Reporting.Region.pp)
+        ppf
+        region
+  ;;
+
+  include Pretty.Make0 (struct
+    type nonrec t = t
+
+    let pp = `NoPrec pp
+  end)
+end
+
 module State = struct
   type t =
     { prefix : string option
     ; reserved : String.Set.t
+    ; warnings : Warning.t list
     ; counter : int
     }
 
-  let counter { counter; _ } = counter
-  let prefix { prefix; _ } = prefix
+  let init prefix reserved = { prefix; reserved; warnings = []; counter = 0 }
 end
 
 module Err = struct
-  type t = QueryNamed of Reporting.Region.t
+  type t =
+    | Parse of string option * Reporting.Region.t
+    | ParseBadState
+    | QueryNamed of Reporting.Region.t
+    | QueryUnnamed of Reporting.Region.t
+
+  let pp ppf = function
+    | Parse (Some msg, region) ->
+      Fmt.(
+        pair
+          ~sep:sp
+          (any "Parse error: " ++ string)
+          (parens Reporting.Region.pp))
+        ppf
+        (msg, region)
+    | Parse (_, region) ->
+      Fmt.(any "Parse error without message " ++ Reporting.Region.pp) ppf region
+    | ParseBadState -> Fmt.string ppf "Parsing failed in an error state"
+    | QueryNamed region ->
+      Fmt.(any "Query already named " ++ parens Reporting.Region.pp) ppf region
+    | QueryUnnamed region ->
+      Fmt.(any "Query not named " ++ parens Reporting.Region.pp) ppf region
+  ;;
+
+  include Pretty.Make0 (struct
+    type nonrec t = t
+
+    let pp = `NoPrec pp
+  end)
 end
 
 module Minimal = struct
@@ -33,8 +81,10 @@ include Minimal
 include Monad.Make (Minimal)
 include Applicative.Make (Minimal)
 
-let fail err = M.lift @@ Error err
-let query_already_named region : 'a t = fail @@ Err.QueryNamed region
+let run ?(prefix = None) reserved t =
+  M.run t ~init:State.(init prefix reserved)
+  |> Result.map ~f:(fun (res, State.{ warnings; _ }) -> res, warnings)
+;;
 
 let rec fresh () : string t =
   M.(
@@ -51,3 +101,21 @@ let rec fresh () : string t =
     in
     if String.Set.mem reserved candidate then fresh () else return candidate)
 ;;
+
+(* -- Failure --------------------------------------------------------------- *)
+let fail err = M.lift @@ Error err
+let parse_error msg region = Err.Parse (msg, region)
+let parse_bad_state = Err.ParseBadState
+let query_already_named region = Err.QueryNamed region
+let query_not_named region = Err.QueryUnnamed region
+
+(* -- Warning --------------------------------------------------------------- *)
+
+let warn warning : unit t =
+  M.(
+    get
+    >>= fun (State.{ warnings; _ } as st) ->
+    put { st with warnings = warning :: warnings })
+;;
+
+let predsym_clash_with_ffn region = Warning.PredSymClash region

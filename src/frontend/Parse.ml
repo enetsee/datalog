@@ -2,11 +2,7 @@ open Core_kernel
 module I = Parser.MenhirInterpreter
 module IE = MenhirLib.IncrementalEngine
 
-type error =
-  | Empty
-  | Message of string option * Reporting.Region.t
-
-let succeed defn = Ok defn
+let succeed defn = Logger.return defn
 
 let from_menhir_pos (pos : MenhirLib.IncrementalEngine.position) =
   let line = pos.Lexing.pos_lnum
@@ -24,17 +20,15 @@ let error_msg state =
 
 let fail _ = function
   | I.HandlingError env ->
-    let msg =
-      match I.stack env with
-      | (lazy Nil) -> Empty
-      | (lazy (Cons (I.Element (state, _, start_pos, end_pos), _))) ->
-        let start_ = from_menhir_pos start_pos
-        and end_ = from_menhir_pos end_pos in
-        let msg_opt = error_msg state in
-        Message (msg_opt, { start_; end_ })
-    in
-    Error msg
-  | _ -> assert false
+    (match I.stack env with
+    | (lazy Nil) -> Logger.(fail parse_bad_state)
+    | (lazy (Cons (I.Element (state, _, start_pos, end_pos), _))) ->
+      let start_ = from_menhir_pos start_pos
+      and end_ = from_menhir_pos end_pos in
+      let msg_opt = error_msg state
+      and region = Reporting.Region.{ start_; end_ } in
+      Logger.(fail @@ parse_error msg_opt region)
+    | _ -> assert false)
 ;;
 
 let loop lexbuf result =
