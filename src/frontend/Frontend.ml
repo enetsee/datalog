@@ -42,8 +42,8 @@ let test =
    connected(?X,?Y) \n\
   \  :- edge(?X,?Y) \n\
   \  ;  edge(?X,?Z) , connected(?Z,?Y). \n\n\
-  \  complement(?X,?Y) :- !connected(?X,?Y).
-  ?- complement(A,?X)."
+  \  complement(?X,?Y) :- !connected(?X,?Y).\n\
+  \  ?- complement(A,?X)."
 ;;
 
 let test_bad =

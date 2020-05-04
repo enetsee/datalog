@@ -236,11 +236,9 @@ let set_foreign_func t ~ffns =
       >>= fun head ->
       let body = Subgoal.transform_atom ~f:Atom.(set_foreign_func ~ffns) body in
       return @@ query Query.{ head = Some head; body } ~region
-    | SQuery { elem = { head ; body }; region } ->
-
+    | SQuery { elem = { head; body }; region } ->
       let body = Subgoal.transform_atom ~f:Atom.(set_foreign_func ~ffns) body in
-      return @@ query Query.{ head = head; body } ~region)
-    
+      return @@ query Query.{ head; body } ~region)
 ;;
 
 let split_disj t =
