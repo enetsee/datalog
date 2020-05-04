@@ -24,7 +24,20 @@ let test =
   \  complement(?X,?Y) :- !connected(?X,?Y)."
 ;;
 
-(* -- Transformations ------------------------------------------------------- *)
+let test_bad =
+  "\n\
+   edge(A,B)\n\
+   connected(?X,?Y) := edge(?X,?Y) ; edge(?X,?Z), connected(?Z,?Y).\n"
+;;
+
+(* -- Query ----------------------------------------------------------------- *)
+
+let atoms { stmts } = List.concat_map ~f:Statement.atoms stmts
+let tmvars { stmts } = List.concat_map ~f:Statement.tmvars stmts
+
+(* == Transformations ======================================================= *)
+
+(* -- Transformation helpers ------------------------------------------------ *)
 
 let transform_atom { stmts } ~f =
   { stmts = List.map ~f:Statement.(transform_atom ~f) stmts }
@@ -116,3 +129,14 @@ struct
     M.(List.map ~f stmts |> all |> map ~f:(fun stmts -> { stmts }))
   ;;
 end
+
+(* -- Normalization transforms ---------------------------------------------- *)
+
+let push_neg prog = transform_body ~f:Subgoal.push_neg prog
+let collect_disj prog = transform_body ~f:Subgoal.collect_disj prog
+
+let split_disj { stmts } =
+  { stmts = List.concat_map ~f:Statement.split_disj stmts }
+;;
+
+let normalize prog = split_disj @@ collect_disj @@ push_neg prog

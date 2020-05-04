@@ -10,13 +10,26 @@ module X = struct
     | StSentence s -> Sentence.pp ppf s
   ;;
 
+  let sentence s = StSentence s
   let pp = `NoPrec pp
 end
 
 include X
 include Pretty.Make0 (X)
 
-(* -- Transformations ------------------------------------------------------- *)
+(* -- Query ----------------------------------------------------------------- *)
+
+let atoms = function
+  | StSentence s -> Sentence.atoms s
+;;
+
+let tmvars = function
+  | StSentence s -> Sentence.tmvars s
+;;
+
+(* == Transformations ======================================================= *)
+
+(* -- Transformation helpers ------------------------------------------------ *)
 
 let transform_atom t ~f =
   match t with
@@ -96,3 +109,10 @@ struct
     | StSentence s -> M.map ~f:(fun s -> StSentence s) @@ f s
   ;;
 end
+
+(* -- Normalization transforms ---------------------------------------------- *)
+
+let split_disj t =
+  match t with
+  | StSentence s -> List.map ~f:sentence @@ Sentence.split_disj s
+;;

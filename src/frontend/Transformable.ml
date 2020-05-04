@@ -7,7 +7,7 @@ module type S0 = sig
 
   (** Apply pure subgoal transformation to the head of a sentence where it 
       exists *)
-  val transform_head : t -> f:('a Subgoal.t -> 'a  Subgoal.t) -> t
+  val transform_head : t -> f:('a Subgoal.t -> 'a Subgoal.t) -> t
 
   (** Apply pure subgoal transformation to the body of a sentence where it 
       exists *)

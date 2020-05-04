@@ -8,6 +8,7 @@ module Minimal = struct
   [@@deriving map]
 
   let empty elem = { elem; region = Region.empty }
+  let locate elem ~region = { elem; region }
 
   let merge elem { region = start_; _ } { region = end_; _ } =
     { elem; region = Region.merge start_ end_ }

@@ -20,7 +20,16 @@ end
 include X
 include Pretty.Make0 (X)
 
+(* -- Constructors ---------------------------------------------------------- *)
+
 let var' t = TVar t
 let var t = var' @@ Tmvar.from_string t
 let sym s = TSym s
 let wild = TWild
+
+(* -- Query ----------------------------------------------------------------- *)
+
+let tmvars = function
+  | TVar tv -> [ tv ]
+  | _ -> []
+;;

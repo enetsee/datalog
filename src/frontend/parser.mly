@@ -102,7 +102,7 @@ unop: region=BANG { Located.{elem=Op.Neg;region}}
 atom : 
   | predSym=predSym terms=delimited(LPAREN,separated_list(COMMA,term),RPAREN) { 
       let region = Region.(merge predSym.region @@  merge_many @@ List.map ~f:(fun {region;_} -> region) terms) in 
-      let elem = Atom.{predSym;terms} in 
+      let elem = Atom.atom predSym terms in 
       ( elem , region )
   } 
 

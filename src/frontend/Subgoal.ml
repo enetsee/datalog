@@ -13,7 +13,7 @@ open Lib
 
 module Shape = struct
   module Raw = struct
-    type ('a,'term) t =
+    type ('a, 'term) t =
       | SAtom of 'term Atom.t
       | SNullOp of Op.t
       | SUnOp of Op.t Located.t * 'a
@@ -46,20 +46,21 @@ module Shape = struct
     ;;
 
     include Pretty.Make2 (struct
-      type nonrec ('a,'b) t = ('a,'b) t
+      type nonrec ('a, 'b) t = ('a, 'b) t
 
       let pp = `WithPrec pp_prec
     end)
 
     include Functor.Make2 (struct
-      type nonrec ('a,'b) t = ('a,'b) t
+      type nonrec ('a, 'b) t = ('a, 'b) t
 
-      let map t ~f = 
-        match t with 
-        | SAtom a -> SAtom a 
-        | SNullOp op -> SNullOp op 
-        | SUnOp(op,a) -> SUnOp(op,f a)
-        | SBinOp(op,a,b) -> SBinOp(op,f a,f b)
+      let map t ~f =
+        match t with
+        | SAtom a -> SAtom a
+        | SNullOp op -> SNullOp op
+        | SUnOp (op, a) -> SUnOp (op, f a)
+        | SBinOp (op, a, b) -> SBinOp (op, f a, f b)
+      ;;
     end)
 
     module Traversable (A : Applicative.S) = struct
@@ -74,10 +75,23 @@ module Shape = struct
 
       let sequence x = traverse x ~f:Fn.id
     end
+
+    module Traversable2 (A : Applicative.S2) = struct
+      let traverse x ~f =
+        match x with
+        | SAtom n -> A.return @@ SAtom n
+        | SNullOp op -> A.return @@ SNullOp op
+        | SUnOp (op, t) -> A.map ~f:(fun t' -> SUnOp (op, t')) @@ f t
+        | SBinOp (op, s, t) ->
+          A.map2 ~f:(fun s' t' -> SBinOp (op, s', t')) (f s) (f t)
+      ;;
+
+      let sequence x = traverse x ~f:Fn.id
+    end
   end
 
   module Located = struct
-    type ('a,'term) t = ('a,'term) Raw.t Located.t
+    type ('a, 'term) t = ('a, 'term) Raw.t Located.t
 
     let pp_prec prec pp_a pp_b ppf Located.{ elem; _ } =
       Raw.pp_prec prec pp_a pp_b ppf elem
@@ -98,13 +112,13 @@ module Shape = struct
     let region Located.{ region; _ } = region
 
     include Pretty.Make2 (struct
-      type nonrec ('a,'b) t = ('a,'b) t
+      type nonrec ('a, 'b) t = ('a, 'b) t
 
       let pp = `WithPrec pp_prec
     end)
 
     include Functor.Make2 (struct
-      type nonrec ('a,'b) t = ('a,'b) t
+      type nonrec ('a, 'b) t = ('a, 'b) t
 
       let map t ~f = Located.{ t with elem = Raw.map ~f t.elem }
     end)
@@ -120,17 +134,45 @@ module Shape = struct
 
       let sequence x = traverse x ~f:Fn.id
     end
+
+    module Traversable2 (A : Applicative.S2) = struct
+      module T = Raw.Traversable2 (A)
+
+      let traverse t ~f =
+        A.map ~f:(fun elem -> Located.{ t with elem })
+        @@ T.traverse ~f
+        @@ elem t
+      ;;
+
+      let sequence x = traverse x ~f:Fn.id
+    end
   end
 end
 
 include Fix.Make2 (Shape.Located)
 
-let rec equal eq_term a b = Shape.Located.equal (equal eq_term) eq_term (proj a) (proj b)
-let rec compare cmp_term a b = Shape.Located.compare (compare cmp_term) cmp_term  (proj a) (proj b)
-let rec pp pp_term ppf t = Shape.Located.pp (pp pp_term ) pp_term  ppf @@ proj t
+let rec equal eq_term a b =
+  Shape.Located.equal (equal eq_term) eq_term (proj a) (proj b)
+;;
+
+let rec compare cmp_term a b =
+  Shape.Located.compare (compare cmp_term) cmp_term (proj a) (proj b)
+;;
+
+let rec pp pp_term ppf t = Shape.Located.pp (pp pp_term) pp_term ppf @@ proj t
 
 module Traversable (A : Applicative.S) = struct
   module T = Shape.Located.Traversable (A)
+
+  let rec traverse t ~f =
+    A.map ~f:embed @@ T.traverse ~f:(traverse ~f) @@ proj t
+  ;;
+
+  let sequence x = traverse x ~f:Fn.id
+end
+
+module Traversable2 (A : Applicative.S2) = struct
+  module T = Shape.Located.Traversable2 (A)
 
   let rec traverse t ~f =
     A.map ~f:embed @@ T.traverse ~f:(traverse ~f) @@ proj t
@@ -147,6 +189,30 @@ let binop op a b ~region = embed @@ Shape.Located.binop op a b ~region
 let conj a b ~region = binop { elem = Conj; region } a b ~region
 let disj a b ~region = binop { elem = Disj; region } a b ~region
 let neg a ~region = unop { elem = Neg; region } a ~region
+
+(* -- Query ----------------------------------------------------------------- *)
+
+let atoms t =
+  let aux t =
+    match Shape.Located.elem t with
+    | Shape.Raw.SAtom a -> [ a ]
+    | SNullOp _ -> []
+    | SUnOp (_, xs) -> xs
+    | SBinOp (_, xs, ys) -> xs @ ys
+  in
+  cata aux t
+;;
+
+let tmvars tmvars_a t =
+  let aux t =
+    match Shape.Located.elem t with
+    | Shape.Raw.SAtom a -> Atom.tmvars tmvars_a a
+    | SNullOp _ -> []
+    | SUnOp (_, xs) -> xs
+    | SBinOp (_, xs, ys) -> xs @ ys
+  in
+  cata aux t
+;;
 
 (* == Transformations ======================================================= *)
 
@@ -169,14 +235,26 @@ end) =
 struct
   module T = Shape.Located.Traversable (M)
 
-  (* let rec cataM t ~f =  M.(
-       M.return (proj t) >>= fun s ->
-       T.traverse ~f:(cataM ~f) s >>= fun s' ->
-       f s'
-     ) *)
+  (** Effectful bottom-up transformation of atoms within a subgoal *)
+  let transform_atom t ~f =
+    let rec aux = function
+      | Located.{ elem = Shape.Raw.SAtom a; region } ->
+        M.map ~f:(atom ~region) @@ f a
+      | s -> M.map ~f:embed @@ T.sequence s
+    in
+    cata aux t
+  ;;
+end
+
+module Effect2 (M : sig
+  include Monad.S2
+  include Applicative.S2 with type ('a, 'b) t := ('a, 'b) t
+end) =
+struct
+  module T = Shape.Located.Traversable2 (M)
 
   (** Effectful bottom-up transformation of atoms within a subgoal *)
-  let transform_atom t ~f  =
+  let transform_atom t ~f =
     let rec aux = function
       | Located.{ elem = Shape.Raw.SAtom a; region } ->
         M.map ~f:(atom ~region) @@ f a
@@ -187,6 +265,17 @@ struct
 end
 
 (* -- Normalization transforms ---------------------------------------------- *)
+
+(** Split disjunctions *)
+let split_disj t =
+  let rec aux ~k t =
+    match Shape.Located.elem @@ proj t with
+    | SBinOp ({ elem = Disj; _ }, s1, s2) ->
+      aux s1 ~k:(fun xs -> aux s2 ~k:(fun ys -> k @@ xs @ ys))
+    | _ -> k [ t ]
+  in
+  aux ~k:Fn.id t
+;;
 
 (** Eliminate double negation top-down but stop when we hit one *)
 let elim_neg t =

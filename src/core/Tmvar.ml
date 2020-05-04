@@ -12,3 +12,7 @@ include X
 include Pretty.Make0 (X)
 
 let from_string name = { name }
+
+(* -- Query ----------------------------------------------------------------- *)
+
+let tmvars t = [ t ]
