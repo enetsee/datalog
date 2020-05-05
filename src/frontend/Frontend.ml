@@ -24,14 +24,14 @@ let foreignFuncEmbed str = Logger.(raw str >>= Program.set_foreign_func ~ffns)
 let namedQueries str = Logger.(foreignFuncEmbed str >>= Program.name_query)
 let normalized str = Logger.(namedQueries str >>= Program.normalize)
 let to_core str = Logger.(normalized str >>= Program.to_core)
-let run t = Logger.run ~prefix:(Some "q") reserved t
+let run t = Logger.run ~init:State.(init (Some "q") reserved) t
 
 let print_result = function
   | Ok (prog, warnings) ->
-    Fmt.(pair ~sep:cut Program.pp @@ list ~sep:cut Logger.Warning.pp)
+    Fmt.(pair ~sep:cut Program.pp @@ list ~sep:cut Warning.pp)
       Format.std_formatter
       (prog, warnings)
-  | Error err -> Logger.Err.pp Format.std_formatter err
+  | Error err -> Err.pp Format.std_formatter err
 ;;
 
 let test =

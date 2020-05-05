@@ -119,6 +119,50 @@ struct
   ;;
 end
 
+module Effect3 (M : sig
+  include Monad.S3
+  include Applicative.S3 with type ('a, 'b, 'c) t := ('a, 'b, 'c) t
+end) =
+struct
+  module S = Sentence.Effect3 (M)
+
+  let transform_atom t ~f =
+    match t with
+    | StSentence s -> M.map ~f:(fun s -> StSentence s) @@ S.transform_atom ~f s
+  ;;
+
+  let transform_head t ~f =
+    match t with
+    | StSentence s -> M.map ~f:(fun s -> StSentence s) @@ S.transform_head ~f s
+  ;;
+
+  let transform_body t ~f =
+    match t with
+    | StSentence s -> M.map ~f:(fun s -> StSentence s) @@ S.transform_body ~f s
+  ;;
+
+  let transform_clause t ~f =
+    match t with
+    | StSentence s ->
+      M.map ~f:(fun s -> StSentence s) @@ S.transform_clause ~f s
+  ;;
+
+  let transform_query t ~f =
+    match t with
+    | StSentence s -> M.map ~f:(fun s -> StSentence s) @@ S.transform_query ~f s
+  ;;
+
+  let transform_fact t ~f =
+    match t with
+    | StSentence s -> M.map ~f:(fun s -> StSentence s) @@ S.transform_fact ~f s
+  ;;
+
+  let transform_sentence t ~f =
+    match t with
+    | StSentence s -> M.map ~f:(fun s -> StSentence s) @@ f s
+  ;;
+end
+
 (* -- Normalization transforms ---------------------------------------------- *)
 
 let split_disj t =

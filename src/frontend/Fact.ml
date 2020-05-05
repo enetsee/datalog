@@ -34,7 +34,7 @@ let term_to_core Located.{ elem; region } =
 (** Translate a `Fact` to it's corresponding representation in the `Core`
     language i.e. `Knowledge` 
 *)
-let to_core { head } : Region.t Core.Knowledge.t Logger.t =
+let to_core { head } =
   Logger.(
     match Subgoal.proj head with
     | { elem = SAtom Atom.{ predSym; terms }; region } ->

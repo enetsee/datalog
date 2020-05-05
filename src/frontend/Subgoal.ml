@@ -88,6 +88,19 @@ module Shape = struct
 
       let sequence x = traverse x ~f:Fn.id
     end
+
+    module Traversable3 (A : Applicative.S3) = struct
+      let traverse x ~f =
+        match x with
+        | SAtom n -> A.return @@ SAtom n
+        | SNullOp op -> A.return @@ SNullOp op
+        | SUnOp (op, t) -> A.map ~f:(fun t' -> SUnOp (op, t')) @@ f t
+        | SBinOp (op, s, t) ->
+          A.map2 ~f:(fun s' t' -> SBinOp (op, s', t')) (f s) (f t)
+      ;;
+
+      let sequence x = traverse x ~f:Fn.id
+    end
   end
 
   module Located = struct
@@ -146,6 +159,18 @@ module Shape = struct
 
       let sequence x = traverse x ~f:Fn.id
     end
+
+    module Traversable3 (A : Applicative.S3) = struct
+      module T = Raw.Traversable3 (A)
+
+      let traverse t ~f =
+        A.map ~f:(fun elem -> Located.{ t with elem })
+        @@ T.traverse ~f
+        @@ elem t
+      ;;
+
+      let sequence x = traverse x ~f:Fn.id
+    end
   end
 end
 
@@ -187,6 +212,16 @@ end
 
 module Traversable2 (A : Applicative.S2) = struct
   module T = Shape.Located.Traversable2 (A)
+
+  let rec traverse t ~f =
+    A.map ~f:embed @@ T.traverse ~f:(traverse ~f) @@ proj t
+  ;;
+
+  let sequence x = traverse x ~f:Fn.id
+end
+
+module Traversable3 (A : Applicative.S3) = struct
+  module T = Shape.Located.Traversable3 (A)
 
   let rec traverse t ~f =
     A.map ~f:embed @@ T.traverse ~f:(traverse ~f) @@ proj t
@@ -260,8 +295,6 @@ struct
   ;;
 end
 
-module Logged = Effect (Logger)
-
 module Effect2 (M : sig
   include Monad.S2
   include Applicative.S2 with type ('a, 'b) t := ('a, 'b) t
@@ -279,6 +312,26 @@ struct
     cata aux t
   ;;
 end
+
+module Effect3 (M : sig
+  include Monad.S3
+  include Applicative.S3 with type ('a, 'b, 'c) t := ('a, 'b, 'c) t
+end) =
+struct
+  module T = Shape.Located.Traversable3 (M)
+
+  (** Effectful bottom-up transformation of atoms within a subgoal *)
+  let transform_atom t ~f =
+    let rec aux = function
+      | Located.{ elem = Shape.Raw.SAtom a; region } ->
+        M.map ~f:(atom ~region) @@ f a
+      | s -> M.map ~f:embed @@ T.sequence s
+    in
+    cata aux t
+  ;;
+end
+
+module Logged = Effect3 (Core.Logger)
 
 (* -- Normalization transforms ---------------------------------------------- *)
 

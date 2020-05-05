@@ -234,8 +234,71 @@ struct
   ;;
 end
 
+module Effect3 (M : sig
+  include Monad.S3
+  include Applicative.S3 with type ('a, 'b, 'c) t := ('a, 'b, 'c) t
+end) =
+struct
+  module S = Subgoal.Effect3 (M)
+
+  let transform_atom t ~f =
+    match t with
+    | SClause { elem = { head; body }; region } ->
+      M.map2
+        (S.transform_atom ~f head)
+        (S.transform_atom ~f body)
+        ~f:(fun head body -> clause Clause.{ head; body } ~region)
+    | SQuery { elem = { head; body }; region } ->
+      M.map (S.transform_atom ~f body) ~f:(fun body ->
+          query Query.{ head; body } ~region)
+    | SFact { elem = { head }; region } ->
+      M.map (S.transform_atom ~f head) ~f:(fun head ->
+          fact Fact.{ head } ~region)
+  ;;
+
+  let transform_clause t ~f =
+    match t with
+    | SClause { elem; region } -> M.map ~f:(clause ~region) @@ f elem
+    | _ -> M.return t
+  ;;
+
+  let transform_query t ~f =
+    match t with
+    | SQuery { elem; region } -> M.map ~f:(query ~region) @@ f elem
+    | _ -> M.return t
+  ;;
+
+  let transform_fact t ~f =
+    match t with
+    | SFact { elem; region } -> M.map ~f:(fact ~region) @@ f elem
+    | _ -> M.return t
+  ;;
+
+  (** Apply effectul subgoal transformation to the body of a sentence *)
+  let transform_body t ~f =
+    M.(
+      match t with
+      | SClause { elem; region } ->
+        map ~f:(fun body -> clause { elem with body } ~region) @@ f elem.body
+      | SQuery { elem; region } ->
+        map ~f:(fun body -> query { elem with body } ~region) @@ f elem.body
+      | _ -> return t)
+  ;;
+
+  (** Apply effectul subgoal transformation to the head of a sentence *)
+  let transform_head t ~f =
+    M.(
+      match t with
+      | SClause { elem; region } ->
+        map ~f:(fun head -> clause { elem with head } ~region) @@ f elem.head
+      | SFact { elem; region } ->
+        map ~f:(fun head -> fact { elem with head } ~region) @@ f elem.head
+      | _ -> return t)
+  ;;
+end
+
 (* -- Normalization transforms ---------------------------------------------- *)
-module Logged = Effect (Logger)
+module Logged = Effect3 (Logger)
 
 let set_foreign_func t ~ffns =
   Logger.(
@@ -273,7 +336,7 @@ let split_disj t =
     | SQuery { region; _ } -> fail @@ query_not_named region)
 ;;
 
-let name_query t : t Logger.t =
+let name_query t =
   Logger.(
     match t with
     | SQuery { elem = { head; body }; region } ->

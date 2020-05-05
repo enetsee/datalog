@@ -33,7 +33,10 @@ val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 val atom : PredSymbol.t Located.t -> 'a Located.t list -> 'a t
 
 (** Test if the predicate symbol clases with a foreign function name *)
-val ffn_clash : 'a t -> ffns:ForeignFunc.t PredSymbol.Map.t -> 'a t Logger.t
+val ffn_clash
+  :  'a t
+  -> ffns:ForeignFunc.t PredSymbol.Map.t
+  -> ('a t, State.t, Err.t) Logger.t
 
 (** Modify the atom's nature if the predicate symbol is used for a foreign 
    function *)

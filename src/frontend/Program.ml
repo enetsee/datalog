@@ -112,7 +112,68 @@ struct
   ;;
 end
 
-module Logged = Effect (Logger)
+module Effect3 (M : sig
+  include Monad.S3
+  include Applicative.S3 with type ('a, 'b, 'c) t := ('a, 'b, 'c) t
+end) =
+struct
+  module S = Statement.Effect3 (M)
+
+  let transform_atom { stmts } ~f =
+    M.(
+      List.map ~f:S.(transform_atom ~f) stmts
+      |> all
+      |> map ~f:(fun stmts -> { stmts }))
+  ;;
+
+  let transform_head { stmts } ~f =
+    M.(
+      List.map ~f:S.(transform_head ~f) stmts
+      |> all
+      |> map ~f:(fun stmts -> { stmts }))
+  ;;
+
+  let transform_body { stmts } ~f =
+    M.(
+      List.map ~f:S.(transform_body ~f) stmts
+      |> all
+      |> map ~f:(fun stmts -> { stmts }))
+  ;;
+
+  let transform_clause { stmts } ~f =
+    M.(
+      List.map ~f:S.(transform_clause ~f) stmts
+      |> all
+      |> map ~f:(fun stmts -> { stmts }))
+  ;;
+
+  let transform_query { stmts } ~f =
+    M.(
+      List.map ~f:S.(transform_query ~f) stmts
+      |> all
+      |> map ~f:(fun stmts -> { stmts }))
+  ;;
+
+  let transform_fact { stmts } ~f =
+    M.(
+      List.map ~f:S.(transform_fact ~f) stmts
+      |> all
+      |> map ~f:(fun stmts -> { stmts }))
+  ;;
+
+  let transform_sentence { stmts } ~f =
+    M.(
+      List.map ~f:S.(transform_sentence ~f) stmts
+      |> all
+      |> map ~f:(fun stmts -> { stmts }))
+  ;;
+
+  let transform_statement { stmts } ~f =
+    M.(List.map ~f stmts |> all |> map ~f:(fun stmts -> { stmts }))
+  ;;
+end
+
+module Logged = Effect3 (Logger)
 
 (* -- Normalization and preprocessing --------------------------------------- *)
 let set_foreign_func prog ~ffns =
