@@ -73,26 +73,26 @@ let body_to_core sg =
        If it _is_ applied to an atom we will have exactly one literal so
        we can simply toggle its polarity. Otherwise, fail.
     *)
-    | SUnOp ({ elem = Op.Neg; _ }, mxs) ->
+    | SUnOp ({ elem = Op.Neg; region }, mxs) ->
       Logger.(
         mxs
         >>= fun xs ->
         (match NonEmpty.to_list xs with
         | [ a ] ->
           return @@ NonEmpty.singleton @@ Core.Literal.toggle_polarity a
-        | _ -> failwith "negation applied to non-atom"))
+        | _ -> fail @@ clause_negation region))
     (* Just in case we have somehow ended up with a non-unary operator, fail *)
-    | SUnOp ({ region; _ }, _) -> failwith ""
+    | SUnOp ({ region; _ }, _) -> Logger.(fail @@ clause_unop region)
     (* In the case of conjuction, simply append the literals *)
     | SBinOp ({ elem = Op.Conj; _ }, mxs, mys) ->
       Logger.map2 ~f:NonEmpty.append mxs mys
     (* We should have eliminated disjunctions by now so fail *)
-    | SBinOp ({ elem = Op.Disj; _ }, mxs, mys) ->
-      failwith "encounter disjunction"
+    | SBinOp ({ elem = Op.Disj; region }, mxs, mys) ->
+      Logger.(fail @@ clause_disjunction region)
     (* Just in case we have somehow ended up with a non-binary op, fail *)
-    | SBinOp ({ region; _ }, _, _) -> failwith "" failwith "erroneous binary op"
+    | SBinOp ({ region; _ }, _, _) -> Logger.(fail @@ clause_binop region)
     (* Nullary operators cannot be translated *)
-    | SNullOp _ -> failwith "nullary op cannot be translated"
+    | SNullOp _ -> Logger.(fail clause_nullop)
   in
   Subgoal.cata aux sg
 ;;

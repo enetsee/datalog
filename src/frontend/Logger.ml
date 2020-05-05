@@ -46,7 +46,11 @@ module Err = struct
     | FactHasWildcard of Reporting.Region.t
     | HeadNotAtom of Reporting.Region.t
     | FfnWrongArity of Reporting.Region.t * int * int
-    | NullOpNotTranslatable of Reporting.Region.t
+    | ClauseNegation of Reporting.Region.t
+    | ClauseDisjunction of Reporting.Region.t
+    | ClauseBinOp of Reporting.Region.t
+    | ClauseUnOp of Reporting.Region.t
+    | ClauseNullOp
 
   let pp ppf = function
     | Parse (Some msg, region) ->
@@ -84,9 +88,28 @@ module Err = struct
         actual
         Fmt.(parens Reporting.Region.pp)
         region
-    | NullOpNotTranslatable region ->
+    | ClauseNullOp -> Fmt.(string ppf "Nullary operators cannot be compiled ")
+    | ClauseNegation region ->
       Fmt.(
-        any "Nullary operators cannot be compiled "
+        any "Negation applied to non-atomic formula in clause "
+        ++ parens Reporting.Region.pp)
+        ppf
+        region
+    | ClauseDisjunction region ->
+      Fmt.(
+        any "Disjunction not eliminated in clause "
+        ++ parens Reporting.Region.pp)
+        ppf
+        region
+    | ClauseBinOp region ->
+      Fmt.(
+        any "Erroneous binary operator encounted in clause "
+        ++ parens Reporting.Region.pp)
+        ppf
+        region
+    | ClauseUnOp region ->
+      Fmt.(
+        any "Erroneous unary operator encounted in clause "
         ++ parens Reporting.Region.pp)
         ppf
         region
@@ -146,6 +169,12 @@ let head_not_atom region = Err.HeadNotAtom region
 let ffn_wrong_arity region ~actual ~expect =
   Err.FfnWrongArity (region, actual, expect)
 ;;
+
+let clause_negation region = Err.ClauseNegation region
+let clause_disjunction region = Err.ClauseDisjunction region
+let clause_binop region = Err.ClauseBinOp region
+let clause_unop region = Err.ClauseUnOp region
+let clause_nullop = Err.ClauseNullOp
 
 (* -- Warning --------------------------------------------------------------- *)
 
