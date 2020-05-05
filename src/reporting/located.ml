@@ -9,6 +9,8 @@ module Minimal = struct
 
   let empty elem = { elem; region = Region.empty }
   let locate elem ~region = { elem; region }
+  let elem_of { elem; _ } = elem
+  let region_of { region; _ } = region
 
   let merge elem { region = start_; _ } { region = end_; _ } =
     { elem; region = Region.merge start_ end_ }

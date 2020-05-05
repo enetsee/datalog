@@ -56,3 +56,34 @@ let set_foreign_func t ~ffns =
   Option.value_map ~default:t ~f:(fun ffn -> { t with nature = Some ffn })
   @@ Core.PredSymbol.Map.find ffns t.predSym.elem
 ;;
+
+(* -- Core translation ------------------------------------------------------ *)
+
+(** Translate to core representation of `Nature` guarding against mismatched
+    arity *)
+let translate_nature nature nargs region =
+  Logger.(
+    match nature with
+    | Some Core.ForeignFunc.{ arity; _ } when arity <> nargs ->
+      fail @@ ffn_wrong_arity ~actual:nargs ~expect:arity region
+    | Some ff -> return @@ Core.Nature.ExtraLogical ff
+    | None -> return Core.Nature.Logical)
+;;
+
+(** Translate an `Atom` to it's corresponding representation in the `Core`
+    language i.e. a `Literal` 
+*)
+let to_core term_to_core { predSym = Located.{ elem; region }; terms; nature } =
+  Logger.(
+    List.map ~f:Fn.(compose term_to_core Located.elem_of) terms
+    |> all
+    >>= fun terms ->
+    let arity = List.length terms in
+    translate_nature nature arity region
+    >>= fun nature ->
+    Core.(
+      let predSym = elem
+      and annot = Annotation.base region in
+      let pred = Pred.{ annot; predSym; arity; nature } in
+      return Literal.{ annot; polarity = Pos; pred; terms }))
+;;

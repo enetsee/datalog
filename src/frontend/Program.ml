@@ -134,4 +134,61 @@ let normalize prog = split_disj @@ collect_disj @@ push_neg prog
 
 (* -- Translate to `Core` language ------------------------------------------ *)
 
-let to_core t = Logger.return t
+let clauses_of { stmts } =
+  List.filter_map
+    stmts
+    ~f:
+      Option.(
+        fun st ->
+          Statement.lower_sentence st
+          >>= Sentence.lower_clause
+          |> map ~f:Located.elem_of)
+;;
+
+let queries_of { stmts } =
+  List.filter_map
+    stmts
+    ~f:
+      Option.(
+        fun st ->
+          Statement.lower_sentence st
+          >>= Sentence.lower_query
+          |> map ~f:Located.elem_of)
+;;
+
+let facts_of { stmts } =
+  List.filter_map
+    stmts
+    ~f:
+      Option.(
+        fun st ->
+          Statement.lower_sentence st
+          >>= Sentence.lower_fact
+          |> map ~f:Located.elem_of)
+;;
+
+let query_preds qs =
+  List.map ~f:(fun Core.Clause.{ head; _ } -> head.pred) qs
+  |> List.dedup_and_sort ~compare:Core.Pred.(compare (fun _ _ -> 0))
+;;
+
+let to_core prog =
+  Logger.(
+    facts_of prog
+    |> List.map ~f:Fact.to_core
+    |> all
+    >>= fun edb ->
+    clauses_of prog
+    |> List.map ~f:Clause.to_core
+    |> all
+    >>= fun clauses ->
+    queries_of prog
+    |> List.map ~f:Query.to_core
+    |> all
+    >>= fun queries ->
+    return
+      Core.Program.
+        { strata = [ Core.Stratum.from_list @@ clauses @ queries ]
+        ; queries = query_preds queries
+        })
+;;

@@ -12,3 +12,5 @@ end
 
 include X
 include Pretty.Make1 (X)
+
+let from_list stratum = { stratum }

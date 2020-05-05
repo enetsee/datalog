@@ -43,3 +43,20 @@ let atoms { head; body } =
 ;;
 
 let tmvars { body; _ } = Subgoal.tmvars Core.Term.tmvars body
+
+(* -- Core translation ------------------------------------------------------ *)
+
+(** Convert a `Query` to a `Clause` by lifting term-variables into terms
+    whilst guarding against the possibility that no head has been generated
+    for the query  
+*)
+let to_clause { head; body } =
+  Logger.(
+    match head with
+    | Some head ->
+      return @@ Clause.{ head = Subgoal.map ~f:Core.Term.var' head; body }
+    | _ -> fail @@ query_not_named @@ Located.region_of @@ Subgoal.proj body)
+;;
+
+(** Translate a `Query` to a `Core` `Literal` via translation to `Clause` *)
+let to_core t = Logger.(to_clause t >>= Clause.to_core)

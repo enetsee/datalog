@@ -151,6 +151,20 @@ end
 
 include Fix.Make2 (Shape.Located)
 
+let map t ~f =
+  let rec aux sg =
+    let shape = proj sg in
+    let region = Located.region_of shape in
+    match Located.elem_of shape with
+    | Shape.Raw.SAtom a ->
+      Located.{ elem = Shape.Raw.SAtom (Atom.map ~f a); region }
+    | SUnOp (op, a) -> Located.{ elem = SUnOp (op, a); region }
+    | SBinOp (op, a, b) -> Located.{ elem = SBinOp (op, a, b); region }
+    | SNullOp op -> Located.{ elem = SNullOp op; region }
+  in
+  ana aux t
+;;
+
 let rec equal eq_term a b =
   Shape.Located.equal (equal eq_term) eq_term (proj a) (proj b)
 ;;

@@ -5,10 +5,10 @@ module X = struct
   type 'a t =
     { head : 'a Literal.t
     ; body : 'a Literal.t NonEmpty.t
+    ; annot : 'a Annotation.t
     }
-  [@@deriving eq, compare]
 
-  let pp pp_a ppf { head; body } =
+  let pp pp_a ppf { head; body; _ } =
     Fmt.(
       hovbox
       @@ pair ~sep:(any " :-@,") (Literal.pp pp_a)

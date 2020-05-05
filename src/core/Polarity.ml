@@ -16,3 +16,8 @@ end
 
 include X
 include Pretty.Make0 (X)
+
+let toggle = function
+  | Pos -> Neg
+  | Neg -> Pos
+;;

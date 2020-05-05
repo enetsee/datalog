@@ -6,10 +6,11 @@ module X = struct
     { polarity : Polarity.t
     ; pred : 'a Pred.t
     ; terms : Term.t list
+    ; annot : 'a Annotation.t [@compare.ignore]
     }
-  [@@deriving eq, compare]
+  [@@deriving compare]
 
-  let pp pp_a ppf { polarity; pred; terms } =
+  let pp pp_a ppf { polarity; pred; terms; _ } =
     Fmt.(
       hbox
       @@ pair Polarity.pp
@@ -25,3 +26,5 @@ end
 
 include X
 include Pretty.Make1 (X)
+
+let toggle_polarity t = { t with polarity = Polarity.toggle t.polarity }

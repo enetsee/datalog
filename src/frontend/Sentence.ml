@@ -27,6 +27,23 @@ let clause elem ~region = SClause { elem; region }
 let fact elem ~region = SFact { elem; region }
 let query elem ~region = SQuery { elem; region }
 
+(* -- Denstructor helpers --------------------------------------------------- *)
+
+let lower_clause = function
+  | SClause c -> Some c
+  | _ -> None
+;;
+
+let lower_query = function
+  | SQuery q -> Some q
+  | _ -> None
+;;
+
+let lower_fact = function
+  | SFact f -> Some f
+  | _ -> None
+;;
+
 (* -- Query ----------------------------------------------------------------- *)
 
 let atoms = function

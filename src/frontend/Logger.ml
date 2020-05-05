@@ -42,6 +42,11 @@ module Err = struct
     | ParseBadState
     | QueryNamed of Reporting.Region.t
     | QueryUnnamed of Reporting.Region.t
+    | FactNotRangeRestricted of Reporting.Region.t
+    | FactHasWildcard of Reporting.Region.t
+    | HeadNotAtom of Reporting.Region.t
+    | FfnWrongArity of Reporting.Region.t * int * int
+    | NullOpNotTranslatable of Reporting.Region.t
 
   let pp ppf = function
     | Parse (Some msg, region) ->
@@ -59,6 +64,32 @@ module Err = struct
       Fmt.(any "Query already named " ++ parens Reporting.Region.pp) ppf region
     | QueryUnnamed region ->
       Fmt.(any "Query not named " ++ parens Reporting.Region.pp) ppf region
+    | FactNotRangeRestricted region ->
+      Fmt.(
+        any "Fact contains a variable which violates range restriction "
+        ++ parens Reporting.Region.pp)
+        ppf
+        region
+    | FactHasWildcard region ->
+      Fmt.(any "Facts may not contain wildcards " ++ parens Reporting.Region.pp)
+        ppf
+        region
+    | HeadNotAtom region ->
+      Fmt.(any "Head is not an atom " ++ parens Reporting.Region.pp) ppf region
+    | FfnWrongArity (region, expected, actual) ->
+      Fmt.pf
+        ppf
+        {|Function expects %i arguments but %i were provided %a|}
+        expected
+        actual
+        Fmt.(parens Reporting.Region.pp)
+        region
+    | NullOpNotTranslatable region ->
+      Fmt.(
+        any "Nullary operators cannot be compiled "
+        ++ parens Reporting.Region.pp)
+        ppf
+        region
   ;;
 
   include Pretty.Make0 (struct
@@ -108,6 +139,13 @@ let parse_error msg region = Err.Parse (msg, region)
 let parse_bad_state = Err.ParseBadState
 let query_already_named region = Err.QueryNamed region
 let query_not_named region = Err.QueryUnnamed region
+let fact_not_range_restricted region = Err.FactNotRangeRestricted region
+let fact_has_wildcard region = Err.FactHasWildcard region
+let head_not_atom region = Err.HeadNotAtom region
+
+let ffn_wrong_arity region ~actual ~expect =
+  Err.FfnWrongArity (region, actual, expect)
+;;
 
 (* -- Warning --------------------------------------------------------------- *)
 

@@ -2,12 +2,11 @@ open Lib
 
 module X = struct
   type 'a t =
-    { annot : 'a
-    ; strata : 'a Stratum.t list
+    { strata : 'a Stratum.t list
     ; queries : 'a Pred.t list
     }
 
-  let pp pp_a ppf { strata; queries; _ } =
+  let pp pp_a ppf { strata; queries } =
     Fmt.(
       hovbox
       @@ pair

@@ -4,9 +4,9 @@ open Lib
 module X = struct
   type 'a t =
     { predSym : PredSymbol.t
-    ; annot : 'a
     ; arity : int
-    ; nature : Nature.t [@compare.ignore]
+    ; nature : Nature.t
+    ; annot : 'a Annotation.t [@compare.ignore]
     }
   [@@deriving compare]
 
@@ -20,9 +20,7 @@ module X = struct
 
   let pp _pp_a ppf { predSym; _ } = PredSymbol.pp ppf predSym
   let pp = `NoPrec pp
-  let map t ~f = { t with annot = f t.annot }
 end
 
 include X
 include Pretty.Make1 (X)
-include Functor.Make1 (X)

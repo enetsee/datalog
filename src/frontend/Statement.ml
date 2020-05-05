@@ -10,12 +10,21 @@ module X = struct
     | StSentence s -> Sentence.pp ppf s
   ;;
 
-  let sentence s = StSentence s
   let pp = `NoPrec pp
 end
 
 include X
 include Pretty.Make0 (X)
+
+(* -- Constructors ---------------------------------------------------------- *)
+let sentence s = StSentence s
+
+(* -- Denstructors ---------------------------------------------------------- *)
+
+let lower_sentence = function
+  | StSentence s -> Some s
+  | _ -> None
+;;
 
 (* -- Query ----------------------------------------------------------------- *)
 
