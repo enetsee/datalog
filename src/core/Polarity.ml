@@ -8,7 +8,7 @@ module X = struct
 
   let pp ppf = function
     | Pos -> ()
-    | Neg -> Fmt.string ppf "~"
+    | Neg -> Fmt.char ppf '!'
   ;;
 
   let pp = `NoPrec pp

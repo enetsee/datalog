@@ -1,0 +1,3 @@
+disj_conj(?x,?y) :- first(?x) , second(?y) ; third(?x).
+disj_conj_explicit(?x,?y) :- (first(?x) , second(?y)) ; third(?x).
+conj_disj(?x,?y) :- first(?x) , (second(?y) ; third(?x)).

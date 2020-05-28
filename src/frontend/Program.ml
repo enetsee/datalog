@@ -247,9 +247,12 @@ let to_core prog =
     |> List.map ~f:Query.to_core
     |> all
     >>= fun queries ->
-    return
-      Core.Program.
-        { strata = [ Core.Stratum.from_list @@ clauses @ queries ]
-        ; queries = query_preds queries
-        })
+    let prog =
+      Core.Program.Unstratified.
+        { clauses = clauses @ queries
+        ; queries = query_preds queries 
+        ; cnstrts = Core.PredSymbol.Map.empty
+        }
+    in
+    return (prog, edb))
 ;;

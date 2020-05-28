@@ -7,7 +7,7 @@ module X = struct
     | SReal of string
     | SInt of int
     | SBool of bool
-  [@@deriving eq, compare]
+  [@@deriving eq, compare, hash]
 
   let pp ppf = function
     | SText s -> Fmt.string ppf s

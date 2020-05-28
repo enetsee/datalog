@@ -9,7 +9,7 @@ module X = struct
   [@@deriving eq, compare]
 
   let pp ppf = function
-    | Neg -> Fmt.char ppf '!'
+    | Neg -> Fmt.(string ++ sp) ppf "not"
     | Conj -> Fmt.char ppf ','
     | Disj -> Fmt.char ppf ';'
   ;;

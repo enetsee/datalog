@@ -2,13 +2,13 @@
   
   open Core_kernel
   open Reporting
-
+  
 %}
 
-%token<Reporting.Region.t> LPAREN RPAREN COMMA SEMICOLON BANG DOT
+%token<Reporting.Region.t> LPAREN RPAREN COMMA SEMICOLON COLON BANG DOT
 %token<Reporting.Region.t> IMPL QRY 
-/* %token<Reporting.Region.t> MINUS PLUS DIV TIMES 
-%token<Reporting.Region.t> EQ NEQ LT GT LTE GTE  */
+%token<Reporting.Region.t> EQ VBAR SUBTY TYPE PRED
+
 %token <int * Reporting.Region.t> INTLIT 
 %token <string * Reporting.Region.t> REALLIT
 %token <bool * Reporting.Region.t> BOOLLIT
@@ -16,6 +16,8 @@
 %token <string * Reporting.Region.t> VAR
 %token <Reporting.Region.t> WILDCARD
 %token <string * Reporting.Region.t> PREDSYM
+%token<Reporting.Region.t> TYSYMBOL TYREAL TYINT TYBOOL
+%token <string * Reporting.Region.t> TYNAME
 %token EOF
 
 
@@ -30,21 +32,19 @@
 %start <Program.t> program
 %%
 
-(* -- Helpers --------------------------------------------------------------- *)
-predSym : id=PREDSYM { 
-    Located.{
-        elem= Core.PredSymbol.from_string @@ fst id 
-        ; region = snd id }
-    }
+
 
 (* -- Program --------------------------------------------------------------- *)
 
 program : stmts=list(statement) EOF { {stmts} }
 
-(* -- Statements : currently only clauses ----------------------------------- *)
+(* -- Statements are either sentences or declarations ----------------------- *)
 
 statement:
-  | s=sentence { Statement.StSentence s }
+  | s=sentence { Statement.sentence s }
+  | d=declaration { Statement.decl d }
+
+(* -- Sentences are clauses, facts or queries ------------------------------- *)
 
 sentence:
   (* clause *)
@@ -128,6 +128,12 @@ tmvar : v = VAR {
   Core.Tmvar.from_string @@ String.chop_prefix_exn name ~prefix:"?", region 
 }
 
+(* -- Predicate symbols ----------------------------------------------------- *)
+predSym : id=PREDSYM { 
+    Located.{
+        elem= Core.PredSymbol.from_string @@ fst id 
+        ; region = snd id }
+    }
 (* -- Symbol ---------------------------------------------------------------- *)
 
 symbol : 
@@ -151,3 +157,63 @@ symbol :
       let symbol = Core.Symbol.SBool b in       
       (symbol,region)
   }
+
+(* -- Declarations are either type declarations or clause (rule) declarations *)
+
+declaration: 
+  | tydecl=typeDecl { Decl.ty tydecl }
+  | prdecl=predDecl { Decl.pred prdecl}
+
+
+(* -- Type declarations are either subtypes or primitives or unions --------- *)
+
+typeDecl: 
+  | start_=TYPE name=typeName EQ first_ty=typeName VBAR
+    rest_tys=separated_nonempty_list(VBAR,typeName)  {
+    let end_ = Reporting.Located.region_of @@ List.last_exn rest_tys in
+    let region = Reporting.Region.merge start_ end_ 
+    and defn = Decl.TyDecl.Defn.Union(first_ty, Lib.NonEmpty.from_list_exn rest_tys) in 
+    let decl = Decl.TyDecl.{name;defn} in 
+    Reporting.Located.locate ~region decl
+  }
+  | start_=TYPE name=typeName SUBTY primty=primType  {
+    let end_ = Reporting.Located.region_of primty in
+    let region = Reporting.Region.merge start_ end_
+    and defn = Decl.TyDecl.Defn.SubTy primty in 
+    let decl = Decl.TyDecl.{name;defn} in 
+    Reporting.Located.locate ~region decl
+  }
+
+primType:
+  | region=TYSYMBOL { Reporting.Located.locate ~region Ty.Prim.TySymbol }
+  | region=TYREAL   { Reporting.Located.locate ~region Ty.Prim.TyReal }
+  | region=TYINT    { Reporting.Located.locate ~region Ty.Prim.TyInt }
+  | region=TYBOOL   { Reporting.Located.locate ~region Ty.Prim.TyBool }
+
+typeName:
+  | nm=TYNAME { 
+      Reporting.Located.locate ~region:(snd nm) @@ 
+        Ty.Name.from_string @@ 
+        String.chop_prefix_exn ~prefix:"@" @@ fst nm 
+  }
+
+
+(* -- Clause declarations specify predicate symbol and arguments ------------ *)
+
+predDecl:
+ | start_=PRED name=predSym  LPAREN 
+   params=separated_list(COMMA,predArg) end_=RPAREN  { 
+     let region = Reporting.Region.merge start_ end_ 
+     and decl = Decl.PredDecl.{name;params} in 
+     Reporting.Located.locate ~region decl
+   }
+
+predArg : tv=tmvar COLON ty=ty { (fst tv, ty) }
+
+ty:
+  | ty=primType { 
+      Reporting.Located.locate ~region:ty.region @@ Ty.Prim ty.elem      
+    }
+  | ty=typeName { 
+      Reporting.Located.locate ~region:ty.region @@ Ty.Named ty.elem 
+    }

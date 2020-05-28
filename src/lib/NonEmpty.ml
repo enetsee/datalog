@@ -34,3 +34,20 @@ include Foldable.Make1 (X)
 let singleton a = a, []
 let cons x (hd, tl) = x, hd :: tl
 let to_list (hd, tl) = hd :: tl
+
+let from_list = function
+  | [] -> None
+  | x :: xs -> Some (x, xs)
+;;
+
+let from_list_exn = function
+  | [] -> failwith "Empty list"
+  | x :: xs -> x, xs
+;;
+
+let rec list_last accu = function
+  | [] -> accu
+  | x :: xs -> list_last x xs
+;;
+
+let last (x, xs) = list_last x xs

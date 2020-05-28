@@ -1,0 +1,4 @@
+very_nested(?x,?y) :- 
+    (first(?x) , second(?y) ; third(?x)) 
+    , not (fourth(?y) ; fifth(?y))
+    , ( (sixth(?t),seventh(?t,?x)) ; (eigth(_x)), (((ninth(?x))))). 

@@ -6,7 +6,7 @@ module X = struct
     | TVar of Tmvar.t
     | TSym of Symbol.t
     | TWild
-  [@@deriving eq, compare]
+  [@@deriving eq, compare, hash]
 
   let pp ppf = function
     | TVar tv -> Tmvar.pp ppf tv

@@ -23,10 +23,12 @@
 
 (* -- Helpers --------------------------------------------------------------- *)
 let idchar = ['a'-'z' 'A'-'Z' '0'-'9' '_' ''']
-let symbol_lit = ['A'-'Z'] idchar*  
-let var = '?' symbol_lit
-let wild = '?' '_' symbol_lit
-let predym = ['a'-'z'] idchar* 
+let symbol_lit = ['A'-'Z'] idchar*   
+let var_suffix = ['a'-'z'] idchar* 
+let tyname = "@" symbol_lit
+let var = '?' var_suffix
+let wild = '_' var_suffix?
+let predsym = var_suffix
 
 
 let nonzero_digit = ['1'-'9']
@@ -67,13 +69,15 @@ rule token = parse
   | '('                     { LPAREN (current_loc lexbuf) }
   | ')'                     { RPAREN (current_loc lexbuf) }
   | ','                     { COMMA (current_loc lexbuf) }    
-  | ';'                     { SEMICOLON (current_loc lexbuf) }    
-  | '!'                     { BANG (current_loc lexbuf) }
+  | ';'                     { SEMICOLON (current_loc lexbuf) }
+  | ':'                     { COLON (current_loc lexbuf) }
+  | "not"                   { BANG (current_loc lexbuf) }
   | '.'                     { DOT (current_loc lexbuf) }
   | ":-"                    { IMPL (current_loc lexbuf) }  
   | "?-"                    { QRY (current_loc lexbuf) }
-  
-  
+  | "<:"                    { SUBTY (current_loc lexbuf)}
+  | '|'                     { VBAR (current_loc lexbuf)}
+  | '='                     { EQ (current_loc lexbuf) }   
 
   (* Operators *)
   
@@ -92,12 +96,19 @@ rule token = parse
   (* Identifiers and literals *)
   | int_lit                 { INTLIT (int_of_string @@ lexeme lexbuf, current_loc lexbuf) }
   | real_lit                { REALLIT (lexeme lexbuf, current_loc lexbuf) }
+  | "type"                  { TYPE (current_loc lexbuf) }
+  | "pred"                  { PRED (current_loc lexbuf) }
   | "true"                  { BOOLLIT (true,current_loc lexbuf) }
   | "false"                 { BOOLLIT (false,current_loc lexbuf) }
   | symbol_lit              { SYMLIT (lexeme lexbuf,current_loc lexbuf) }
   | var                     { VAR (lexeme lexbuf,current_loc lexbuf) }
   | wild                    { WILDCARD (current_loc lexbuf) }
-  | predym                  { PREDSYM(lexeme lexbuf,current_loc lexbuf) }
+  | predsym                 { PREDSYM(lexeme lexbuf,current_loc lexbuf) }
+  | "@Symbol"               { TYSYMBOL (current_loc lexbuf) }
+  | "@Real"                 { TYREAL (current_loc lexbuf) }
+  | "@Int"                  { TYINT (current_loc lexbuf) }
+  | "@Bool"                 { TYBOOL (current_loc lexbuf) }
+  | tyname                  { TYNAME (lexeme lexbuf,current_loc lexbuf) }
   | eof                     { Parser.EOF }
   | _ 
     { raise (UnexpectedChar (Printf.sprintf "At offset %d: unexpected character.\n" (Lexing.lexeme_start lexbuf))) 

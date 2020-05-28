@@ -1,0 +1,10 @@
+type @Node <: @Symbol
+pred edge(?source:@Node, ?sink:@Node)
+pred connected(?source:@Node, ?sink:@Node)
+pred complement(?source:@Node, ?sink:@Node)
+
+connected(?x,?y)
+    :- edge(?x,?y)
+    ;  edge(?x,?z) , connected(?z,?y).
+
+complement(?x,?y) :- not connected(?x,?y).

@@ -10,3 +10,6 @@ val singleton : 'a -> 'a t
 val cons : 'a -> 'a t -> 'a t
 val append : 'a t -> 'a t -> 'a t
 val to_list : 'a t -> 'a list
+val from_list : 'a list -> 'a t option
+val from_list_exn : 'a list -> 'a t
+val last : 'a t -> 'a

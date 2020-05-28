@@ -2,7 +2,7 @@ open Core_kernel
 open Lib
 
 module X = struct
-  type t = { name : string } [@@deriving eq, compare]
+  type t = { name : string } [@@deriving eq, compare, hash]
 
   let pp ppf { name } = Fmt.(any "?" ++ string) ppf name
   let pp = `NoPrec pp

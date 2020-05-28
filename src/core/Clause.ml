@@ -11,7 +11,7 @@ module X = struct
   let pp pp_a ppf { head; body; _ } =
     Fmt.(
       hovbox
-      @@ pair ~sep:(any " :-@,") (Literal.pp pp_a)
+      @@ pair ~sep:(any " :-@, ") (Literal.pp pp_a)
       @@ hovbox
       @@ list ~sep:comma (Literal.pp pp_a))
       ppf
