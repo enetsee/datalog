@@ -1,6 +1,6 @@
-pred flat(?x : @Symbol, ?y: @Symbol)
-pred up(?x : @Symbol, ?y: @Symbol)
-pred down(?x : @Symbol, ?y: @Symbol)
-pred rsg(?x : @Symbol, ?y: @Symbol)
+pred flat(?x : Symbol, ?y: Symbol)
+pred up(?x : Symbol, ?y: Symbol)
+pred down(?x : Symbol, ?y: Symbol)
+pred rsg(?x : Symbol, ?y: Symbol)
 
 rsg(?x,?y) :- flat(?x,?y) ; up(?x,?x1) , rsg(?y1, ?x1) , down(?y1,?y).

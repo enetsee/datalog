@@ -1,7 +1,7 @@
-type @Node <: @Symbol
-pred edge(?source:@Node, ?sink:@Node)
-pred connected(?source:@Node, ?sink:@Node)
-pred complement(?source:@Node, ?sink:@Node)
+type Node <: Symbol
+pred edge(?source:Node, ?sink:Node)
+pred connected(?source:Node, ?sink:Node)
+pred complement(?source:Node, ?sink:Node)
 
 connected(?x,?y)
     :- edge(?x,?y)

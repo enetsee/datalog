@@ -7,6 +7,12 @@ let mapM ~f { stmts } =
   MonadCompile.(map ~f:(fun stmts -> { stmts }) @@ all @@ List.map ~f stmts)
 ;;
 
+(* -- Compilation --------------------------------------------------------------
+
+  Generate head for anonymous queries
+
+
+*)
 let generate_query_head t = mapM ~f:Statement.generate_query_head t
 let set_nature t = mapM ~f:Statement.set_nature t
 
@@ -33,7 +39,10 @@ let mk_prog reprs =
     let queries =
       List.map ~f:(fun Core.Clause.Raw.{ head = { pred; _ }; _ } -> pred) qrys
     and clauses = cls @ qrys in
-    return (Core.Program.Raw.{ clauses; queries; cnstrts }, fcts))
+    let prog = Core.Program.Raw.{ clauses; queries; cnstrts }, fcts in
+    if List.is_empty queries
+    then warn Warn.NoQueries >>= fun _ -> return prog
+    else return prog)
 ;;
 
 let to_core t =

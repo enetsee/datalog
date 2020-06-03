@@ -18,7 +18,7 @@
 %token <Reporting.Region.t> WILDCARD
 %token <string * Reporting.Region.t> PREDSYM
 %token<Reporting.Region.t> TYSYMBOL TYREAL TYINT TYBOOL
-%token <string * Reporting.Region.t> TYNAME
+
 %token EOF
 
 
@@ -39,7 +39,7 @@
 
 program : stmts=list(statement) EOF { {stmts} }
 
-(* -- Statements are either sentences or declarations ----------------------- *)
+(* -- Statements are either clause, queries, facts or declarations ---------- *)
 
 statement:
   (* clause *)
@@ -206,10 +206,9 @@ primType:
   | region=TYBOOL   { Reporting.Located.locate ~region Ty.Prim.TyBool }
 
 typeName:
-  | nm=TYNAME { 
+  | nm=SYMLIT { 
       Reporting.Located.locate ~region:(snd nm) @@ 
-        Ty.Name.from_string @@ 
-        String.chop_prefix_exn ~prefix:"@" @@ fst nm 
+        Ty.Name.from_string @@ fst nm 
   }
 
 

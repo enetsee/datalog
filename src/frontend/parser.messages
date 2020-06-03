@@ -1,57 +1,143 @@
-program: PREDSYM LPAREN RPAREN IMPL PREDSYM LPAREN RPAREN WILDCARD
+program: PRED PREDSYM LPAREN VAR COLON SYMLIT COMMA WILDCARD
 ##
-## Ends in an error in state: 70.
+## Ends in an error in state: 58.
 ##
-## sentence -> atom IMPL subgoal . DOT [ TYPE PRED QRY PREDSYM EOF ]
-## subgoal -> subgoal . COMMA subgoal [ SEMICOLON DOT COMMA ]
-## subgoal -> subgoal . SEMICOLON subgoal [ SEMICOLON DOT COMMA ]
+## separated_nonempty_list(COMMA,predArg) -> predArg COMMA . separated_nonempty_list(COMMA,predArg) [ RPAREN ]
 ##
 ## The known suffix of the stack is as follows:
-## atom IMPL subgoal
+## predArg COMMA
 ##
 
-There is a wildcard ("_") at the end of this clause body. Either end this clause with a full stop (".") or continue the clause with conjunction (",") or disjunction (";") of another subgoal.
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: PRED PREDSYM LPAREN VAR COLON SYMLIT WILDCARD
+##
+## Ends in an error in state: 57.
+##
+## separated_nonempty_list(COMMA,predArg) -> predArg . [ RPAREN ]
+## separated_nonempty_list(COMMA,predArg) -> predArg . COMMA separated_nonempty_list(COMMA,predArg) [ RPAREN ]
+##
+## The known suffix of the stack is as follows:
+## predArg
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: PRED PREDSYM LPAREN VAR COLON WILDCARD
+##
+## Ends in an error in state: 52.
+##
+## predArg -> tmvar COLON . ty [ RPAREN COMMA ]
+##
+## The known suffix of the stack is as follows:
+## tmvar COLON
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: PRED PREDSYM LPAREN VAR WILDCARD
+##
+## Ends in an error in state: 51.
+##
+## predArg -> tmvar . COLON ty [ RPAREN COMMA ]
+##
+## The known suffix of the stack is as follows:
+## tmvar
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: PRED PREDSYM LPAREN WILDCARD
+##
+## Ends in an error in state: 50.
+##
+## predDecl -> PRED predSym LPAREN . loption(separated_nonempty_list(COMMA,predArg)) RPAREN [ TYPE QRY PREDSYM PRED EOF ]
+##
+## The known suffix of the stack is as follows:
+## PRED predSym LPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: PRED PREDSYM WILDCARD
+##
+## Ends in an error in state: 49.
+##
+## predDecl -> PRED predSym . LPAREN loption(separated_nonempty_list(COMMA,predArg)) RPAREN [ TYPE QRY PREDSYM PRED EOF ]
+##
+## The known suffix of the stack is as follows:
+## PRED predSym
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: PRED WILDCARD
+##
+## Ends in an error in state: 48.
+##
+## predDecl -> PRED . predSym LPAREN loption(separated_nonempty_list(COMMA,predArg)) RPAREN [ TYPE QRY PREDSYM PRED EOF ]
+##
+## The known suffix of the stack is as follows:
+## PRED
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: PREDSYM LPAREN RPAREN IMPL PREDSYM LPAREN RPAREN WILDCARD
+##
+## Ends in an error in state: 72.
+##
+## body -> body . COMMA body [ SEMICOLON DOT COMMA ]
+## body -> body . SEMICOLON body [ SEMICOLON DOT COMMA ]
+## statement -> head_term IMPL body . DOT [ TYPE QRY PREDSYM PRED EOF ]
+##
+## The known suffix of the stack is as follows:
+## head_term IMPL body
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: PREDSYM LPAREN RPAREN IMPL WILDCARD
 ##
-## Ends in an error in state: 69.
+## Ends in an error in state: 71.
 ##
-## sentence -> atom IMPL . subgoal DOT [ TYPE PRED QRY PREDSYM EOF ]
+## statement -> head_term IMPL . body DOT [ TYPE QRY PREDSYM PRED EOF ]
 ##
 ## The known suffix of the stack is as follows:
-## atom IMPL
+## head_term IMPL
 ##
 
-There is a wildcard ("_") at the end of this clause body. Either end this clause with a full stop (".") or continue the clause with conjunction (",") or disjunction (";") of another subgoal.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: PREDSYM LPAREN RPAREN WILDCARD
 ##
-## Ends in an error in state: 68.
+## Ends in an error in state: 67.
 ##
-## sentence -> atom . IMPL subgoal DOT [ TYPE PRED QRY PREDSYM EOF ]
-## sentence -> atom . DOT [ TYPE PRED QRY PREDSYM EOF ]
+## atom_symbol -> predSym LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN . [ DOT ]
+## atom_term -> predSym LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN . [ IMPL ]
 ##
 ## The known suffix of the stack is as follows:
-## atom
+## predSym LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN
 ##
 
-There is a wildcard ("_") at the end of this clause head. If this is an extensional clause (a fact), end the statement with a full stop ("."). If this is an intentional clause add the body after implication (":-").
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: PREDSYM LPAREN VBAR
 ##
-## Ends in an error in state: 39.
+## Ends in an error in state: 65.
 ##
-## atom -> predSym LPAREN . loption(separated_nonempty_list(COMMA,term)) RPAREN [ SEMICOLON RPAREN IMPL DOT COMMA ]
+## atom_symbol -> predSym LPAREN . loption(separated_nonempty_list(COMMA,term)) RPAREN [ DOT ]
+## atom_term -> predSym LPAREN . loption(separated_nonempty_list(COMMA,term)) RPAREN [ IMPL ]
 ##
 ## The known suffix of the stack is as follows:
 ## predSym LPAREN
 ##
 
-The `|` operator cannot be used inside a literal (the operator is used for forming disjoint union types).
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: PREDSYM LPAREN WILDCARD COMMA VBAR
 ##
-## Ends in an error in state: 47.
+## Ends in an error in state: 32.
 ##
 ## separated_nonempty_list(COMMA,term) -> term COMMA . separated_nonempty_list(COMMA,term) [ RPAREN ]
 ##
@@ -59,11 +145,11 @@ program: PREDSYM LPAREN WILDCARD COMMA VBAR
 ## term COMMA
 ##
 
-The `|` operator cannot be used inside a literal (the operator is used for forming disjoint union types).
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: PREDSYM LPAREN WILDCARD WILDCARD
 ##
-## Ends in an error in state: 46.
+## Ends in an error in state: 31.
 ##
 ## separated_nonempty_list(COMMA,term) -> term . [ RPAREN ]
 ## separated_nonempty_list(COMMA,term) -> term . COMMA separated_nonempty_list(COMMA,term) [ RPAREN ]
@@ -72,269 +158,209 @@ program: PREDSYM LPAREN WILDCARD WILDCARD
 ## term
 ##
 
-Variables, including wildcards ("_"), must be separater by a comma (",").
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: PREDSYM WILDCARD
 ##
-## Ends in an error in state: 38.
+## Ends in an error in state: 64.
 ##
-## atom -> predSym . LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN [ SEMICOLON RPAREN IMPL DOT COMMA ]
+## atom_symbol -> predSym . LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN [ DOT ]
+## atom_term -> predSym . LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN [ IMPL ]
 ##
 ## The known suffix of the stack is as follows:
 ## predSym
 ##
 
-Arguments to literals should appear inside parentheses ("(" and ")").
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: QRY BANG WILDCARD
 ##
-## Ends in an error in state: 36.
+## Ends in an error in state: 21.
 ##
-## subgoal -> unop . subgoal [ SEMICOLON RPAREN DOT COMMA ]
+## body -> unop . body [ SEMICOLON RPAREN DOT COMMA ]
 ##
 ## The known suffix of the stack is as follows:
 ## unop
 ##
 
-You are attempting to negate a variable wildcard ("_") but the negation operator must be applied to a literal.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: QRY LPAREN PREDSYM LPAREN RPAREN WILDCARD
 ##
-## Ends in an error in state: 54.
+## Ends in an error in state: 40.
 ##
-## subgoal -> subgoal . COMMA subgoal [ SEMICOLON RPAREN COMMA ]
-## subgoal -> subgoal . SEMICOLON subgoal [ SEMICOLON RPAREN COMMA ]
-## subgoal -> LPAREN subgoal . RPAREN [ SEMICOLON RPAREN DOT COMMA ]
+## body -> body . COMMA body [ SEMICOLON RPAREN COMMA ]
+## body -> body . SEMICOLON body [ SEMICOLON RPAREN COMMA ]
+## body -> LPAREN body . RPAREN [ SEMICOLON RPAREN DOT COMMA ]
 ##
 ## The known suffix of the stack is as follows:
-## LPAREN subgoal
+## LPAREN body
 ##
 
-Variables, including wildcards ("_"), may only appear as arguments to predicates. 
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: QRY LPAREN WILDCARD
 ##
-## Ends in an error in state: 34.
+## Ends in an error in state: 19.
 ##
-## subgoal -> LPAREN . subgoal RPAREN [ SEMICOLON RPAREN DOT COMMA ]
+## body -> LPAREN . body RPAREN [ SEMICOLON RPAREN DOT COMMA ]
 ##
 ## The known suffix of the stack is as follows:
 ## LPAREN
 ##
 
-Variables, including wildcards ("_"), may only appear as arguments to predicates. 
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: QRY PREDSYM LPAREN RPAREN COMMA WILDCARD
 ##
-## Ends in an error in state: 57.
+## Ends in an error in state: 43.
 ##
-## subgoal -> subgoal COMMA . subgoal [ SEMICOLON RPAREN DOT COMMA ]
+## body -> body COMMA . body [ SEMICOLON RPAREN DOT COMMA ]
 ##
 ## The known suffix of the stack is as follows:
-## subgoal COMMA
+## body COMMA
 ##
 
-Variables, including wildcards ("_"), may only appear as arguments to predicates. 
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: QRY PREDSYM LPAREN RPAREN SEMICOLON PREDSYM LPAREN RPAREN WILDCARD
 ##
-## Ends in an error in state: 56.
+## Ends in an error in state: 42.
 ##
-## subgoal -> subgoal . COMMA subgoal [ SEMICOLON RPAREN DOT COMMA ]
-## subgoal -> subgoal . SEMICOLON subgoal [ SEMICOLON RPAREN DOT COMMA ]
-## subgoal -> subgoal SEMICOLON subgoal . [ SEMICOLON RPAREN DOT COMMA ]
+## body -> body . COMMA body [ SEMICOLON RPAREN DOT COMMA ]
+## body -> body . SEMICOLON body [ SEMICOLON RPAREN DOT COMMA ]
+## body -> body SEMICOLON body . [ SEMICOLON RPAREN DOT COMMA ]
 ##
 ## The known suffix of the stack is as follows:
-## subgoal SEMICOLON subgoal
+## body SEMICOLON body
 ##
 
-Variables, including wildcards ("_"), may only appear as arguments to predicates. 
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: QRY PREDSYM LPAREN RPAREN SEMICOLON WILDCARD
 ##
-## Ends in an error in state: 55.
+## Ends in an error in state: 41.
 ##
-## subgoal -> subgoal SEMICOLON . subgoal [ SEMICOLON RPAREN DOT COMMA ]
+## body -> body SEMICOLON . body [ SEMICOLON RPAREN DOT COMMA ]
 ##
 ## The known suffix of the stack is as follows:
-## subgoal SEMICOLON
+## body SEMICOLON
 ##
 
-Variables, including wildcards ("_"), may only appear as arguments to predicates. 
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: QRY PREDSYM LPAREN RPAREN WILDCARD
 ##
-## Ends in an error in state: 60.
+## Ends in an error in state: 46.
 ##
-## sentence -> QRY subgoal . DOT [ TYPE PRED QRY PREDSYM EOF ]
-## subgoal -> subgoal . COMMA subgoal [ SEMICOLON DOT COMMA ]
-## subgoal -> subgoal . SEMICOLON subgoal [ SEMICOLON DOT COMMA ]
+## body -> body . COMMA body [ SEMICOLON DOT COMMA ]
+## body -> body . SEMICOLON body [ SEMICOLON DOT COMMA ]
+## statement -> QRY body . DOT [ TYPE QRY PREDSYM PRED EOF ]
 ##
 ## The known suffix of the stack is as follows:
-## QRY subgoal
+## QRY body
 ##
 
-Variables, including wildcards ("_"), may only appear as arguments to predicates. 
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: QRY PREDSYM LPAREN VBAR
+##
+## Ends in an error in state: 23.
+##
+## atom_term -> predSym LPAREN . loption(separated_nonempty_list(COMMA,term)) RPAREN [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## predSym LPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: QRY PREDSYM WILDCARD
+##
+## Ends in an error in state: 22.
+##
+## atom_term -> predSym . LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## predSym
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: QRY WILDCARD
 ##
-## Ends in an error in state: 33.
+## Ends in an error in state: 17.
 ##
-## sentence -> QRY . subgoal DOT [ TYPE PRED QRY PREDSYM EOF ]
+## statement -> QRY . body DOT [ TYPE QRY PREDSYM PRED EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## QRY
 ##
 
-Variables, including wildcards ("_"), may only appear as arguments to predicates.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-program: PRED PREDSYM LPAREN VAR COLON TYBOOL COMMA WILDCARD
-##
-## Ends in an error in state: 29.
-##
-## separated_nonempty_list(COMMA,PREDArg) -> PREDArg COMMA . separated_nonempty_list(COMMA,PREDArg) [ RPAREN ]
-##
-## The known suffix of the stack is as follows:
-## PREDArg COMMA
-##
-
-All variables in a PRED declaration must be named.
-
-program: PRED PREDSYM LPAREN VAR COLON TYBOOL WILDCARD
-##
-## Ends in an error in state: 28.
-##
-## separated_nonempty_list(COMMA,PREDArg) -> PREDArg . [ RPAREN ]
-## separated_nonempty_list(COMMA,PREDArg) -> PREDArg . COMMA separated_nonempty_list(COMMA,PREDArg) [ RPAREN ]
-##
-## The known suffix of the stack is as follows:
-## PREDArg
-##
-
-All variables in a PRED declaration must be named.
-
-program: PRED PREDSYM LPAREN VAR COLON WILDCARD
-##
-## Ends in an error in state: 23.
-##
-## PREDArg -> tmvar COLON . ty [ RPAREN COMMA ]
-##
-## The known suffix of the stack is as follows:
-## tmvar COLON
-##
-
-You have used a variable wildcard ("_") where a type name was expected.
-
-program: PRED PREDSYM LPAREN VAR WILDCARD
-##
-## Ends in an error in state: 22.
-##
-## PREDArg -> tmvar . COLON ty [ RPAREN COMMA ]
-##
-## The known suffix of the stack is as follows:
-## tmvar
-##
-
-You have used a variable wildcard ("_") where a colon (":") followed by a type name were expected.
-
-program: PRED PREDSYM LPAREN WILDCARD
-##
-## Ends in an error in state: 20.
-##
-## PREDDecl -> PRED predSym LPAREN . loption(separated_nonempty_list(COMMA,PREDArg)) RPAREN [ TYPE PRED QRY PREDSYM EOF ]
-##
-## The known suffix of the stack is as follows:
-## PRED predSym LPAREN
-##
-
-You have used a variable wildcard ("_") where a type name was expected.
-
-program: PRED PREDSYM WILDCARD
-##
-## Ends in an error in state: 19.
-##
-## PREDDecl -> PRED predSym . LPAREN loption(separated_nonempty_list(COMMA,PREDArg)) RPAREN [ TYPE PRED QRY PREDSYM EOF ]
-##
-## The known suffix of the stack is as follows:
-## PRED predSym
-##
-
-All variables in a PRED declaration must be named.
-
-program: PRED WILDCARD
-##
-## Ends in an error in state: 17.
-##
-## PREDDecl -> PRED . predSym LPAREN loption(separated_nonempty_list(COMMA,PREDArg)) RPAREN [ TYPE PRED QRY PREDSYM EOF ]
-##
-## The known suffix of the stack is as follows:
-## PRED
-##
-
-The underscore character ("_") is reserved variable wildcards and is not a legal PRED name.
-
-program: TYPE TYNAME EQ TYNAME VBAR TYNAME VBAR WILDCARD
+program: TYPE SYMLIT EQ SYMLIT VBAR SYMLIT VBAR WILDCARD
 ##
 ## Ends in an error in state: 14.
 ##
-## separated_nonempty_list(VBAR,typeName) -> typeName VBAR . separated_nonempty_list(VBAR,typeName) [ TYPE PRED QRY PREDSYM EOF ]
+## separated_nonempty_list(VBAR,typeName) -> typeName VBAR . separated_nonempty_list(VBAR,typeName) [ TYPE QRY PREDSYM PRED EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## typeName VBAR
 ##
 
-You have used a wildcard variable ("_") where a type name was expected.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-program: TYPE TYNAME EQ TYNAME VBAR TYNAME WILDCARD
+program: TYPE SYMLIT EQ SYMLIT VBAR SYMLIT WILDCARD
 ##
 ## Ends in an error in state: 13.
 ##
-## separated_nonempty_list(VBAR,typeName) -> typeName . [ TYPE PRED QRY PREDSYM EOF ]
-## separated_nonempty_list(VBAR,typeName) -> typeName . VBAR separated_nonempty_list(VBAR,typeName) [ TYPE PRED QRY PREDSYM EOF ]
+## separated_nonempty_list(VBAR,typeName) -> typeName . [ TYPE QRY PREDSYM PRED EOF ]
+## separated_nonempty_list(VBAR,typeName) -> typeName . VBAR separated_nonempty_list(VBAR,typeName) [ TYPE QRY PREDSYM PRED EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## typeName
 ##
 
-You have used a wildcard variable ("_") where a vertical bar ("|") followed by a type name were expected.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-program: TYPE TYNAME EQ TYNAME VBAR WILDCARD
+program: TYPE SYMLIT EQ SYMLIT VBAR WILDCARD
 ##
 ## Ends in an error in state: 12.
 ##
-## typeDecl -> TYPE typeName EQ typeName VBAR . separated_nonempty_list(VBAR,typeName) [ TYPE PRED QRY PREDSYM EOF ]
+## typeDecl -> TYPE typeName EQ typeName VBAR . separated_nonempty_list(VBAR,typeName) [ TYPE QRY PREDSYM PRED EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## TYPE typeName EQ typeName VBAR
 ##
 
-You have used a wildcard variable ("_") where a type name was expected.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-program: TYPE TYNAME EQ TYNAME WILDCARD
+program: TYPE SYMLIT EQ SYMLIT WILDCARD
 ##
 ## Ends in an error in state: 11.
 ##
-## typeDecl -> TYPE typeName EQ typeName . VBAR separated_nonempty_list(VBAR,typeName) [ TYPE PRED QRY PREDSYM EOF ]
+## typeDecl -> TYPE typeName EQ typeName . VBAR separated_nonempty_list(VBAR,typeName) [ TYPE QRY PREDSYM PRED EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## TYPE typeName EQ typeName
 ##
 
-You have used a wildcard variable ("_") where a vertical bar ("|") followed by a type name were expected.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-program: TYPE TYNAME EQ WILDCARD
+program: TYPE SYMLIT EQ WILDCARD
 ##
 ## Ends in an error in state: 10.
 ##
-## typeDecl -> TYPE typeName EQ . typeName VBAR separated_nonempty_list(VBAR,typeName) [ TYPE PRED QRY PREDSYM EOF ]
+## typeDecl -> TYPE typeName EQ . typeName VBAR separated_nonempty_list(VBAR,typeName) [ TYPE QRY PREDSYM PRED EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## TYPE typeName EQ
 ##
 
-You have used a wildcard variable ("_") where a type name was expected.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-program: TYPE TYNAME SUBTY TYBOOL WILDCARD
+program: TYPE SYMLIT SUBTY TYBOOL WILDCARD
 ##
 ## Ends in an error in state: 63.
 ##
@@ -344,45 +370,45 @@ program: TYPE TYNAME SUBTY TYBOOL WILDCARD
 ## statement
 ##
 
-You have used a wildcard variable ("_") in a subtype declaration; the declaration is complete and you should remove it.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-program: TYPE TYNAME SUBTY WILDCARD
+program: TYPE SYMLIT SUBTY WILDCARD
 ##
 ## Ends in an error in state: 4.
 ##
-## typeDecl -> TYPE typeName SUBTY . primType [ TYPE PRED QRY PREDSYM EOF ]
+## typeDecl -> TYPE typeName SUBTY . primType [ TYPE QRY PREDSYM PRED EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## TYPE typeName SUBTY
 ##
 
-You have used a wildcard variable ("_") where by a (base) type name was expected.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-program: TYPE TYNAME WILDCARD
+program: TYPE SYMLIT WILDCARD
 ##
 ## Ends in an error in state: 3.
 ##
-## typeDecl -> TYPE typeName . EQ typeName VBAR separated_nonempty_list(VBAR,typeName) [ TYPE PRED QRY PREDSYM EOF ]
-## typeDecl -> TYPE typeName . SUBTY primType [ TYPE PRED QRY PREDSYM EOF ]
+## typeDecl -> TYPE typeName . EQ typeName VBAR separated_nonempty_list(VBAR,typeName) [ TYPE QRY PREDSYM PRED EOF ]
+## typeDecl -> TYPE typeName . SUBTY primType [ TYPE QRY PREDSYM PRED EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## TYPE typeName
 ##
 
-You have used a wildcard variable ("_") where either a disjoint union defintion ("= [type name] | [type name] | ...") or subtype relation ("<:") was expected.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: TYPE WILDCARD
 ##
 ## Ends in an error in state: 1.
 ##
-## typeDecl -> TYPE . typeName EQ typeName VBAR separated_nonempty_list(VBAR,typeName) [ TYPE PRED QRY PREDSYM EOF ]
-## typeDecl -> TYPE . typeName SUBTY primType [ TYPE PRED QRY PREDSYM EOF ]
+## typeDecl -> TYPE . typeName EQ typeName VBAR separated_nonempty_list(VBAR,typeName) [ TYPE QRY PREDSYM PRED EOF ]
+## typeDecl -> TYPE . typeName SUBTY primType [ TYPE QRY PREDSYM PRED EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## TYPE
 ##
 
-You have used a wildcard variable ("_") where type name and it's defintion were expected
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 program: WILDCARD
 ##
@@ -394,5 +420,5 @@ program: WILDCARD
 ##
 ##
 
-Variables, including wildcards ("_"), may only appear as arguments to predicates.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 

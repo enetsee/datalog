@@ -25,7 +25,7 @@
 let idchar = ['a'-'z' 'A'-'Z' '0'-'9' '_' ''']
 let symbol_lit = ['A'-'Z'] idchar*   
 let var_suffix = ['a'-'z'] idchar* 
-let tyname = "@" symbol_lit
+
 let var = '?' var_suffix
 let wild = '_' var_suffix?
 let predsym = var_suffix
@@ -100,15 +100,14 @@ rule token = parse
   | "pred"                  { PRED (current_loc lexbuf) }
   | "true"                  { BOOLLIT (true,current_loc lexbuf) }
   | "false"                 { BOOLLIT (false,current_loc lexbuf) }
+  | "Symbol"                { TYSYMBOL (current_loc lexbuf) }
+  | "Real"                  { TYREAL (current_loc lexbuf) }
+  | "Int"                   { TYINT (current_loc lexbuf) }
+  | "Bool"                  { TYBOOL (current_loc lexbuf) }
   | symbol_lit              { SYMLIT (lexeme lexbuf,current_loc lexbuf) }
   | var                     { VAR (lexeme lexbuf,current_loc lexbuf) }
   | wild                    { WILDCARD (current_loc lexbuf) }
-  | predsym                 { PREDSYM(lexeme lexbuf,current_loc lexbuf) }
-  | "@Symbol"               { TYSYMBOL (current_loc lexbuf) }
-  | "@Real"                 { TYREAL (current_loc lexbuf) }
-  | "@Int"                  { TYINT (current_loc lexbuf) }
-  | "@Bool"                 { TYBOOL (current_loc lexbuf) }
-  | tyname                  { TYNAME (lexeme lexbuf,current_loc lexbuf) }
+  | predsym                 { PREDSYM(lexeme lexbuf,current_loc lexbuf) }    
   | eof                     { Parser.EOF }
   | _ 
     { raise (UnexpectedChar (Printf.sprintf "At offset %d: unexpected character.\n" (Lexing.lexeme_start lexbuf))) 

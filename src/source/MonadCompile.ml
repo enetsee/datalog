@@ -82,7 +82,10 @@ module Minimal = struct
   end
 
   module Warn = struct
-    type t = PredNameClash of Region.t
+    type t =
+      | PredNameClash of Region.t
+      | NoQueries
+      | Undeclared of Region.t
 
     include Pretty.Make0 (struct
       type nonrec t = t
@@ -94,6 +97,12 @@ module Minimal = struct
             ++ parens Region.pp)
             ppf
             region
+        | Undeclared region ->
+          Fmt.(
+            any "Predicate symbol has not been declared " ++ parens Region.pp)
+            ppf
+            region
+        | NoQueries -> Fmt.string ppf "The program does not expose any queries"
       ;;
 
       let pp = `NoPrec pp
@@ -104,13 +113,23 @@ module Minimal = struct
     type t =
       { extras : Core.Nature.t Core.PredSymbol.Map.t
       ; cnstrts : Core.Constraint.t Core.PredSymbol.Map.t
-      ; reserved_names : Core.PredSymbol.t
+      ; reserved_names : Core.PredSymbol.t list
       ; query_prefix : string
       }
+
+    let default =
+      { extras = Core.PredSymbol.Map.empty
+      ; cnstrts = Core.PredSymbol.Map.empty
+      ; reserved_names = []
+      ; query_prefix = "_query"
+      }
+    ;;
   end
 
   module State = struct
     type t = { fresh_src : int }
+
+    let default = { fresh_src = 0 }
   end
 
   module Topic = struct
@@ -134,7 +153,9 @@ module Minimal = struct
         -> k:(('a, Err.t) result -> Topic.t -> State.t -> 'o) -> 'o
     }
 
-  let run { apply } ~env ~st = apply env st ~k:(fun r w s -> r, w, s)
+  let run ?(env = Env.default) ?(st = State.default) { apply } =
+    apply env st ~k:(fun r w s -> r, w, s)
+  ;;
 
   let map { apply = g } ~f =
     { apply = (fun env st ~k -> g env st ~k:(fun a -> k @@ Result.map ~f a)) }

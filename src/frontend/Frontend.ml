@@ -21,7 +21,8 @@ module Err = struct
       | Msg (_, region) ->
         Fmt.(any "Parse error without message " ++ Region.pp) ppf region
       | BadState -> Fmt.string ppf "Parsing failed in a bad state"
-      | NotFound path -> Fmt.(prefix (any "Path not found: ") @@ quote ~mark:"'" string) ppf path
+      | NotFound path ->
+        Fmt.(prefix (any "Path not found: ") @@ quote ~mark:"'" string) ppf path
     ;;
 
     let pp = `NoPrec pp
@@ -68,10 +69,10 @@ let parse string =
 ;;
 
 let parse_file path =
-  try 
+  try
     let chan = In_channel.create path in
     let lexbuf = Lexing.from_channel chan in
     loop lexbuf @@ Parser.Incremental.program lexbuf.lex_curr_p
-  with _ -> 
-    Error (Err.NotFound path)
+  with
+  | _ -> Error (Err.NotFound path)
 ;;
