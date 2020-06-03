@@ -4,9 +4,10 @@ open Reporting
 
 module X = struct
   type t =
-    | TVar of Tmvar.t * Region.t
-    | TSym of Symbol.t * Region.t
-    | TWild of Region.t
+    | TVar of Tmvar.t * (Region.t[@compare.ignore])
+    | TSym of Symbol.t * (Region.t[@compare.ignore])
+    | TWild of (Region.t[@compare.ignore])
+  [@@deriving compare, sexp]
 
   let pp ppf = function
     | TVar (tv, _) -> Tmvar.pp ppf tv

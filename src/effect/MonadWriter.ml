@@ -40,3 +40,12 @@ module Make (X : Minimal1) :
   let listens m ~f = bind (listen m) ~f:(fun (a, topic) -> return (a, f topic))
   let censor m ~f = pass @@ bind m ~f:(fun a -> return (a, f))
 end
+
+module MakeTopic (Topic : Monoid.S0) (X : Minimal1 with module Topic := Topic) :
+  S1 with type 'a t := 'a X.t and module Topic := Topic = struct
+  include X
+
+  let tell topic = writer ((), topic)
+  let listens m ~f = bind (listen m) ~f:(fun (a, topic) -> return (a, f topic))
+  let censor m ~f = pass @@ bind m ~f:(fun a -> return (a, f))
+end

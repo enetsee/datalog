@@ -21,3 +21,10 @@ module Make (X : Minimal1) :
 
   let ask = reader Fn.id
 end
+
+module MakeEnv (Env : Tycon.S0) (X : Minimal1 with module Env := Env) :
+  S1 with module Env := Env and type 'a t := 'a X.t = struct
+  include X
+
+  let ask = reader Fn.id
+end

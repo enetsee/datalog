@@ -5,7 +5,7 @@ type t =
   { start_ : Position.t
   ; end_ : Position.t
   }
-[@@deriving eq]
+[@@deriving eq, sexp]
 
 let pp ppf { start_; end_ } =
   if start_.line = end_.line

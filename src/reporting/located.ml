@@ -3,9 +3,9 @@ open Lib
 module Minimal = struct
   type 'a t =
     { elem : 'a
-    ; region : Region.t
+    ; region : Region.t [@compare.ignore]
     }
-  [@@deriving map]
+  [@@deriving map, compare, sexp]
 
   let empty elem = { elem; region = Region.empty }
   let locate elem ~region = { elem; region }

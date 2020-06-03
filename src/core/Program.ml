@@ -10,8 +10,13 @@ module Raw = struct
 
   (** All predicates in a program *)
   let preds_of { clauses; _ } =
-    Pred.Set.union_list @@ List.map ~f:Clause.Raw.preds_of clauses
+    List.dedup_and_sort ~compare:Pred.compare
+    @@ List.concat_map ~f:Clause.Raw.preds_of clauses
   ;;
+
+  let clauses_of { clauses; _ } = clauses
+  let queries_of { queries; _ } = queries
+  let constraints_of { cnstrts; _ } = cnstrts
 
   (** Intensional predicates, i.e. those appearing in the head of a clause *)
   let intensionals { clauses; _ } =
@@ -22,31 +27,36 @@ module Raw = struct
   ;;
 
   (** Intensional predicates, i.e. those appearing only in the body of a clause *)
-  let extensionals prog = Pred.Set.diff (preds_of prog) (intensionals prog)
-
-  let pp ppf { clauses; queries; cnstrts } =
-    Fmt.(
-      vbox
-      @@ pair
-           ~sep:cut
-           (prefix (any "Clauses")
-           @@ prefix cut
-           @@ list ~sep:cut
-           @@ Clause.Raw.pp)
-      @@ pair
-           ~sep:cut
-           (prefix (any "Queries") @@ prefix cut @@ list ~sep:cut @@ Pred.pp)
-           (prefix (any "Constraints")
-           @@ prefix cut
-           @@ list ~sep:cut
-           @@ hbox
-           @@ pair ~sep:(any " => ") PredSymbol.pp Constraint.pp))
-      ppf
-      (clauses, (queries, PredSymbol.Map.to_alist cnstrts))
+  let extensionals prog =
+    Pred.Set.diff (Pred.Set.of_list @@ preds_of prog) (intensionals prog)
   ;;
+
+
+    
 
   include Pretty.Make0 (struct
     type nonrec t = t
+
+    let pp ppf { clauses; queries; cnstrts } =
+      Fmt.(
+        vbox
+        @@ pair
+             ~sep:cut
+             (prefix (any "Clauses")
+             @@ prefix cut
+             @@ list ~sep:cut
+             @@ Clause.Raw.pp)
+        @@ pair
+             ~sep:cut
+             (prefix (any "Queries") @@ prefix cut @@ list ~sep:cut @@ Pred.pp)
+             (prefix (any "Constraints")
+             @@ prefix cut
+             @@ list ~sep:cut
+             @@ hbox
+             @@ pair ~sep:(any " => ") PredSymbol.pp Constraint.pp))
+        ppf
+        (clauses, (queries, PredSymbol.Map.to_alist cnstrts))
+    ;;
 
     let pp = `NoPrec pp
   end)

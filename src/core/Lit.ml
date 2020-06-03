@@ -2,13 +2,28 @@ open Core_kernel
 open Lib
 open Reporting
 
+module type S = sig
+  type t [@@deriving compare, sexp]
+
+  include Pretty.S0 with type t := t
+  include HasVars.S with type t := t
+  include HasTerms.S with type t := t
+  include HasPreds.S with type t := t
+  include HasEffects.S with type t := t
+  include HasRegion.S with type t := t
+
+  val pol_of : t -> Polarity.t
+  val neg : t -> t
+end
+
 module Raw = struct
   type t =
     { pol : Polarity.t
     ; pred : Pred.t
     ; terms : Term.t list
-    ; region : Region.t
+    ; region : Region.t [@compare.ignore]
     }
+  [@@deriving compare, sexp]
 
   let lit ?(pol = Polarity.Pos) ?(region = Region.empty) pred terms =
     { pol; pred; terms; region }
@@ -18,6 +33,7 @@ module Raw = struct
   let effects_of { pred; _ } = Pred.effects_of pred
   let terms_of { terms; _ } = terms
   let vars_of { terms; _ } = List.concat_map ~f:Term.vars_of terms
+  let pred_of { pred; _ } = pred
 
   let pp ppf { pol; pred; terms; _ } =
     Fmt.(

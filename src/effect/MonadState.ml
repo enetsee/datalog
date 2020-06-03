@@ -26,3 +26,13 @@ module Make (X : Minimal1) :
   let modify f = state (fun s -> (), f s)
   let gets f = map ~f get
 end
+
+module MakeState (State : Tycon.S0) (X : Minimal1 with module State := State) :
+  S1 with module State := State and type 'a t := 'a X.t = struct
+  include X
+
+  let get = state (fun s -> s, s)
+  let put s = state (fun _ -> (), s)
+  let modify f = state (fun s -> (), f s)
+  let gets f = map ~f get
+end
