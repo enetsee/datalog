@@ -1,21 +1,23 @@
 open Core_kernel
 open Lib
+open Reporting
 
-module X = struct
-  type 'a t =
-    { annot : 'a Annotation.t
-    ; pred : 'a Pred.t
-    ; terms : Symbol.t list
-    }
+type t =
+  { pred : Pred.t
+  ; terms : Symbol.t list
+  ; region : Region.t
+  }
 
-  let pp pp_a ppf { pred; terms; _ } =
-    Fmt.(hovbox @@ pair (Pred.pp pp_a) @@ parens @@ list ~sep:comma Symbol.pp)
+let knowledge ?(region = Region.empty) pred terms = { pred; terms; region }
+
+include Pretty.Make0 (struct
+  type nonrec t = t
+
+  let pp ppf { pred; terms; _ } =
+    Fmt.(hbox @@ pair Pred.pp @@ parens @@ hovbox @@ list ~sep:comma Symbol.pp)
       ppf
       (pred, terms)
   ;;
 
   let pp = `NoPrec pp
-end
-
-include X
-include Pretty.Make1 (X)
+end)

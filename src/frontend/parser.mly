@@ -2,6 +2,7 @@
   
   open Core_kernel
   open Reporting
+  open Source
   
 %}
 
@@ -29,7 +30,7 @@
 
 (* -- Start ----------------------------------------------------------------- *)
 
-%start <Program.t> program
+%start <Source.Program.t> program
 %%
 
 
@@ -41,69 +42,83 @@ program : stmts=list(statement) EOF { {stmts} }
 (* -- Statements are either sentences or declarations ----------------------- *)
 
 statement:
-  | s=sentence { Statement.sentence s }
-  | d=declaration { Statement.decl d }
-
-(* -- Sentences are clauses, facts or queries ------------------------------- *)
-
-sentence:
   (* clause *)
-  | a=atom IMPL body=subgoal DOT { 
-    let (atom,atom_region) = a in
-    let region = Region.merge atom_region @@ Subgoal.region body in
-    let head = Subgoal.atom atom ~region  in
-    let elem = Clause.{ head ; body } in
-    Sentence.SClause Located.{ elem  ; region }
-  }
-
-  (* fact *)
-  | a=atom DOT {
-    let (atom,region) = a in
-    let head = Subgoal.atom atom ~region  in
-    let elem = Fact.{ head } in 
-    Sentence.SFact Located.{elem ; region}
+  | head=head_term IMPL body=body DOT {       
+    Statement.clause head body
   }
 
   (* query *)
-  | QRY body=subgoal DOT { 
-    let region = Subgoal.region body in     
-    let elem = Query.{ head = None; body } in 
-    Sentence.SQuery Located.{ elem ; region }
+  | QRY body=body DOT { 
+    Statement.query body
   }
 
-(* -- Subgoal --------------------------------------------------------------- *)
+  (* fact *)
+  | head=head_symbol DOT {    
+    Statement.fact head 
+  }
 
-subgoal : 
-  | a=atom { 
-    let (atom,region) = a in
-    Subgoal.atom atom ~region
+  (* declaration *)
+  | d=declaration { Statement.decl d }
+
+
+(* -- Head subgoals ------------------------------------------------------------ 
+   In this Datalog, no operations are allowed in heads of clauses so they must
+   always be atoms
+*)
+
+head_term:
+  | atom=atom_term {
+      
+      Head.Term.atom atom 
+  }
+
+
+head_symbol:
+  | atom=atom_symbol {
+      Head.Symbol.atom atom 
+  }
+
+
+(* -- Body subgoal ---------------------------------------------------------- *)
+
+body : 
+  | atom=atom_term {     
+    Body.atom atom 
     
   }
-  | op=unop s=subgoal %prec unary_over_binary { 
-      let region = Region.merge op.region  @@ Subgoal.region s in
-      Subgoal.unop op s ~region 
+  | op=unop body=body %prec unary_over_binary {       
+      Body.unOp op body
       
   }
-  | l=subgoal op=connective r=subgoal { 
-    let region = Region.merge (Subgoal.region l) (Subgoal.region r) in 
-    Subgoal.binop op l r ~region
-    
+  | l=body op=connective r=body { 
+    Body.binOp op l r     
   }
-  | s=delimited(LPAREN,subgoal,RPAREN) { s }
 
-unop: region=BANG { Located.{elem=Op.Neg;region}}
+  | s=delimited(LPAREN,body,RPAREN) { 
+    s 
+  }
+
+unop: region=BANG { Located.{elem=OpSet.Body.Unary.Neg;region}}
 
 %inline connective : 
-  | region=COMMA     { Located.{elem=Op.Conj;region} }
-  | region=SEMICOLON { Located.{elem=Op.Disj;region} }
+  | region=COMMA     { Located.{elem=OpSet.Body.Binary.Conj;region} }
+  | region=SEMICOLON { Located.{elem=OpSet.Body.Binary.Disj;region} }
+
 
 (* -- Atomic formula -------------------------------------------------------- *)
 
-atom : 
-  | predSym=predSym terms=delimited(LPAREN,separated_list(COMMA,term),RPAREN) { 
-      let region = Region.(merge predSym.region @@  merge_many @@ List.map ~f:(fun {region;_} -> region) terms) in 
-      let elem = Atom.atom predSym terms in 
-      ( elem , region )
+atom_term : 
+  | predSym=predSym LPAREN terms=separated_list(COMMA,term) end_region=RPAREN { 
+      let region = Region.(merge predSym.region end_region) in
+      let atom = Located.locate ~region @@ Atom.Term.atom predSym terms in 
+      atom
+  } 
+
+atom_symbol : 
+  | predSym=predSym LPAREN terms=separated_list(COMMA,term) end_region=RPAREN { 
+      let region = Region.(merge predSym.region end_region) in
+      let atom = Located.locate ~region @@ Atom.Symbol.atom predSym terms in 
+      atom
   } 
 
 (* -- Term ------------------------------------------------------------------ *)
@@ -111,14 +126,14 @@ atom :
 term : 
   | sym=symbol { 
       let s,region = sym in 
-      Located.{ elem = Core.Term.TSym s; region }
+      Core.Term.TSym(s,region)
   }
   | v=tmvar {
     let tv,region = v in 
-    Located.{ elem = Core.Term.TVar tv ; region }
+    Core.Term.TVar(tv,region)
   }
   | region=WILDCARD { 
-     Located.{ elem = Core.Term.TWild; region }
+     Core.Term.TWild region 
   }
 
 (* -- Term variables -------------------------------------------------------- *)

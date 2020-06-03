@@ -2,25 +2,25 @@ open Core_kernel
 open Lib
 
 module X = struct
-  type 'a t =
-    { predSym : PredSymbol.t
+  type t =
+    { name : PredSymbol.t
     ; arity : int
     ; nature : Nature.t
-    ; annot : 'a Annotation.t [@compare.ignore]
     }
-  [@@deriving compare]
+  [@@deriving eq, compare, sexp]
 
-  let equal
-      _eq_a
-      { predSym = p1; arity = t1; _ }
-      { predSym = p2; arity = t2; _ }
-    =
-    PredSymbol.equal p1 p2 && t1 = t2
+  let pp ppf { name; _ } = PredSymbol.pp ppf name
+  let pp = `NoPrec pp
+  let logical name arity = { name; arity; nature = Logical }
+
+  let extralogical ?(eff = Eff.Set.empty) name arity =
+    { name; arity; nature = Extralogical eff }
   ;;
 
-  let pp _pp_a ppf { predSym; _ } = PredSymbol.pp ppf predSym
-  let pp = `NoPrec pp
+  let effects_of { nature; _ } = Nature.effects_of nature
 end
 
 include X
-include Pretty.Make1 (X)
+include Pretty.Make0 (X)
+module Set = Set.Make (X)
+module Map = Map.Make (X)

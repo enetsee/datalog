@@ -1,6 +1,6 @@
-rule link(?line: @Int, ?station: @Symbol, ?next:@Symbol)
-rule station_connected(?station:@Symbol, ?next: @Symbol)
-rule line_connected(?line: @Int, ?station:@Symbol)
+pred link(?line: @Int, ?station: @Symbol, ?next:@Symbol)
+pred station_connected(?station:@Symbol, ?next: @Symbol)
+pred line_connected(?line: @Int, ?station:@Symbol)
 
 station_connected(?s,?s) :- link(_,?s,_) ; link(_,_,?s).
 station_connected(?s,?t) :- station_connected(?s,?u) , link(_,?u,?t).

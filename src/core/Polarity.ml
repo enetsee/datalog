@@ -4,7 +4,7 @@ module X = struct
   type t =
     | Pos
     | Neg
-  [@@deriving eq, compare]
+  [@@deriving eq, compare, sexp]
 
   let pp ppf = function
     | Pos -> ()

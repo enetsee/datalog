@@ -1,6 +1,5 @@
 open Core_kernel
 open Lib
-open Reporting
 
 module Prim = struct
   module X = struct
@@ -11,7 +10,7 @@ module Prim = struct
       | TyBool
     [@@deriving eq, compare]
 
-    let rec pp ppf = function
+    let pp ppf = function
       | TySymbol -> Fmt.string ppf "@Symbol"
       | TyReal -> Fmt.string ppf "@Real"
       | TyInt -> Fmt.string ppf "@Int"
