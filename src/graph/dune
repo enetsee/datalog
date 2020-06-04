@@ -1,0 +1,4 @@
+(library
+  (name graph)
+  (libraries core_kernel)  
+)
