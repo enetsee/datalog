@@ -98,7 +98,7 @@ let unop_to_core region op mxs =
     mxs
     >>= fun xs ->
     match op, xs with
-    | OpSet.Body.Unary.Neg, [ lit ] -> return [ Core.Lit.Raw.neg lit ]
+    | OpSet.Body.Unary.Neg, [ lit ] -> return [ Core.Raw.Lit.neg lit ]
     | _ -> fail Err.(ClauseNeg region))
 ;;
 

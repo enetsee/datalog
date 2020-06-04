@@ -3,11 +3,10 @@ open Lib
 
 type t = { bp : Adornment.t list } [@@deriving compare, sexp]
 
-let pp ppf { bp } = Fmt.(hbox @@ list Adornment.pp) ppf bp
-
 include Pretty.Make0 (struct
   type nonrec t = t
 
+  let pp ppf { bp } = Fmt.(hbox @@ list Adornment.pp) ppf bp
   let pp = `NoPrec pp
 end)
 

@@ -48,21 +48,40 @@ let to_MVs t ~arity = List.map ~f:(Atomic.to_MV ~arity) @@ elements t
 let top = ill
 let bottom = trivial
 
-let leq xs ys =
+let leq t1 t2 =
   List.(
-    elements xs >>= fun x -> elements ys >>= fun y -> return @@ Atomic.leq x y)
+    elements t1 >>= fun x -> elements t2 >>= fun y -> return @@ Atomic.leq x y)
   |> List.for_all ~f:Fn.id
 ;;
 
-let join xs ys =
-  List.(
-    elements xs >>= fun x -> elements ys >>= fun y -> return @@ Atomic.union x y)
-  |> of_list
+(** Given a list of atomic constraints, eliminate those atoms which are
+    supersets of some other atom 
+
+    Example: 
+
+    given a list of atoms  {{1},{1,2}}
+    we eliminate {1,2} since it is a superset of {1}
+
+
+*)
+let elim_supersets xs =
+  let rec aux accu = function
+    | next :: rest ->
+      let next' =
+        List.filter next ~f:(fun atom ->
+            not @@ List.exists accu ~f:(fun atom' -> Atomic.leq atom' atom))
+      in
+      aux (next' @ accu) rest
+    | [] -> accu
+  in
+  aux []
+  @@ List.group ~break:(fun xs ys -> Set.length xs <> Set.length ys)
+  @@ List.sort
+       ~compare:(fun xs ys -> Int.compare (Set.length xs) (Set.length ys))
+       xs
 ;;
 
+let join t1 t2 = of_list @@ elim_supersets @@ to_list @@ union t1 t2
+
 (* unused and wrong! *)
-let meet xs ys =
-  List.(
-    elements xs >>= fun x -> elements ys >>= fun y -> return @@ Atomic.inter x y)
-  |> of_list
-;;
+let meet t1 t2 = union t1 t2

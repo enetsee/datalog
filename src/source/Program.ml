@@ -37,9 +37,9 @@ let mk_prog reprs =
     >>= fun cnstrts ->
     let cls, qrys, fcts = collect_reprs reprs in
     let queries =
-      List.map ~f:(fun Core.Clause.Raw.{ head = { pred; _ }; _ } -> pred) qrys
+      List.map ~f:(fun Core.Raw.Clause.{ head = { pred; _ }; _ } -> pred) qrys
     and clauses = cls @ qrys in
-    let prog = Core.Program.Raw.{ clauses; queries; cnstrts }, fcts in
+    let prog = Core.Raw.Program.{ clauses; queries; cnstrts }, fcts in
     if List.is_empty queries
     then warn Warn.NoQueries >>= fun _ -> return prog
     else return prog)
