@@ -10,8 +10,6 @@ type t =
   ; predEdges : (Int.t * Polarity.t) list Int.Map.t
   }
 
-
-
 let findClauses { predClauses; clauseBwd; _ } predIdx =
   Option.value_map ~default:[] ~f:List.(filter_map ~f:Int.Map.(find clauseBwd))
   @@ Int.Map.find predClauses predIdx
@@ -110,34 +108,28 @@ let from_program prog =
   { clauseFwd; clauseBwd; predFwd; predBwd; predClauses; predEdges }
 ;;
 
+(** Determine if a predicate exists and is used in at least one clause *)
+let is_used { predFwd; predEdges; _ } pred =
+  Option.(
+    value
+      ~default:false
+      (Pred.Map.find predFwd pred
+      >>= Int.Map.find predEdges
+      |> map ~f:Fn.(compose not List.is_empty)))
+;;
 
-  let unused {predFwd;predEdges;_} pred = 
-    Option.(
-
-      value ~default:false 
-      (Pred.Map.find predFwd pred >>= 
-      Int.Map.find predEdges |> 
-      map ~f:List.is_empty
-      )
-    )
-    
-    
-  (** Dead-predicates are those which:
-      - are not queries
+(** The `dead` predicates are those which:
       - are intensional
+      - are not queries
       - are not used in any clause
   *)
-  let dead_preds ?dep (Program.Raw.{queries;_} as t) = 
-    let dep = 
-      match dep with 
-      | Some dep -> dep 
-      | _ -> from_program t in 
-    
-      Pred.Set.( 
-        filter ~f:(unused dep) @@
-        diff (Program.Raw.intensionals t) @@ of_list queries
-      ) 
-  
+let dead_preds t (Program.Raw.{ queries; _ } as prog) =
+  Pred.Set.(
+    filter ~f:Fn.(compose not @@ is_used t)
+    @@ diff (Program.Raw.intensionals prog)
+    @@ of_list queries)
+;;
+
 (* -- Pretty implementation ----------------------------------------------- *)
 
 let pp_predFwd ppf predFwd =

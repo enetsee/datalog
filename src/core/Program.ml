@@ -31,9 +31,6 @@ module Raw = struct
     Pred.Set.diff (Pred.Set.of_list @@ preds_of prog) (intensionals prog)
   ;;
 
-
-    
-
   include Pretty.Make0 (struct
     type nonrec t = t
 
