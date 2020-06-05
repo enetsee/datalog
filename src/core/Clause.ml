@@ -5,6 +5,11 @@ open Reporting
 module type S = sig
   module Lit : Lit.S
 
+  (** A `Clause` is made up of: 
+      - a head `Lit`eral, the _conclusion_ of the clause; and 
+      - a (non-empty) list of body `Lit`erals, each a _hypothesis_ or _premise_ 
+        of the clause. 
+  *)
   type t =
     { head : Lit.t
     ; body : Lit.t list

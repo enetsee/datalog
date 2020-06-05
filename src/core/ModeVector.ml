@@ -4,6 +4,13 @@ open Lib
 exception MismatchArity
 
 module X = struct
+  (** A `ModeVector` indicate the mode requirement of a _predicate_ i.e. the 
+      modes requirements of all of its arguments.
+
+    A given predicate may have a set of `ModeVector`s arising either from 
+    multiple implementations (in the case of extralogical predicates) or 
+    different orderings of subgoals for logical predicates. 
+ *)
   type t = { mv : Mode.t list } [@@deriving compare, sexp]
 
   let to_list { mv } = mv

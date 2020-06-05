@@ -1,5 +1,6 @@
 open Lib
 
+(** A `Mode.t` is a requirement on an argument to a predicate. *)
 type t =
   | Opt
   | Req

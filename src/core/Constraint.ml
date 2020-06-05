@@ -1,6 +1,10 @@
 open Core_kernel
 open Lib
 
+(** An atomic constraint is an alternate representation of a mode vector. 
+    Rather than a list of modes, an atomic constraint is the set of argument 
+    indices with a `+` mode.
+*)
 module Atomic = struct
   include Set.Make (Int)
 
@@ -32,6 +36,9 @@ end
 
 (* -- Constraints ----------------------------------------------------------- *)
 
+(** A `Constraint` is then a set of `Atomic` constraints. 
+    `Constraint.t` forms a bounded lattice with `ill` and `trivial` as bottom 
+    and top elements resepectively. *)
 include Set.Make (Atomic)
 
 let ill = empty

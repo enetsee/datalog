@@ -3,6 +3,11 @@ open Lib
 open Reporting
 
 module X = struct
+  (** A `Term` is either:
+    - A term `Symbol` or constant;
+    - A term variable `Tmvar`; or
+    - A term wildcard, corresponding to an existential variable. 
+  *)
   type t =
     | TVar of Tmvar.t * (Region.t[@compare.ignore])
     | TSym of Symbol.t * (Region.t[@compare.ignore])

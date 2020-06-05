@@ -202,7 +202,8 @@ let least_cost alts =
   group_by_vars @@ aux None [] alts
 ;;
 
-(** Generate a schedule graph (tree) for a clause given (fixed) predicate constraints *)
+(** Generate the minimum obligation graph (tree) for a clause given (fixed) 
+    predicate constraints *)
 let min_obligation Clause.{ head; body; _ } ~cnstrs =
   let rec aux st lits chosen =
     let st', lits' = State.update st chosen lits ~cnstrs in
