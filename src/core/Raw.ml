@@ -64,3 +64,4 @@ end
 
 module Clause = Clause.Make (Lit)
 module Program = Program.Make (Lit) (Clause)
+module Dependency = Dependency.Make (Lit) (Clause) (Program)

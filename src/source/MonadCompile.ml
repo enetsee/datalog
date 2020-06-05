@@ -108,14 +108,14 @@ end
 module Env = struct
   type t =
     { extras : Core.Nature.t Core.PredSymbol.Map.t
-    ; cnstrts : Core.Constraint.t Core.PredSymbol.Map.t
+    ; cnstrts : Core.Constraint.t Core.Pred.Map.t
     ; reserved_names : Core.PredSymbol.t list
     ; query_prefix : string
     }
 
   let default =
     { extras = Core.PredSymbol.Map.empty
-    ; cnstrts = Core.PredSymbol.Map.empty
+    ; cnstrts = Core.Pred.Map.empty
     ; reserved_names = []
     ; query_prefix = "_query"
     }

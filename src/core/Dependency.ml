@@ -15,12 +15,7 @@ struct
     ; predEdges : (Int.t * Polarity.t) list Int.Map.t
     }
 
-  let findClauses { predClauses; clauseBwd; _ } predIdx =
-    Option.value_map
-      ~default:[]
-      ~f:List.(filter_map ~f:Int.Map.(find clauseBwd))
-    @@ Int.Map.find predClauses predIdx
-  ;;
+  (* -- Construction ---------------------------------------------------------- *)
 
   let groupBy t ~proj ~cmp =
     let accu, cur_key, elems =
@@ -115,6 +110,40 @@ struct
     and predClauses, clauseFwd, clauseBwd = predClauses ~predFwd prog in
     { clauseFwd; clauseBwd; predFwd; predBwd; predClauses; predEdges }
   ;;
+
+  (* -- Query --------------------------------------------------------------- *)
+
+  (** All clauses in which the provided predicate is the conclusion  *)
+  let clauses_of { predClauses; clauseBwd; predFwd; _ } pred =
+    Option.(
+      value
+        ~default:[]
+        (Pred.Map.find predFwd pred
+        >>= Int.Map.find predClauses
+        |> map ~f:List.(filter_map ~f:Int.Map.(find clauseBwd))))
+  ;;
+
+  (** All predicates which depend on the provided predicate subjec to a 
+     predicate on the polarity of the edge *)
+  let deps_helper ~p { predEdges; predFwd; predBwd; _ } pred =
+    Option.(
+      value
+        ~default:[]
+        (Pred.Map.find predFwd pred
+        >>= Int.Map.find predEdges
+        |> map
+             ~f:
+               List.(
+                 filter_map ~f:(fun (idx, pol) ->
+                     if p pol then Int.Map.find predBwd idx else None))))
+  ;;
+
+  (** All predicates which depend on the provided predicate through a positive
+      edge *)
+  let pos_deps_of = deps_helper ~p:Polarity.isPos
+
+  let deps_of = deps_helper ~p:Fn.(const true)
+  let neg_deps_of = deps_helper ~p:Polarity.isNeg
 
   (** Determine if a predicate exists and is used in at least one clause *)
   let is_used { predFwd; predEdges; _ } pred =

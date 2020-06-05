@@ -8,7 +8,7 @@ module type S = sig
   type t =
     { clauses : Clause.t list
     ; queries : Pred.t list
-    ; cnstrts : Constraint.t PredSymbol.Map.t
+    ; cnstrts : Constraint.t Pred.Map.t
     }
 
   include HasPreds.S with type t := t
@@ -16,7 +16,7 @@ module type S = sig
 
   val clauses_of : t -> Clause.t list
   val queries_of : t -> Pred.t list
-  val constraints_of : t -> Constraint.t PredSymbol.Map.t
+  val constraints_of : t -> Constraint.t Pred.Map.t
   val intensionals : t -> Pred.Set.t
   val extensionals : t -> Pred.Set.t
 end
@@ -26,7 +26,7 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
   type t =
     { clauses : Clause.t list
     ; queries : Pred.t list
-    ; cnstrts : Constraint.t PredSymbol.Map.t
+    ; cnstrts : Constraint.t Pred.Map.t
     }
 
   (** All predicates in a program *)
@@ -65,9 +65,9 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
              @@ prefix cut
              @@ list ~sep:cut
              @@ hbox
-             @@ pair ~sep:(any " => ") PredSymbol.pp Constraint.pp))
+             @@ pair ~sep:(any " => ") Pred.pp Constraint.pp))
         ppf
-        (clauses, (queries, PredSymbol.Map.to_alist cnstrts))
+        (clauses, (queries, Pred.Map.to_alist cnstrts))
     ;;
 
     let pp = `NoPrec pp
