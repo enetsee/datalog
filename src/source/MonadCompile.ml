@@ -107,14 +107,14 @@ end
 
 module Env = struct
   type t =
-    { extras : Core.Nature.t Core.PredSymbol.Map.t
+    { extras : Core.Nature.t Core.Pred.Name.Map.t
     ; cnstrts : Core.Constraint.t Core.Pred.Map.t
-    ; reserved_names : Core.PredSymbol.t list
+    ; reserved_names : Core.Pred.Name.t list
     ; query_prefix : string
     }
 
   let default =
-    { extras = Core.PredSymbol.Map.empty
+    { extras = Core.Pred.Name.Map.empty
     ; cnstrts = Core.Pred.Map.empty
     ; reserved_names = []
     ; query_prefix = "_query"
@@ -157,8 +157,7 @@ let incr =
 let query_prefix = map ~f:(fun Env.{ query_prefix; _ } -> query_prefix) ask
 
 let fresh_predsym pfx =
-  incr
-  >>= fun i -> return Core.PredSymbol.(from_string @@ pfx ^ string_of_int i)
+  incr >>= fun i -> return Core.Pred.Name.(from_string @@ pfx ^ string_of_int i)
 ;;
 
 let fresh_querysym = query_prefix >>= fresh_predsym

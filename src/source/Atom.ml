@@ -6,7 +6,7 @@ module type Minimal = sig
   module Term : Term.S
 
   type t =
-    { predSym : Core.PredSymbol.t Located.t
+    { predSym : Core.Pred.Name.t Located.t
     ; terms : Term.t list
     ; nature : Core.Nature.t option
     }
@@ -19,7 +19,7 @@ module TermMinimal :
   module Term = Term.Term
 
   type t =
-    { predSym : Core.PredSymbol.t Located.t
+    { predSym : Core.Pred.Name.t Located.t
     ; terms : Core.Term.t list
     ; nature : Core.Nature.t option
     }
@@ -45,7 +45,7 @@ module TmvarMinimal :
   module Term = Term.Tmvar
 
   type t =
-    { predSym : Core.PredSymbol.t Located.t
+    { predSym : Core.Pred.Name.t Located.t
     ; terms : Core.Tmvar.t Located.t list
     ; nature : Core.Nature.t option
     }
@@ -72,7 +72,7 @@ struct
   module Term = Term.Symbol
 
   type t =
-    { predSym : Core.PredSymbol.t Located.t
+    { predSym : Core.Pred.Name.t Located.t
     ; terms : Core.Term.t list
     ; nature : Core.Nature.t option
     }
@@ -100,7 +100,7 @@ module type S = sig
   include Pretty.S0 with type t := t
   include Core.HasVars.S with type t := t
 
-  val atom : Core.PredSymbol.t Located.t -> Term.t list -> t
+  val atom : Core.Pred.Name.t Located.t -> Term.t list -> t
   val set_nature : t -> t MonadCompile.t
   val check_extralogical_clash : t -> unit MonadCompile.t
 end
@@ -119,14 +119,14 @@ struct
       >>= fun Env.{ extras; _ } ->
       return
       @@ Option.value_map ~default:t ~f:(fun n -> { t with nature = Some n })
-      @@ Core.PredSymbol.Map.find extras t.predSym.elem)
+      @@ Core.Pred.Name.Map.find extras t.predSym.elem)
   ;;
 
   let check_extralogical_clash { predSym = Located.{ elem; region }; _ } =
     MonadCompile.(
       ask
       >>= fun Env.{ extras; _ } ->
-      match Core.PredSymbol.Map.find extras elem with
+      match Core.Pred.Name.Map.find extras elem with
       | Some _ -> warn @@ PredNameClash region
       | _ -> return ())
   ;;
@@ -143,7 +143,7 @@ struct
     let pp ppf { predSym; terms; _ } =
       Fmt.(
         hovbox
-        @@ pair (Located.pp Core.PredSymbol.pp)
+        @@ pair (Located.pp Core.Pred.Name.pp)
         @@ parens
         @@ list ~sep:comma Term.pp)
         ppf

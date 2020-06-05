@@ -7,7 +7,7 @@ module Lit : sig
     { pol : Polarity.t
     ; pred : Pred.t
     ; terms : Term.t list
-    ; region : Region.t [@compare.ignore]
+    ; region : Region.t [@compare.ignore] [@equal.ignore]
     }
 
   include Lit.S with type t := t
@@ -18,9 +18,9 @@ end = struct
     { pol : Polarity.t
     ; pred : Pred.t
     ; terms : Term.t list
-    ; region : Region.t [@compare.ignore]
+    ; region : Region.t [@compare.ignore] [@equal.ignore]
     }
-  [@@deriving compare, sexp]
+  [@@deriving compare, sexp, eq]
 
   let lit ?(pol = Polarity.Pos) ?(region = Region.empty) pred terms =
     { pol; pred; terms; region }

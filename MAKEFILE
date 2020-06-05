@@ -1,0 +1,7 @@
+format:
+	dune build @fmt
+
+clean:
+	dune clean
+
+re: clean all

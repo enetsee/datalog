@@ -14,6 +14,12 @@ module type S = sig
   include HasPreds.S with type t := t
   include Pretty.S0 with type t := t
 
+  val program
+    :  ?cnstrts:Constraint.t Pred.Map.t
+    -> Clause.t list
+    -> Pred.t list
+    -> t
+
   val clauses_of : t -> Clause.t list
   val queries_of : t -> Pred.t list
   val constraints_of : t -> Constraint.t Pred.Map.t
@@ -28,6 +34,10 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
     ; queries : Pred.t list
     ; cnstrts : Constraint.t Pred.Map.t
     }
+
+  let program ?(cnstrts = Pred.Map.empty) clauses queries =
+    { clauses; queries; cnstrts }
+  ;;
 
   (** All predicates in a program *)
   let preds_of { clauses; _ } =

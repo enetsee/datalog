@@ -8,9 +8,9 @@ module Lit = struct
     ; bpatt : BindingPatt.t
     ; pred : Pred.t
     ; terms : Term.t list
-    ; region : Region.t [@compare.ignore]
+    ; region : Region.t [@compare.ignore] [@equal.ignore]
     }
-  [@@deriving compare, sexp]
+  [@@deriving compare, sexp, eq]
 
   let bpatt_of { bpatt; _ } = bpatt
 

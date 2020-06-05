@@ -1,7 +1,7 @@
 open Core_kernel
 open Lib
 
-type t = { bp : Adornment.t list } [@@deriving compare, sexp]
+type t = { bp : Adornment.t list } [@@deriving compare, eq, sexp]
 
 include Pretty.Make0 (struct
   type nonrec t = t

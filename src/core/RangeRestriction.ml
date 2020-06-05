@@ -34,7 +34,7 @@ let fresh_pred_sym =
   fun pfx ->
     let sym = pfx ^ string_of_int !i in
     i := !i + 1;
-    PredSymbol.from_string sym
+    Pred.Name.from_string sym
 ;;
 
 let guard_from_src grdLit grdPred v src =
@@ -48,7 +48,7 @@ let guard_from_src grdLit grdPred v src =
 ;;
 
 let mk_guard srcs (v, region) =
-  let grdPred = Pred.logical (fresh_pred_sym "_guard") 1 in
+  let grdPred = Pred.logical ~arity:1 @@ fresh_pred_sym "_guard" in
   let grdLit = Lit.lit grdPred Term.[ var' v ] in
   Option.value_map ~default:(Unfixable region) ~f:(fun gs ->
       let cls, fcts = partitionGuards gs in

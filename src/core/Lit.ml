@@ -2,7 +2,7 @@ open Lib
 open Reporting
 
 module type S = sig
-  type t [@@deriving compare, sexp]
+  type t [@@deriving compare, sexp, eq]
 
   include Pretty.S0 with type t := t
   include HasVars.S with type t := t

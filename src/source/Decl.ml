@@ -63,7 +63,7 @@ end
 
 module PredDecl = struct
   type t =
-    { name : Core.PredSymbol.t Located.t
+    { name : Core.Pred.Name.t Located.t
     ; params : (Core.Tmvar.t * Ty.t Located.t) list
     }
   [@@deriving eq, compare]
@@ -78,7 +78,7 @@ module PredDecl = struct
     Fmt.(
       hovbox
       @@ pair
-           (any "pred " ++ Located.pp Core.PredSymbol.pp)
+           (any "pred " ++ Located.pp Core.Pred.Name.pp)
            (hovbox @@ parens @@ list ~sep:comma pp_param))
       ppf
       (name, params)

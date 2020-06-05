@@ -1,0 +1,8 @@
+(library
+ (name test_core)
+ (libraries
+    core_kernel
+  alcotest
+  core
+ )
+ (synopsis "Tests for lang"))

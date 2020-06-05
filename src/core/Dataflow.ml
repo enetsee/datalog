@@ -27,7 +27,7 @@ module Node = struct
       | NConst of Const.t
       | NPred of Pred.t * int
       | NLit of Lit.t * int
-    [@@deriving compare, sexp]
+    [@@deriving compare, eq, sexp]
 
     let pp ppf = function
       | NNull -> Fmt.string ppf "null"
@@ -191,6 +191,7 @@ module Src = struct
   type t =
     | SLit of Lit.t * int
     | SConst of Const.t
+  [@@deriving compare, eq]
 
   let to_node = function
     | SLit (lit, idx) -> Node.NLit (lit, idx)
@@ -219,6 +220,7 @@ module Dest = struct
   type t =
     | DLit of Lit.t * int
     | DPred of Pred.t * int
+  [@@deriving compare, eq]
 
   let to_node = function
     | DLit (lit, idx) -> Node.NLit (lit, idx)

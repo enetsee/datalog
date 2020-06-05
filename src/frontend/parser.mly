@@ -146,7 +146,7 @@ tmvar : v = VAR {
 (* -- Predicate symbols ----------------------------------------------------- *)
 predSym : id=PREDSYM { 
     Located.{
-        elem= Core.PredSymbol.from_string @@ fst id 
+        elem= Core.Pred.Name.from_string @@ fst id 
         ; region = snd id }
     }
 (* -- Symbol ---------------------------------------------------------------- *)

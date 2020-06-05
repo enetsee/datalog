@@ -9,10 +9,10 @@ module X = struct
     - A term wildcard, corresponding to an existential variable. 
   *)
   type t =
-    | TVar of Tmvar.t * (Region.t[@compare.ignore])
-    | TSym of Symbol.t * (Region.t[@compare.ignore])
-    | TWild of (Region.t[@compare.ignore])
-  [@@deriving compare, sexp]
+    | TVar of Tmvar.t * (Region.t[@compare.ignore] [@equal.ignore])
+    | TSym of Symbol.t * (Region.t[@compare.ignore] [@equal.ignore])
+    | TWild of (Region.t[@compare.ignore] [@equal.ignore])
+  [@@deriving compare, sexp, eq]
 
   let pp ppf = function
     | TVar (tv, _) -> Tmvar.pp ppf tv

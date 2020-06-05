@@ -133,7 +133,7 @@ module State = struct
     let pp_alt ppf (pred, vars) =
       Fmt.(
         hbox
-        @@ pair ~sep:(always " : ") PredSymbol.pp
+        @@ pair ~sep:(always " : ") Pred.Name.pp
         @@ braces
         @@ list ~sep:comma Tmvar.pp)
         ppf
