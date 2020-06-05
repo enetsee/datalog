@@ -13,14 +13,14 @@ module X = struct
     ; arity : int
     ; nature : Nature.t
     }
-  [@@deriving eq, compare, sexp]
+  [@@deriving eq, compare, hash, sexp]
 
   let pp ppf { name; _ } = PredSymbol.pp ppf name
   let pp = `NoPrec pp
   let pred ?(nature = Nature.Logical) name arity = { name; arity; nature }
   let logical name arity = { name; arity; nature = Logical }
 
-  let extralogical ?(eff = Eff.Set.empty) name arity =
+  let extralogical ?(eff = []) name arity =
     { name; arity; nature = Extralogical eff }
   ;;
 

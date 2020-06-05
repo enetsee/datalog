@@ -107,12 +107,13 @@ let fix_clause fg cl =
   @@ violations cl
 ;;
 
-let repair (Program.{ clauses; _ } as prog) =
+let apply prog =
   let fg = Dataflow.from_prog prog in
   Result.map ~f:(fun rps ->
       let cls, gclss, kbs = List.unzip3 rps in
       let clauses = List.rev cls @ List.concat gclss in
       Program.{ prog with clauses }, Knowledge.Set.union_list kbs)
   @@ Result.all
-  @@ List.map ~f:(fix_clause fg) clauses
+  @@ List.map ~f:(fix_clause fg)
+  @@ Raw.Program.clauses_of prog
 ;;

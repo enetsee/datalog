@@ -1,10 +1,12 @@
+open Core_kernel
+
 type t =
   | Logical
-  | Extralogical of Eff.Set.t
-[@@deriving eq, compare, sexp]
+  | Extralogical of Eff.t list
+[@@deriving eq, compare, hash, sexp]
 
 let effects_of = function
-  | Extralogical effs -> effs
+  | Extralogical effs -> Eff.Set.of_list effs
   | _ -> Eff.Set.empty
 ;;
 

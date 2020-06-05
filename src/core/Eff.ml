@@ -5,7 +5,7 @@ module X = struct
   type t =
     | EffRandom
     | EffIO
-  [@@deriving compare, sexp]
+  [@@deriving eq, compare, hash, sexp]
 
   let pp ppf = function
     | EffRandom -> Fmt.string ppf "Random"

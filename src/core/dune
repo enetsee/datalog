@@ -1,6 +1,6 @@
 (library
   (name core)
-  (libraries core_kernel str fmt qcheck ocamlgraph lib reporting effect tree graph)
+  (libraries core_kernel str fmt qcheck lib reporting effect tree graph_util)
   (inline_tests)
   (preprocess (pps ppx_jane ppx_deriving.map ppx_deriving.show ppx_deriving.eq ppx_deriving.fold ppx_deriving.create))
 )

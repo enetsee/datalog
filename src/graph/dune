@@ -1,4 +1,4 @@
 (library
-  (name graph)
-  (libraries core_kernel)  
+  (name graph_util)
+  (libraries core_kernel str fmt)  
 )

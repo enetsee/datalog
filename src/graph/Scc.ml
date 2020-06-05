@@ -1,5 +1,4 @@
 open Core_kernel
-include Scc_intf
 
 (**************************************************************************)
 (*                                                                        *)
@@ -16,7 +15,7 @@ include Scc_intf
 (*   special exception on linking described in the file LICENSE.          *)
 (*                                                                        *)
 (**************************************************************************)
-module Make (Elt : Identifiable.S) : S with module Elt := Elt = struct
+module Make (Elt : Identifiable.S) = struct
   exception NotFound of Elt.t
 
   type directed_graph = Elt.Set.t Elt.Map.t

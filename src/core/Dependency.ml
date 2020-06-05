@@ -113,6 +113,17 @@ struct
 
   (* -- Query --------------------------------------------------------------- *)
 
+  let pred_edges { predEdges; _ } = predEdges
+
+  (** All clauses in which the provided predicate is the conclusion  *)
+  let clauses_of_idx { predClauses; clauseBwd; _ } pred_idx =
+    Option.(
+      value
+        ~default:[]
+        (Int.Map.find predClauses pred_idx
+        |> map ~f:List.(filter_map ~f:Int.Map.(find clauseBwd))))
+  ;;
+
   (** All clauses in which the provided predicate is the conclusion  *)
   let clauses_of { predClauses; clauseBwd; predFwd; _ } pred =
     Option.(
@@ -165,6 +176,42 @@ struct
       filter ~f:Fn.(compose not @@ is_used t)
       @@ diff (Program.intensionals prog)
       @@ of_list queries)
+  ;;
+
+  (* -- Stratification ------------------------------------------------------ *)
+  include Graph_util.Scc.Make (Int)
+
+  (* Check if any predicate involde in the loop is present with a negative edge *)
+  let checkLoop { predEdges; predBwd; _ } preds =
+    let ps = Int.Set.of_list preds in
+    let negs =
+      List.concat_map preds ~f:(fun src ->
+          List.filter_map ~f:(fun (dest, pol) ->
+              if Int.Set.mem ps dest && Polarity.isNeg pol
+              then Some Int.Map.(find_exn predBwd src, find_exn predBwd dest)
+              else None)
+          @@ Int.Map.find_exn predEdges src)
+    in
+    match negs with
+    | [] -> Ok preds
+    | _ -> Error negs
+  ;;
+
+  let expand t = function
+    | No_loop elem -> Ok (clauses_of_idx t elem)
+    | Has_loop elems ->
+      Result.map ~f:List.(concat_map ~f:(clauses_of_idx t)) @@ checkLoop t elems
+  ;;
+
+  let stratify ({ predEdges; _ } as t) =
+    Result.(
+      all
+      @@ List.map ~f:(expand t)
+      @@ Array.to_list
+      @@ topological
+      @@ Int.Map.map
+           ~f:(fun dlbls -> Int.Set.of_list @@ List.map ~f:fst dlbls)
+           predEdges)
   ;;
 
   (* -- Pretty implementation ----------------------------------------------- *)

@@ -120,7 +120,7 @@ end
 module Program = struct
   include Program.Make (Lit) (Clause)
 
-  (* -- Generalized program adornment -------------------------------------------------- *)
+  (* -- Generalized program adornment --------------------------------------- *)
 
   module WorkItem = struct
     module X = struct
@@ -185,10 +185,12 @@ module Program = struct
   ;;
 
   (** Given a global ordering function, raw clauses and a query predicate 
-        - adorn the corresponding clause using a binding pattern where all variable are free 
-        - add the predicate of each premise to a work like along with its binding pattern
+        - adorn the corresponding clause using a binding pattern where all 
+          variables are free 
+        - add the predicate of each premise to a work like along with its 
+          binding pattern
         - accumulate resulting adorned clauses using `adorn_clauses`
-    *)
+  *)
   let adorn_query ~ord ~clauses ~seen qry =
     Option.(
       query_clause clauses qry
@@ -220,3 +222,5 @@ module Program = struct
     aux ([], WorkItem.Set.empty) queries
   ;;
 end
+
+module Dependency = Dependency.Make (Lit) (Clause) (Program)
