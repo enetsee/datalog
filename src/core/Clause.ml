@@ -17,6 +17,7 @@ module type S = sig
     }
   [@@deriving compare, sexp]
 
+  include HasRegion.S with type t := t
   include HasTerms.S with type t := t
   include HasPreds.S with type t := t
   include HasVars.S with type t := t
@@ -43,6 +44,7 @@ module Make (Lit : Lit.S) : S with module Lit := Lit = struct
     let head_of { head; _ } = head
     let head_pred_of { head; _ } = Lit.pred_of head
     let body_of { body; _ } = body
+    let region_of { region; _ } = region
 
     (** The predicates in the head and body of the clause *)
     let preds_of { body; head; _ } =

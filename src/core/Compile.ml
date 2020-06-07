@@ -9,8 +9,7 @@ let elim_dead_clauses prog = DeadClause.apply prog
 let repair_range_violation prog = RangeRestriction.apply prog
 
 (** -- Automatic subgoal scheduling / generalized adornment ----------------- *)
-
-let schedule_adorn prog = WellModing.apply prog
+let generalized_adornment prog = GenAdornment.apply prog
 
 (* -- stratification -------------------------------------------------------- *)
 
