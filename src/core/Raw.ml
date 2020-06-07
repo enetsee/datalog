@@ -3,6 +3,8 @@ open Lib
 open Reporting
 
 module Lit : sig
+  exception MismatchArity of Pred.Name.t * int * int
+
   type t =
     { pol : Polarity.t
     ; pred : Pred.t
@@ -14,6 +16,8 @@ module Lit : sig
 
   val lit : ?pol:Polarity.t -> ?region:Region.t -> Pred.t -> Term.t list -> t
 end = struct
+  exception MismatchArity of Pred.Name.t * int * int
+
   type t =
     { pol : Polarity.t
     ; pred : Pred.t
@@ -23,7 +27,11 @@ end = struct
   [@@deriving compare, sexp, eq]
 
   let lit ?(pol = Polarity.Pos) ?(region = Region.empty) pred terms =
-    { pol; pred; terms; region }
+    let arity = Pred.arity_of pred
+    and actual = List.length terms in
+    if arity = actual
+    then { pol; pred; terms; region }
+    else raise (MismatchArity (Pred.name_of pred, arity, actual))
   ;;
 
   (* -- Lit implementation -------------------------------------------------- *)

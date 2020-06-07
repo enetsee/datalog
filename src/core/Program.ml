@@ -10,6 +10,7 @@ module type S = sig
     ; queries : Pred.t list
     ; cnstrts : Constraint.t Pred.Map.t
     }
+  [@@deriving compare, eq]
 
   include HasPreds.S with type t := t
   include Pretty.S0 with type t := t
@@ -34,6 +35,7 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
     ; queries : Pred.t list
     ; cnstrts : Constraint.t Pred.Map.t
     }
+  [@@deriving compare, eq]
 
   let program ?(cnstrts = Pred.Map.empty) clauses queries =
     { clauses; queries; cnstrts }

@@ -30,6 +30,9 @@ module X = struct
     }
   [@@deriving eq, compare, hash, sexp]
 
+  let arity_of { arity; _ } = arity
+  let name_of { name; _ } = name
+  let nature_of { nature; _ } = nature
   let pp ppf { name; _ } = Name.pp ppf name
   let pp = `NoPrec pp
   let pred ?(nature = Nature.Logical) name ~arity = { name; arity; nature }

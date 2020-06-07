@@ -11,7 +11,11 @@ struct
     ; clauseBwd : Clause.t Int.Map.t
     ; predFwd : int Pred.Map.t
     ; predBwd : Pred.t Int.Map.t
+          (* The list of predicates in the body of a clause *)
+    ; clausePreds : Int.t list Int.Map.t
+          (* The list of clauses comprising a predicate *)
     ; predClauses : Int.t list Int.Map.t
+          (* The clauses in which the predicate appears as a subgoal along with its polarity*)
     ; predEdges : (Int.t * Polarity.t) list Int.Map.t
     }
 
@@ -102,18 +106,35 @@ struct
           body)
   ;;
 
+  let clausePreds ~predFwd Program.{ clauses; _ } =
+    Int.Map.of_alist_exn
+    @@ List.mapi clauses ~f:(fun cl_idx cl ->
+           let prds =
+             List.map ~f:(fun lit ->
+                 Pred.Map.find_exn predFwd @@ Lit.pred_of lit)
+             @@ Clause.body_of cl
+           in
+           cl_idx, prds)
+  ;;
+
   let from_program prog =
     let pidxs = List.mapi ~f:(fun idx p -> p, idx) @@ Program.preds_of prog in
     let predFwd = Pred.Map.of_alist_exn pidxs
     and predBwd = Int.Map.of_alist_exn @@ List.map ~f:Tuple2.swap pidxs in
     let predEdges = predEdges ~predFwd ~predBwd prog
+    and clausePreds = clausePreds ~predFwd prog
     and predClauses, clauseFwd, clauseBwd = predClauses ~predFwd prog in
-    { clauseFwd; clauseBwd; predFwd; predBwd; predClauses; predEdges }
+    { clauseFwd
+    ; clauseBwd
+    ; clausePreds
+    ; predFwd
+    ; predBwd
+    ; predClauses
+    ; predEdges
+    }
   ;;
 
   (* -- Query --------------------------------------------------------------- *)
-
-  let pred_edges { predEdges; _ } = predEdges
 
   (** All clauses in which the provided predicate is the conclusion  *)
   let clauses_of_idx { predClauses; clauseBwd; _ } pred_idx =
@@ -166,16 +187,36 @@ struct
         |> map ~f:Fn.(compose not List.is_empty)))
   ;;
 
-  (** The `dead` predicates are those which:
-      - are intensional
-      - are not queries
-      - are not used in any clause
+  (** The `dead` clauses are those which are not accessible from any exposed
+      query. 
+
+            
   *)
-  let dead_preds t (Program.{ queries; _ } as prog) =
-    Pred.Set.(
-      filter ~f:Fn.(compose not @@ is_used t)
-      @@ diff (Program.intensionals prog)
-      @@ of_list queries)
+  let live_clause_idxs
+      { predFwd; predClauses; clausePreds; _ }
+      Program.{ queries; _ }
+    =
+    let rec aux live_cls seen_prd = function
+      | [] -> live_cls
+      | prd_idx :: rest ->
+        let cls =
+          Option.(value ~default:[] @@ Int.Map.find predClauses prd_idx)
+        in
+        let prds =
+          List.concat_map cls ~f:(fun idx ->
+              Option.(value ~default:[] @@ Int.Map.find clausePreds idx))
+        in
+        let live_cls' = Int.Set.(union (of_list cls) live_cls) in
+        let seen_pred' = Int.Set.add seen_prd prd_idx in
+        let ws =
+          List.filter ~f:(fun idx -> not @@ Int.Set.mem seen_prd idx)
+          @@ prds
+          @ rest
+        in
+        aux live_cls' seen_pred' ws
+    in
+    aux Int.Set.empty Int.Set.empty
+    @@ List.filter_map ~f:(Pred.Map.find predFwd) queries
   ;;
 
   (* -- Stratification ------------------------------------------------------ *)
@@ -230,35 +271,57 @@ struct
     Fmt.(
       vbox
       @@ list ~sep:cut
-      @@ pair ~sep:(always " => ") int
+      @@ pair ~sep:(always " => ") (prefix (any "pred ") int)
       @@ braces
-      @@ list ~sep:comma int)
+      @@ list ~sep:comma (prefix (any "clause ") int))
       ppf
     @@ Int.Map.to_alist predClauses
+  ;;
+
+  let pp_clausePreds ppf clausePreds =
+    Fmt.(
+      vbox
+      @@ list ~sep:cut
+      @@ pair ~sep:(always " => ") (prefix (any "clause ") int)
+      @@ braces
+      @@ list ~sep:comma (prefix (any "pred ") int))
+      ppf
+    @@ Int.Map.to_alist clausePreds
   ;;
 
   let pp_predEdges ppf predEdges =
     Fmt.(
       vbox
       @@ list ~sep:cut
-      @@ pair ~sep:(always " => ") int
+      @@ pair ~sep:(always " => ") (prefix (any "pred ") int)
       @@ braces
       @@ list ~sep:comma
       @@ parens
-      @@ pair ~sep:comma int Polarity.pp_verbose)
+      @@ pair ~sep:comma (prefix (any "clause ") int) Polarity.pp_verbose)
       ppf
     @@ Int.Map.to_alist predEdges
   ;;
 
-  let pp ppf { predFwd; clauseFwd; predClauses; predEdges; _ } =
+  let pp ppf { predFwd; clauseFwd; predClauses; predEdges; clausePreds; _ } =
     Fmt.(
       vbox
       @@ pair
            ~sep:cut
-           (pair ~sep:cut pp_clauseFwd pp_predFwd)
-           (pair ~sep:cut pp_predClauses pp_predEdges))
+           (pair
+              ~sep:cut
+              (prefix (any "Clause indexes@.@.") @@ pp_clauseFwd)
+              (prefix (any "@.Predicate indexes@.@.") @@ pp_predFwd))
+           (pair
+              ~sep:cut
+              (pair
+                 ~sep:cut
+                 (prefix (any "@.Predicate clause components @.@.")
+                 @@ pp_predClauses)
+                 (prefix (any "@.Clause body predicates @.@.") @@ pp_clausePreds))
+              (prefix (any "@.Predicate literal appearances @.@.")
+              @@ pp_predEdges)))
       ppf
-      ((clauseFwd, predFwd), (predClauses, predEdges))
+      ((clauseFwd, predFwd), ((predClauses, clausePreds), predEdges))
   ;;
 
   include Pretty.Make0 (struct

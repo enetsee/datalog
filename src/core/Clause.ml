@@ -15,7 +15,7 @@ module type S = sig
     ; body : Lit.t list
     ; region : Region.t [@compare.ignore]
     }
-  [@@deriving compare, sexp]
+  [@@deriving compare, eq, sexp]
 
   include HasRegion.S with type t := t
   include HasTerms.S with type t := t
@@ -36,9 +36,9 @@ module Make (Lit : Lit.S) : S with module Lit := Lit = struct
     type t =
       { head : Lit.t
       ; body : Lit.t list
-      ; region : Region.t [@compare.ignore]
+      ; region : Region.t [@compare.ignore] [@equal.ignore]
       }
-    [@@deriving compare, sexp]
+    [@@deriving compare, eq, sexp]
 
     let clause ?(region = Region.empty) head body = { head; body; region }
     let head_of { head; _ } = head
