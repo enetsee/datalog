@@ -31,7 +31,10 @@ module Atomic = struct
     let pp = `NoPrec pp
   end)
 
-  let leq x y = is_subset x ~of_:y
+  include PartialOrd.Make(struct
+    type nonrec t = t
+    let leq x y = is_subset x ~of_:y
+  end)
 end
 
 (* -- Constraints ----------------------------------------------------------- *)
@@ -55,6 +58,7 @@ let to_MVs t ~arity = List.map ~f:(Atomic.to_MV ~arity) @@ elements t
 let top = ill
 let bottom = trivial
 
+
 let leq t1 t2 =
   List.(
     elements t1 >>= fun x -> elements t2 >>= fun y -> return @@ Atomic.leq x y)
@@ -62,40 +66,31 @@ let leq t1 t2 =
 ;;
 
 (** Given a list of atomic constraints, eliminate those atoms which are
-    supersets of some other atom 
+    supersets of some other atom.
 
-    Example: 
-
-    given a list of atoms  {{1},{1,2}}
-    we eliminate {1,2} since it is a superset of {1}
-
-
+    Example: given a list of atoms  {{1},{1,2}} we eliminate {1,2} since it is a 
+    superset of {1}
 *)
-let elim_supersets xs =
-  let rec aux accu = function
-    | next :: rest ->
-      let next' =
-        List.filter next ~f:(fun atom ->
-            not @@ List.exists accu ~f:(fun atom' -> Atomic.leq atom' atom))
-      in
-      aux (next' @ accu) rest
-    | [] -> accu
-  in
-  aux []
-  @@ List.group ~break:(fun xs ys -> Set.length xs <> Set.length ys)
-  @@ List.sort
-       ~compare:(fun xs ys -> Int.compare (Set.length xs) (Set.length ys))
-       xs
-;;
+let elim_supersets  in_ = 
+  let (xs,orig) = 
+    match in_ with 
+    | `ListIn xs -> (xs , of_list xs)
+    | `SetIn orig -> (to_list orig , orig)
+  in 
+  of_list @@
+  List.filter ~f:(fun x -> not @@ exists ~f:(fun y -> Atomic.lt y x) orig) xs
+
+
 
 (** Join: A (x) B === min (A U B) *)
-let join t1 t2 = of_list @@ elim_supersets @@ to_list @@ union t1 t2
+let join t1 t2 =   
+   elim_supersets @@ `SetIn(union t1 t2)
 
-(* Meet: A (+) B ===  min { a U b | a in A, b in B } *)
+(** Meet: A (+) B ===  min { a U b | a in A, b in B } 
+*)
 let meet t1 t2 =
-  of_list
-  @@ elim_supersets
-  @@ List.(
+  elim_supersets
+  @@ `ListIn List.(
        elements t1
        >>= fun x -> elements t2 >>= fun y -> return @@ Atomic.union x y)
 ;;
