@@ -5,7 +5,7 @@ open Lib
 let step ~cnstrs ~pred ~clauses =
   let cstr =
     List.fold_left clauses ~init:Constraint.trivial ~f:(fun accu cl ->
-        Constraint.join accu @@ Schedule.analyse ~cnstrs cl)
+        Constraint.meet accu @@ Schedule.analyse ~cnstrs cl)
   in
   cstr, Pred.Map.update cnstrs pred ~f:Fn.(const cstr)
 ;;

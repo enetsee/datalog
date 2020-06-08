@@ -2,11 +2,8 @@ open Core
 open Raw
 
 let pred_a = Pred.(logical ~arity:1 @@ Name.from_string "a")
-
 let pred_b = Pred.(logical ~arity:1 @@ Name.from_string "b")
-
 let pred_c = Pred.(logical ~arity:1 @@ Name.from_string "c")
-
 let pred_d = Pred.(logical ~arity:1 @@ Name.from_string "d")
 let pred_p = Pred.(logical ~arity:1 @@ Name.from_string "p")
 let pred_q = Pred.(logical ~arity:1 @@ Name.from_string "q")
@@ -14,7 +11,6 @@ let pred_r = Pred.(logical ~arity:2 @@ Name.from_string "r")
 let pred_s = Pred.(logical ~arity:1 @@ Name.from_string "s")
 let pred_w = Pred.(logical ~arity:1 @@ Name.from_string "w")
 let pred_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
-
 let testable_prg = Program.(Alcotest.testable pp equal)
 
 (** -- Program with single dead clause `q` -------------------------------------
@@ -113,13 +109,12 @@ let prg_deeply_nested =
       ; clause
           Lit.(lit pred_q Term.[ var "X" ])
           Lit.[ lit pred_p Term.[ var "X" ] ]
-      ;clause
+      ; clause
           Lit.(lit pred_s Term.[ var "X" ])
           Lit.[ lit pred_q Term.[ var "X" ] ]
       ; clause
           Lit.(lit pred_qry [])
-          Lit.[ lit pred_w Term.[ var "X" ] ; lit pred_s Term.[ var "X" ] 
-          ]
+          Lit.[ lit pred_w Term.[ var "X" ]; lit pred_s Term.[ var "X" ] ]
       ]
     [ pred_qry ]
 ;;

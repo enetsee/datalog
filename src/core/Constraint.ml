@@ -88,7 +88,17 @@ let elim_supersets xs =
        xs
 ;;
 
+(** Join: A (x) B === min (A U B) *)
 let join t1 t2 = of_list @@ elim_supersets @@ to_list @@ union t1 t2
 
-(* unused and wrong! *)
-let meet t1 t2 = union t1 t2
+(* Meet: A (+) B ===  min { a U b | a in A, b in B } *)
+let meet t1 t2 =
+  of_list
+  @@ elim_supersets
+  @@ List.(
+       elements t1
+       >>= fun x -> elements t2 >>= fun y -> return @@ Atomic.union x y)
+;;
+
+let join_list ts = List.fold_left ~init:ill ~f:join ts
+let meet_list ts = List.fold_left ~init:trivial ~f:meet ts

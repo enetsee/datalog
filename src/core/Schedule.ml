@@ -80,7 +80,9 @@ module State = struct
     List.map mvs ~f:(fun mode -> pred, obligation terms ~owed mode)
   ;;
 
-  (** Collect all term variables appearing in a list of literals *)
+  (** Helper to collect the set of unique term variables appearing in a list of 
+      literals 
+  *)
   let lit_vars lits = Tmvar.Set.of_list @@ List.concat_map ~f:Lit.vars_of lits
 
   (** Given an order list of subgoals, eliminate those subgoals which 
@@ -220,18 +222,20 @@ let min_obligation Clause.{ head; body; _ } ~cnstrs =
 ;;
 
 (** Determine constraints for the predicate in the head of the clause
-    based on the costs at terminal nodes 
-    TODO: rewrite in terms of `Contstraint.meet` for clarity?      
+    based on the costs at terminal nodes  
 *)
 let clause_constraint { head_vars; mog } =
-  let terminals = List.map ~f:snd @@ Tree.leaves mog in
-  let modes_of vs =
-    List.map head_vars ~f:(function
-        | v when Tmvar.Set.mem vs v -> Mode.Req
-        | _ -> Mode.Opt)
+  let to_constraint vs =
+    Constraint.from_MVs
+      [ ModeVector.from_list
+        @@ List.map head_vars ~f:(function
+               | v when Tmvar.Set.mem vs v -> Mode.Req
+               | _ -> Mode.Opt)
+      ]
   in
-  Constraint.from_MVs
-  @@ List.map terminals ~f:Fn.(compose ModeVector.from_list modes_of)
+  List.fold_left ~init:Constraint.ill ~f:(fun accu (_, vs) ->
+      Constraint.join accu @@ to_constraint vs)
+  @@ Tree.leaves mog
 ;;
 
 (** Construct the minimal obligation graph for a clause and generate 
