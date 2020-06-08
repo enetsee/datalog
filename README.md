@@ -8,7 +8,11 @@ A Datalog implementation written in OCaml offering.
 ## Source 
 
 A typed source representation for Datalog supporting user defined subtypes
-and union types and extralogical predicates. 
+and union types, extralogical predicates, negation of body literals and 
+disjunction of body literals. 
+
+The`Source` repesentation compiles to the `Raw` intermediate representation in 
+Core.
 
 Roadmap includes:
 
@@ -27,9 +31,15 @@ Roadmap includes:
 
 ## Core 
 
-An untyped intermediate representation, program analysis and optimization.
+Untyped intermediate representations, program analysis and optimization.
 
-Current features include:
+Core contains 3 intermediate representations:
+
+- `Raw`: Datalog¬
+- `Adorned`: `Raw` reprentation with binding pattern annotations
+- `Stratified`: a sequence of semi-positive Datalog programs
+
+Analyses and optimizations include:
 
 - Dead clause elimination
 - Range restriction repair 
