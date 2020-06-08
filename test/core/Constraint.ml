@@ -87,8 +87,15 @@ let meet_right_identity () =
 let meet_assoc () =
   Alcotest.(check testable_constraint)
     "Meet is associative"
-    Constraint.(join c2 (join c5 c6))
-    Constraint.(join (join c2 c5) c6)
+    Constraint.(meet c2 (meet c5 c6))
+    Constraint.(meet (meet c2 c5) c6)
+;;
+
+let meet_many () =
+  Alcotest.(check testable_constraint)
+    "Meet list is same as manual"
+    Constraint.(meet c2 (meet c5 c6))
+    Constraint.(meet_list [ c2; c5; c6 ])
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)
@@ -118,5 +125,6 @@ let test_cases =
         `Quick
         meet_right_identity
     ; test_case "Meet is associative" `Quick meet_assoc
+    ; test_case "Meet list is same as manual" `Quick meet_many
     ]
 ;;
