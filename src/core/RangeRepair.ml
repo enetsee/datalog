@@ -1,14 +1,41 @@
 open Core_kernel
 open Reporting
 open Raw
+open Lib
+
+
+
+module Violation = struct
+
+  type t = 
+    { dest : Dataflow.Dest.t
+    ; tmvar : Tmvar.t
+    ; region : Region.t [@compare.ignore]
+    }
+  [@@deriving compare,eq]
+
+  let violation ?(region=Region.empty) dest tmvar = 
+    {dest;tmvar;region}
+
+  include Pretty.Make0(struct
+    type nonrec t = t 
+    let pp ppf {dest;tmvar;_} = 
+      Fmt.(hbox @@ pair ~sep:sp 
+        Dataflow.Dest.pp
+        (quote Tmvar.pp)) ppf (dest,tmvar)
+    let pp = `NoPrec pp
+  end)
+
+end
 
 type repair =
-  | Unfixable of Region.t
+  | Unfixable of Violation.t
   | Guard of Lit.t * Clause.t list * Knowledge.Set.t
 
 type guard =
   | GClause of Clause.t
   | GFact of Knowledge.t
+
 
 let partitionGuards gs =
   let rec aux (cls, fcts) = function
@@ -47,20 +74,20 @@ let guard_from_src grdLit grdPred v src =
     | SConst Const.CWild -> None)
 ;;
 
-let mk_guard srcs (v, region) =
-  let grdPred = Pred.logical ~arity:1 @@ fresh_pred_sym "_guard" in
-  let grdLit = Lit.lit grdPred Term.[ var' v ] in
-  Option.value_map ~default:(Unfixable region) ~f:(fun gs ->
+let mk_guard srcs (Violation.{tmvar;_} as violation) =
+  let grdPred = Pred.logical ~arity:1 @@ fresh_pred_sym "guard" in
+  let grdLit = Lit.lit grdPred Term.[ var' tmvar ] in
+  Option.value_map ~default:(Unfixable violation) ~f:(fun gs ->
       let cls, fcts = partitionGuards gs in
       Guard (grdLit, cls, fcts))
   @@ Option.all
-  @@ List.map srcs ~f:(guard_from_src grdLit grdPred v)
+  @@ List.map srcs ~f:(guard_from_src grdLit grdPred tmvar)
 ;;
 
-let fix_violation fg (dest, (var, region)) =
+let fix_violation fg (Violation.{dest;_} as violation) =
   match Dataflow.coveringPositives fg ~dest with
-  | Some srcs -> mk_guard srcs (var, region)
-  | None -> Unfixable region
+  | Some srcs -> mk_guard srcs violation
+  | None -> Unfixable violation
 ;;
 
 let collect_repairs rps =
@@ -68,7 +95,11 @@ let collect_repairs rps =
     | Guard (lit, cl, fct) :: rest ->
       aux (lit :: lits, cl :: cls, fct :: fcts) rest
     | [] -> Ok (lits, cls, fcts)
-    | Unfixable _ :: _ -> Error "Not fixable"
+    | Unfixable violation :: rest -> aux_violation [violation] rest
+  and aux_violation accu = function 
+    | Unfixable violation :: rest -> aux_violation (violation::accu) rest 
+    | _ :: rest -> aux_violation accu rest 
+    | _ -> Error (List.rev accu)
   in
   aux ([], [], []) rps
 ;;
@@ -86,7 +117,8 @@ let violations Clause.{ head; body; _ } =
   List.filter_mapi (Lit.terms_of head) ~f:(fun idx ->
     function
     | Term.TVar (v, region) when Tmvar.Set.(not @@ mem body_vars v) ->
-      Some ((head_pred, idx), (v, region))
+      let dest = Dataflow.Dest.DPred(head_pred,idx) in 
+      Some Violation.(violation ~region dest v)
     | _ -> None)
 ;;
 
@@ -102,8 +134,7 @@ let fix_clause fg cl =
       , List.concat clss
       , Knowledge.Set.union_list fcts ))
   @@ collect_repairs
-  @@ List.map ~f:(fun ((pred, idx), v) ->
-         fix_violation fg (Dataflow.Dest.DPred (pred, idx), v))
+  @@ List.map ~f:(fix_violation fg)
   @@ violations cl
 ;;
 
@@ -111,7 +142,7 @@ let apply prog =
   let fg = Dataflow.from_prog prog in
   Result.map ~f:(fun rps ->
       let cls, gclss, kbs = List.unzip3 rps in
-      let clauses = List.rev cls @ List.concat gclss in
+      let clauses = cls @ List.concat gclss in
       Program.{ prog with clauses }, Knowledge.Set.union_list kbs)
   @@ Result.all
   @@ List.map ~f:(fix_clause fg)

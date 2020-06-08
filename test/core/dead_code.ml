@@ -2,15 +2,19 @@ open Core
 open Raw
 
 let pred_a = Pred.(logical ~arity:1 @@ Name.from_string "a")
+
+let pred_b = Pred.(logical ~arity:1 @@ Name.from_string "b")
+
+let pred_c = Pred.(logical ~arity:1 @@ Name.from_string "c")
+
+let pred_d = Pred.(logical ~arity:1 @@ Name.from_string "d")
 let pred_p = Pred.(logical ~arity:1 @@ Name.from_string "p")
 let pred_q = Pred.(logical ~arity:1 @@ Name.from_string "q")
 let pred_r = Pred.(logical ~arity:2 @@ Name.from_string "r")
 let pred_s = Pred.(logical ~arity:1 @@ Name.from_string "s")
+let pred_w = Pred.(logical ~arity:1 @@ Name.from_string "w")
 let pred_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
-let pred_qry2 = Pred.(logical ~arity:0 @@ Name.from_string "query2")
-let destQ = Dataflow.Dest.DLit (Lit.lit pred_q Term.[ var "X" ], 0)
-let destP = Dataflow.Dest.DPred (pred_p, 0)
-let destR = Dataflow.Dest.DLit (Lit.lit pred_r Term.[ var "X"; var "X" ], 0)
+
 let testable_prg = Program.(Alcotest.testable pp equal)
 
 (** -- Program with single dead clause `q` -------------------------------------
@@ -65,14 +69,7 @@ let dead_clause_single () =
     DeadClause.(apply prg_dead_clause_single)
 ;;
 
-(** -- Program with no exposed queries -----------------------------------------
-
-s(X) :- a(X).
-p(X) :- s(X).
-q(X) :- s(X).
-query() :- p(2).
-
------------------------------------------------------------------------------ *)
+(** -- Program with no exposed queries -------------------------------------- *)
 
 let prg_no_query = Program.{ prg_dead_clause_single with queries = [] }
 let prg_empty = Program.program [] []
@@ -85,11 +82,62 @@ let no_query () =
     DeadClause.(apply prg_no_query)
 ;;
 
+(** -- Deeply nested ----------------------------------------------------------
+
+
+b(X) :- a(X).
+c(X) :- b(X).
+d(X) :- c(X).
+p(X) :- d(X).
+q(X) :- p(X).
+s(X) :- q(X).
+query() :- w(X), s(X).
+
+*)
+
+let prg_deeply_nested =
+  Program.program
+    Clause.
+      [ clause
+          Lit.(lit pred_b Term.[ var "X" ])
+          Lit.[ lit pred_a Term.[ var "X" ] ]
+      ; clause
+          Lit.(lit pred_c Term.[ var "X" ])
+          Lit.[ lit pred_b Term.[ var "X" ] ]
+      ; clause
+          Lit.(lit pred_d Term.[ var "X" ])
+          Lit.[ lit pred_c Term.[ var "X" ] ]
+      ; clause
+          Lit.(lit pred_p Term.[ var "X" ])
+          Lit.[ lit pred_d Term.[ var "X" ] ]
+      ; clause
+          Lit.(lit pred_q Term.[ var "X" ])
+          Lit.[ lit pred_p Term.[ var "X" ] ]
+      ;clause
+          Lit.(lit pred_s Term.[ var "X" ])
+          Lit.[ lit pred_q Term.[ var "X" ] ]
+      ; clause
+          Lit.(lit pred_qry [])
+          Lit.[ lit pred_w Term.[ var "X" ] ; lit pred_s Term.[ var "X" ] 
+          ]
+      ]
+    [ pred_qry ]
+;;
+
+let deeply_nested () =
+  Alcotest.check
+    testable_prg
+    "deeply nested, no dead clauses"
+    prg_deeply_nested
+    DeadClause.(apply prg_deeply_nested)
+;;
+
 (* -- All cases ------------------------------------------------------------- *)
 
 let test_cases =
   Alcotest.
     [ test_case "Single dead clause" `Quick dead_clause_single
     ; test_case "No exposed queries" `Quick no_query
+    ; test_case "No dead clauses, deeply nested" `Quick deeply_nested
     ]
 ;;

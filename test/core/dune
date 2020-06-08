@@ -1,8 +1,9 @@
 (library
  (name test_core)
  (libraries
-    core_kernel
+    core_kernel fmt str
   alcotest
   core
+  reporting
  )
  (synopsis "Tests for lang"))

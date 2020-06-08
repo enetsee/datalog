@@ -5,8 +5,7 @@ open Core_kernel
 let elim_dead_clauses prog = DeadClause.apply prog
 
 (** -- Range-restriction repair --------------------------------------------- *)
-
-let repair_range_violation prog = RangeRestriction.apply prog
+let repair_range_violation prog = RangeRepair.apply prog
 
 (** -- Automatic subgoal scheduling / generalized adornment ----------------- *)
 let generalized_adornment prog = GenAdornment.apply prog

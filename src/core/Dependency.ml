@@ -6,16 +6,27 @@ module Make
     (Clause : Clause.S with module Lit := Lit)
     (Program : Program.S with module Lit := Lit and module Clause := Clause) =
 struct
+  (** Internal representation of clause & predicate dependencies 
+
+      - `clauseFwd` maps a clause to its ID
+      - `clauseBwd` maps a clause ID to its clause
+      - `predFwd` maps a predicate to its ID
+      - `predBwd` maps a predicate ID to its predicate
+      - `clausePreds` map from clause ID to list of predicate IDs appearing in a
+        literal in the body of the clause
+      - `predClauses` map from predicate ID to list of clause IDs for which the 
+        predicate appears in the head literal i.e. the clauses comprising the 
+        predicate
+      - `predEdges` the clauses in which the predicate appears as a literal 
+        along with the polarity of the literal
+  *)
   type t =
     { clauseFwd : int Clause.Map.t
     ; clauseBwd : Clause.t Int.Map.t
     ; predFwd : int Pred.Map.t
     ; predBwd : Pred.t Int.Map.t
-          (* The list of predicates in the body of a clause *)
     ; clausePreds : Int.t list Int.Map.t
-          (* The list of clauses comprising a predicate *)
     ; predClauses : Int.t list Int.Map.t
-          (* The clauses in which the predicate appears as a subgoal along with its polarity*)
     ; predEdges : (Int.t * Polarity.t) list Int.Map.t
     }
 
@@ -188,16 +199,14 @@ struct
   ;;
 
   (** The `dead` clauses are those which are not accessible from any exposed
-      query. 
-
-            
+      query. This exposes how clause indexes are created.
   *)
-  let live_clause_idxs
-      { predFwd; predClauses; clausePreds; _ }
+  let dead_clauses
+      { predFwd; predClauses; clausePreds; clauseBwd; _ }
       Program.{ queries; _ }
     =
-    let rec aux live_cls seen_prd = function
-      | [] -> live_cls
+    let rec aux dead_cls seen_prd = function
+      | [] -> dead_cls
       | prd_idx :: rest ->
         let cls =
           Option.(value ~default:[] @@ Int.Map.find predClauses prd_idx)
@@ -206,16 +215,17 @@ struct
           List.concat_map cls ~f:(fun idx ->
               Option.(value ~default:[] @@ Int.Map.find clausePreds idx))
         in
-        let live_cls' = Int.Set.(union (of_list cls) live_cls) in
+        let dead_cls' = Int.Set.(diff dead_cls @@ of_list cls) in
         let seen_pred' = Int.Set.add seen_prd prd_idx in
         let ws =
           List.filter ~f:(fun idx -> not @@ Int.Set.mem seen_prd idx)
           @@ prds
           @ rest
         in
-        aux live_cls' seen_pred' ws
+        aux dead_cls' seen_pred' ws
     in
-    aux Int.Set.empty Int.Set.empty
+    let cl_ids = Int.Set.of_list @@ Int.Map.keys clauseBwd in
+    aux cl_ids Int.Set.empty
     @@ List.filter_map ~f:(Pred.Map.find predFwd) queries
   ;;
 
