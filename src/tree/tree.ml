@@ -1,26 +1,32 @@
 open Core_kernel
 open Lib
 
-type 'a t = Node of 'a * 'a t list [@@deriving compare, map, fold, sexp]
+type 'a t = Node of 'a * 'a t list [@@deriving compare, eq, map, fold, sexp]
 
+let label (Node (lbl, _)) = lbl
+let children (Node (_, cs)) = cs
 let branch lbl forest = Node (lbl, forest)
 let leaf lbl = Node (lbl, [])
 
-let rec flatten (Node (x, ts)) : 'a list list =
-  match ts with
-  | [] -> [ [ x ] ]
-  | ts -> List.map ~f:(fun xs -> x :: xs) @@ List.concat_map ~f:flatten ts
-;;
-
-let subpaths t =
-  let rec aux ~k (Node (x, ts)) =
-    aux_forest ts ~k:(fun xss -> k @@ List.map ~f:(fun xs -> x :: xs) xss)
-  and aux_forest ~k = function
-    | [] -> k [ [] ]
-    | next :: rest ->
-      aux next ~k:(fun xs -> aux_forest rest ~k:(fun xss -> k @@ xs @ xss))
+let flatten t =
+  let rec mapk f l k =
+    match l with
+    | [] -> k []
+    | x :: xs -> f x @@ fun y -> mapk f xs @@ fun ys -> k (y :: ys)
   in
-  aux ~k:Fn.id t
+  let rec concatk l k =
+    match l with
+    | [] -> k []
+    | l :: r -> concatk r @@ fun r' -> k (l @ r')
+  in
+  let rec aux (Node (x, ts)) k =
+    match ts with
+    | [] -> k [ [ x ] ]
+    | ts ->
+      mapk aux ts
+      @@ fun x1 -> concatk x1 @@ fun x2 -> mapk (fun xs k -> k (x :: xs)) x2 k
+  in
+  aux t (fun x -> x)
 ;;
 
 let leaves t =
@@ -61,6 +67,21 @@ include Foldable.Make1 (struct
 
   let foldLeft t ~f ~init = fold f init t
 end)
+
+(* -- Unfold ---------------------------------------------------------------- *)
+
+let unfold ~f b =
+  let rec aux ~k b =
+    let a, bs = f b in
+    aux_forest bs ~k:(fun xs -> k @@ Node (a, xs))
+  and aux_forest ~k = function
+    | [] -> k []
+    | next :: rest ->
+      aux_forest rest ~k:(fun rest' ->
+          aux next ~k:(fun next' -> k @@ (next' :: rest')))
+  in
+  aux ~k:Fn.id b
+;;
 
 (* -- Pretty implementation ------------------------------------------------- *)
 
