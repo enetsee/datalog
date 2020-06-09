@@ -31,13 +31,14 @@ module Atomic = struct
     let pp = `NoPrec pp
   end)
 
-  include PartialOrd.Make(struct
+  include PartialOrd.Make (struct
     type nonrec t = t
+
     let leq x y = is_subset x ~of_:y
   end)
 end
 
-(* -- Constraints ----------------------------------------------------------- *)
+(* -- Dataflow Constraints -------------------------------------------------- *)
 
 (** A `Constraint` is then a set of `Atomic` constraints. 
     `Constraint.t` forms a bounded lattice with `ill` and `trivial` as bottom 
@@ -58,7 +59,6 @@ let to_MVs t ~arity = List.map ~f:(Atomic.to_MV ~arity) @@ elements t
 let top = ill
 let bottom = trivial
 
-
 let leq t1 t2 =
   List.(
     elements t1 >>= fun x -> elements t2 >>= fun y -> return @@ Atomic.leq x y)
@@ -71,28 +71,26 @@ let leq t1 t2 =
     Example: given a list of atoms  {{1},{1,2}} we eliminate {1,2} since it is a 
     superset of {1}
 *)
-let elim_supersets  in_ = 
-  let (xs,orig) = 
-    match in_ with 
-    | `ListIn xs -> (xs , of_list xs)
-    | `SetIn orig -> (to_list orig , orig)
-  in 
-  of_list @@
-  List.filter ~f:(fun x -> not @@ exists ~f:(fun y -> Atomic.lt y x) orig) xs
-
-
+let min_of in_ =
+  let xs, orig =
+    match in_ with
+    | `ListIn xs -> xs, of_list xs
+    | `SetIn orig -> to_list orig, orig
+  in
+  of_list
+  @@ List.filter ~f:(fun x -> not @@ exists ~f:(fun y -> Atomic.lt y x) orig) xs
+;;
 
 (** Join: A (x) B === min (A U B) *)
-let join t1 t2 =   
-   elim_supersets @@ `SetIn(union t1 t2)
+let join t1 t2 = min_of @@ `SetIn (union t1 t2)
 
-(** Meet: A (+) B ===  min { a U b | a in A, b in B } 
-*)
+(** Meet: A (+) B ===  min { a U b | a in A, b in B } *)
 let meet t1 t2 =
-  elim_supersets
-  @@ `ListIn List.(
-       elements t1
-       >>= fun x -> elements t2 >>= fun y -> return @@ Atomic.union x y)
+  min_of
+  @@ `ListIn
+       List.(
+         elements t1
+         >>= fun x -> elements t2 >>= fun y -> return @@ Atomic.union x y)
 ;;
 
 let join_list ts = List.fold_left ~init:ill ~f:join ts

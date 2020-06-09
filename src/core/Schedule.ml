@@ -1,258 +1,379 @@
 open Core_kernel
 open Lib
-open Raw
 
-(** The analysis gives us possible orderings of literals in a clause body 
-      along with the cost of that ordering i.e. which term variables must be 
-      bound in the clause head *)
-type t =
-  { head_vars : Tmvar.t list
-  ; mog : (Pred.Set.t * Tmvar.Set.t) Tree.t
-  }
+module Var = struct
+  module Minimal = struct
+    (** A `Var` is either a named variable or a wildcard *)
+    type t =
+      | Named of Tmvar.t
+      | Wild of int
+    [@@deriving eq, compare, sexp]
 
-include Pretty.Make0 (struct
-  type nonrec t = t
+    let pp ppf = function
+      | Named v -> Tmvar.pp ppf v
+      | Wild _ -> Fmt.char ppf '_'
+    ;;
 
-  let pp_lbl ppf (preds, cost) =
-    Fmt.(
-      hbox
-      @@ pair
-           ~sep:sp
-           (parens @@ list ~sep:comma Pred.pp)
-           (braces @@ list ~sep:comma Tmvar.pp))
-      ppf
-      (Pred.Set.to_list preds, Tmvar.Set.to_list cost)
-  ;;
+    let pp = `NoPrec pp
+  end
 
-  let pp ppf { head_vars; mog } =
-    Fmt.(
-      vbox
-      @@ pair ~sep:cut (parens @@ list ~sep:comma Tmvar.pp) (Tree.pp pp_lbl))
-      ppf
-      (head_vars, mog)
-  ;;
+  include Minimal
+  include Pretty.Make0 (Minimal)
 
-  let pp = `NoPrec pp
-end)
+  module Set = struct
+    include Set.Make (Minimal)
 
-module State = struct
-  (** The state keeps track of:
-      - which term variables have been paid for;
-      - which are owed; and      
-      - the remaining predicate/mode pairs along with their costs 
-    *)
-  type t =
-    { owed : Tmvar.Set.t
-    ; paid : Tmvar.Set.t
-    ; alts : (Pred.t * Tmvar.Set.t) list
-    }
+    include PartialOrd.Make (struct
+      type nonrec t = t
 
-  (** Given a list of terms, a set of unpaid variables and a predicate mode
-      determine the 'cost' of the predicate i.e. the set of additional
-      term variables that are _required_ and not yet bound *)
-  let obligation terms mode ~owed =
-    Tmvar.Set.of_list
-    @@ List.filter_map ~f:(function
-           | _, Mode.Opt | Term.TSym _, _ -> None
-           | TVar (nm, _), _ when Tmvar.Set.mem owed nm -> Some nm
-           | TVar _, _ -> None
-           | TWild _, _ -> failwith "Not implemented")
-    @@ List.zip_exn terms
-    @@ ModeVector.to_list mode
-  ;;
+      let leq x y = is_subset x ~of_:y
+    end)
 
-  (** For each _possible_ mode of the predicate, 
-        determine the 'cost to pay' wrt already bound variables 
-    
-        If a literal is negated then we require all terms to be bound
-    *)
-  let lit_cost Lit.{ pred; terms; pol; _ } ~cnstrs ~owed =
-    let mvs =
-      match pol with
-      | Pos ->
-        Constraint.to_MVs ~arity:pred.arity
-        @@ Option.value ~default:Constraint.trivial
-        @@ Pred.Map.find cnstrs pred
-      | Neg ->
-        (* Require negative literals to be fully bound *)
-        [ ModeVector.from_list @@ List.init pred.arity ~f:(fun _ -> Mode.Req) ]
-    in
-    List.map mvs ~f:(fun mode -> pred, obligation terms ~owed mode)
-  ;;
+    include Pretty.Make0 (struct
+      type nonrec t = t
 
-  (** Helper to collect the set of unique term variables appearing in a list of 
-      literals 
-  *)
-  let lit_vars lits = Tmvar.Set.of_list @@ List.concat_map ~f:Lit.vars_of lits
+      let pp ppf xs =
+        Fmt.(hovbox @@ braces @@ list ~sep:comma pp) ppf @@ elements xs
+      ;;
 
-  (** Given an order list of subgoals, eliminate those subgoals which 
-       cannot be reordered due to interaction of effects. *)
-  let candidates lits =
-    let rec aux accu eff = function
-      | next :: rest ->
-        let eff' = Lit.effects_of next in
-        (* Do the effects of this predicate interfere with accumulated effects? *)
-        if Eff.Set.(is_empty @@ inter eff eff')
-        then aux (next :: accu) Eff.Set.(union eff eff') rest
-        else aux accu eff rest
-      | [] -> List.rev accu
-    in
-    aux [] Eff.Set.empty lits
-  ;;
+      let pp = `NoPrec pp
+    end)
+  end
+end
 
-  (** Initialise the intra-clausal analysis state *)
-  let init ?(bound = Tmvar.Set.empty) lits ~cnstrs =
-    let owed = Tmvar.Set.(diff (lit_vars lits) bound) in
-    { owed
-    ; paid = bound
-    ; alts = List.concat_map ~f:(lit_cost ~cnstrs ~owed) @@ candidates lits
-    }
-  ;;
-
-  (** Update the state with the selected alternative i.e. a set of predicates and the
-        terms variables that have been paid for 
-    *)
-  let update { owed; paid; _ } (preds, cost) lits ~cnstrs =
-    (* Do this using partition *)
-    let lits_bought, lits' =
-      List.partition_tf
-        ~f:(fun lit -> Pred.Set.mem preds @@ Lit.pred_of lit)
-        lits
-    in
-    let bound = lit_vars lits_bought in
-    let owed', paid' = Tmvar.Set.(diff owed bound, union paid cost) in
-    ( { owed = owed'
-      ; paid = paid'
-      ; alts =
-          List.concat_map ~f:(lit_cost ~owed:owed' ~cnstrs) @@ candidates lits'
-      }
-    , lits' )
-  ;;
+module Obligation = struct
+  include Set.Make (Var.Set)
 
   include Pretty.Make0 (struct
     type nonrec t = t
 
-    let pp_alt ppf (pred, vars) =
-      Fmt.(
-        hbox
-        @@ pair ~sep:(always " : ") Pred.Name.pp
-        @@ braces
-        @@ list ~sep:comma Tmvar.pp)
-        ppf
-        (pred.Pred.name, Tmvar.Set.to_list vars)
+    let pp ppf t =
+      Fmt.(hovbox @@ braces @@ list ~sep:comma Var.Set.pp) ppf @@ elements t
     ;;
 
-    let pp ppf { owed; paid; alts } =
+    let pp = `NoPrec pp
+  end)
+
+  let min_of in_ =
+    let xs, orig =
+      match in_ with
+      | `ListIn xs -> xs, of_list xs
+      | `SetIn orig -> to_list orig, orig
+    in
+    of_list
+    @@ List.filter
+         ~f:(fun x -> not @@ exists ~f:(fun y -> Var.Set.lt y x) orig)
+         xs
+  ;;
+
+  let trivial = singleton Var.Set.empty
+  let is_trivial t = equal trivial t
+end
+
+module Vertex = struct
+  (** A vertex in a schedule graph contains:    
+    - `available` literals yet to be scheduled with their original position in 
+      the clause and associated obligation
+    - `bound` variables of the scheduled literals
+    - `debt` i.e. the variables that must be bound in the head of the clause
+      to make the ordering well-moded.
+    *)
+  type t =
+    { available : (int * Raw.Lit.t * Obligation.t) list
+    ; bound : Var.Set.t
+    ; debt : Var.Set.t
+    }
+  [@@deriving compare, eq]
+
+  include Pretty.Make0 (struct
+    type nonrec t = t
+
+    let pp_alt_elem ppf (_, lit, _) = Pred.pp ppf @@ Raw.Lit.pred_of lit
+
+    let pp_alt ppf alt =
+      Fmt.(hovbox @@ parens @@ list ~sep:comma pp_alt_elem) ppf alt
+    ;;
+
+    let pp ppf { available; bound; debt } =
       Fmt.(
-        vbox
+        hovbox
+        @@ pair ~sep:comma pp_alt
         @@ pair
-             ~sep:cut
-             (hbox @@ prefix (always "owed: ") @@ list ~sep:comma Tmvar.pp)
-             (pair
-                ~sep:cut
-                (hbox @@ prefix (always "paid: ") @@ list ~sep:comma Tmvar.pp)
-                (vbox @@ prefix (always "alts:@;") @@ list ~sep:cut pp_alt)))
+             ~sep:sp
+             (prefix (any "bound: ") Var.Set.pp)
+             (prefix (any "debt: ") Var.Set.pp))
         ppf
-        (Tmvar.Set.to_list owed, (Tmvar.Set.to_list paid, alts))
+        (available, (bound, debt))
     ;;
 
     let pp = `NoPrec pp
   end)
 end
 
-(** sort by variable size, increasing, group and take the alternatives
-      with equal lowest costs _then_ group by the term variables in their costs
-      - this is clumsy using on the standard library
-  *)
-let least_cost alts =
-  (* Collect the alternatives with equal lowest cost *)
-  let rec aux cost_opt accu = function
-    | [] -> accu
-    | ((_, vars) as next) :: rest ->
-      let cost' = Tmvar.Set.length vars in
-      (match cost_opt with
-      | None -> aux (Some cost') [ next ] rest
-      | Some cost ->
-        if cost' < cost
-        then aux (Some cost') [ next ] rest
-        else if cost' = cost
-        then aux cost_opt (next :: accu) rest
-        else aux cost_opt accu rest)
-  in
-  (* Group alternatives by the variables of their costs *)
-  let group_by_vars alts =
-    match
-      List.sort
-        ~compare:(fun (_, vars1) (_, vars2) -> Tmvar.Set.compare vars1 vars2)
-        alts
-    with
-    | (pred, vars) :: xs ->
-      let accu, preds, vars =
-        List.fold_left
-          xs
-          ~init:([], [ pred ], vars)
-          ~f:(fun (accu, preds, cur_vars) (pred, vars) ->
-            if Tmvar.Set.equal vars cur_vars
-            then accu, pred :: preds, cur_vars
-            else (
-              let accu' = (Pred.Set.of_list preds, cur_vars) :: accu in
-              accu', [ pred ], vars))
-      in
-      (Pred.Set.of_list preds, vars) :: accu
-    | [] -> []
-  in
-  group_by_vars @@ aux None [] alts
-;;
+module Edge = struct
+  (** An edge contains:
+      - `scheduled` literals from those available in the source vertex; and 
+      - `cost` of scheduling those literals *)
+  type t =
+    { scheduled : Raw.Lit.Set.t
+    ; cost : Var.Set.t
+    }
+  [@@deriving compare, eq]
 
-(** Generate the minimum obligation graph (tree) for a clause given (fixed) 
-    predicate constraints *)
-let min_obligation Clause.{ head; body; _ } ~cnstrs =
-  let rec aux st lits chosen =
-    let st', lits' = State.update st chosen lits ~cnstrs in
-    let choices = least_cost st'.alts in
-    Tree.branch (fst chosen, st'.paid) @@ List.map choices ~f:(aux st' lits')
-  in
-  let st = State.init body ~cnstrs in
-  { head_vars = List.map ~f:Term.lower_var_exn @@ Lit.terms_of head
-  ; mog =
-      Tree.branch (Pred.Set.empty, Tmvar.Set.empty)
-      @@ List.map ~f:(aux st body)
-      @@ least_cost st.alts
+  let empty = { scheduled = Raw.Lit.Set.empty; cost = Var.Set.empty }
+
+  include Pretty.Make0 (struct
+    type nonrec t = t
+
+    let pp ppf { scheduled; cost } =
+      Fmt.(
+        hovbox @@ pair ~sep:comma (braces @@ list ~sep:comma Pred.pp) Var.Set.pp)
+        ppf
+        (List.map ~f:Raw.Lit.(pred_of) @@ Raw.Lit.Set.elements scheduled, cost)
+    ;;
+
+    let pp = `NoPrec pp
+  end)
+end
+
+(** A schedule graph encodes the ordering of body literals *)
+type t =
+  { head_vars : (int * Var.t) list
+  ; graph : (Vertex.t * Edge.t list) Tree.t
   }
-;;
+[@@deriving compare, eq]
 
-(** Determine constraints for the predicate in the head of the clause
-    based on the costs at terminal nodes  
+(* == Graph construction ==================================================== *)
+
+(** Helper to get the constraint of a literal. If a literal has negative 
+    polarity than all variables are required, otherwise try and find the 
+    constraint in the provided map and if there is none return the trivial 
+    constraint.
 *)
-let clause_constraint { head_vars; mog } =
-  let to_constraint vs =
-    Constraint.from_MVs
-      [ ModeVector.from_list
-        @@ List.map head_vars ~f:(function
-               | v when Tmvar.Set.mem vs v -> Mode.Req
-               | _ -> Mode.Opt)
-      ]
-  in
-  List.fold_left ~init:Constraint.ill ~f:(fun accu (_, vs) ->
-      Constraint.join accu @@ to_constraint vs)
-  @@ Tree.leaves mog
+let constraint_of lit ~cstrs =
+  match Raw.Lit.pol_of lit with
+  | Polarity.Pos ->
+    Option.value ~default:Constraint.trivial
+    @@ Pred.Map.find cstrs
+    @@ Raw.Lit.pred_of lit
+  | Neg ->
+    let n = Pred.arity_of @@ Raw.Lit.pred_of lit in
+    Constraint.(singleton @@ Atomic.of_list @@ List.init n ~f:(fun i -> i))
 ;;
 
-(** Construct the minimal obligation graph for a clause and generate 
-    the mode constraint
+(** The obligation of a literal is a translation from a dataflow constraint to 
+    the literals variables *)
+let obligation_of lit ~cstr =
+  let terms = Raw.Lit.terms_of lit in
+  Obligation.of_list
+  @@ List.map ~f:(fun acstr ->
+         Var.Set.of_list
+         @@ List.filter_mapi terms ~f:(fun idx ->
+              function
+              | _ when not @@ Constraint.Atomic.mem acstr idx -> None
+              | Term.TVar (v, _) -> Some (Var.Named v)
+              | TWild _ -> Some (Var.Wild idx)
+              | _ -> None))
+  @@ Constraint.elements cstr
+;;
+
+(** Non-existential variables of a literal *)
+let vars lit =
+  List.filter_mapi ~f:(fun idx ->
+    function
+    | Term.TVar (v, _) -> Some (idx, Var.Named v)
+    | _ -> None)
+  @@ Raw.Lit.terms_of lit
+;;
+
+let varset lit =
+  Var.Set.of_list @@ List.map ~f:(fun v -> Var.Named v) @@ Raw.Lit.vars_of lit
+;;
+
+(* -- Vertex construction --------------------------------------------------- *)
+
+(** Build the root vertex from the clause and constraint function *)
+let root cl ~cstrs =
+  Vertex.
+    { bound = Var.Set.empty
+    ; debt = Var.Set.empty
+    ; available =
+        List.mapi (Raw.Clause.body_of cl) ~f:(fun idx lit ->
+            idx, lit, obligation_of lit ~cstr:(constraint_of ~cstrs lit))
+    }
+;;
+
+(** The next available literals are the previously available literals with 
+    scheduled literals removed 
 *)
-let analyse cl ~cnstrs = clause_constraint @@ min_obligation cl ~cnstrs
-
-let paths xs =
-  let rec aux accu cost = function
-    | [] -> List.rev accu, Option.value_exn cost
-    | (preds, cost) :: rest -> aux (preds :: accu) (Some cost) rest
-  in
-  aux [] None xs
+let nextAvailable Vertex.{ available; _ } Edge.{ scheduled; _ } =
+  List.filter available ~f:(fun (_, lit, _) ->
+      not @@ Raw.Lit.Set.mem scheduled lit)
 ;;
+
+(** The next set of bound variables are  the current set of bound variables 
+    and the union of the (non-wildcard) variables of the scheduled literals 
+*)
+let nextBound Vertex.{ bound; _ } Edge.{ scheduled; _ } =
+  Var.Set.union_list
+  @@ List.cons bound
+  @@ List.map ~f:varset
+  @@ Raw.Lit.Set.elements scheduled
+;;
+
+(** The cost at the next vertex is the cost of the previous vertex union
+    the cost of the edge 
+*)
+let nextCost Vertex.{ debt; _ } Edge.{ cost; _ } = Var.Set.union debt cost
+
+let mk_vertex vtx edge =
+  Vertex.
+    { available = nextAvailable vtx edge
+    ; bound = nextBound vtx edge
+    ; debt = nextCost vtx edge
+    }
+;;
+
+(* -- Selection procedure --------------------------------------------------- *)
+
+(** The cost of scheduling a literal relative to what is already bound.
+    Note that wildcards are included in the cost of a literal but never in 
+    the set of bound variables. Consequently wildcards will never be eliminated
+    by scheduling other literals
+*)
+let cost_of Vertex.{ bound; _ } (_, _, obligation) =
+  Obligation.min_of
+  @@ `ListIn
+       (List.map ~f:(fun cost -> Var.Set.diff cost bound)
+       @@ Obligation.elements obligation)
+;;
+
+(** A literal is affordable if it has a cost (i.e. an element of its obligation
+    less the already bound variables) which is a subset of the variable
+    appearing in the head of the clause. 
+
+    This ensures that we only schedule literals with an obligation that has
+    already been paid _or_ could be paid by requiring a variable to be bound
+    in the head of the clause.
+   
+*)
+let affordable (idx, lit, costs) ~head_vars =
+  let hv = Var.Set.of_list @@ List.map ~f:snd head_vars in
+  List.filter_map ~f:(fun cost ->
+      if Var.Set.is_subset cost ~of_:hv then Some (idx, lit, cost) else None)
+  @@ Obligation.to_list costs
+;;
+
+(** A literal is restricted from being scheduled by its effects if:
+    1) It has any effect; *and*
+    2) Scheduling the literal would change the relative order with respect to 
+       other literals with and intersecting set of effects
+*)
+let restricted_effects Vertex.{ available; _ } (idx, lit, cost) =
+  let eff = Raw.Lit.effects_of lit in
+  if Eff.Set.is_empty eff
+  then Some (lit, cost)
+  else (
+    let restricted =
+      List.exists available ~f:(fun (idx2, lit2, _) ->
+          if idx2 >= idx
+          then false
+          else (
+            let eff2 = Raw.Lit.effects_of lit2 in
+            not @@ Eff.Set.is_empty @@ Eff.Set.inter eff eff2))
+    in
+    if restricted then None else Some (lit, cost))
+;;
+
+(** The selection criteria used for constructing the minimal obligation graph
+
+  1a) If there are any free literals i.e. those we can schedule without 
+      increasing the debt, use them as candidate
+  1b) If there are no free literals, select the costly literals which _can_ be 
+      scheduled; this will eliminate any literal containing a wildcard or any 
+      variable not appearing in the head of the clause and not already bound
+
+  2) With the candidate literals from step 1, remove those which are effectful
+     and occur _after_ other interacting literals in the original ordering.
+*)
+let select Vertex.({ available; _ } as vtx) ~head_vars =
+  let free, costly =
+    List.partition_tf ~f:(fun (_, _, cost) -> Obligation.is_trivial cost)
+    @@ List.map available ~f:(fun (idx, lit, oblig) ->
+           idx, lit, cost_of vtx (idx, lit, oblig))
+  in
+  let cands =
+    match free with
+    | [] -> List.concat_map costly ~f:(affordable ~head_vars)
+    | _ -> List.map ~f:(fun (idx, lit, _) -> idx, lit, Var.Set.empty) free
+  in
+  List.filter_map ~f:(restricted_effects vtx) cands
+;;
+
+(** Given the selected literals, group them by cost and construct edges *)
+let edges selected =
+  let mk_edge lits cost = Edge.{ scheduled = Raw.Lit.Set.of_list lits; cost } in
+  let rec aux accu lits cur_cost = function
+    | [] ->
+      Option.value_map cur_cost ~default:accu ~f:(fun cost ->
+          mk_edge lits cost :: accu)
+    | (lit, cost) :: rest ->
+      (match cur_cost with
+      | Some cost' when Var.Set.equal cost cost' ->
+        aux accu (lit :: lits) cur_cost rest
+      | Some cost' -> aux (mk_edge lits cost' :: accu) [ lit ] (Some cost) rest
+      | _ -> aux accu [ lit ] (Some cost) rest)
+  in
+  aux [] [] None
+  @@ List.sort ~compare:(fun (_, c1) (_, c2) -> Var.Set.compare c1 c2) selected
+;;
+
+(** Construct the minimum obligation graph of a clause given a set of predicate
+    constriants 
+*)
+let of_clause cl ~cstrs =
+  let head_vars = vars @@ Raw.Clause.head_of cl in
+  let nexts vtx =
+    let es = edges @@ select vtx ~head_vars in
+    (vtx, es), List.map ~f:(mk_vertex vtx) es
+  in
+  { head_vars; graph = Tree.unfold ~f:nexts @@ root ~cstrs cl }
+;;
+
+(* == Constraint extraction ================================================= *)
+
+(** Convert a debt to a atomic constraint *)
+let atomic_constraint_of_debt debt ~head_vars =
+  Constraint.Atomic.of_list
+  @@ List.filter_map
+       ~f:(fun (idx, v) -> if Var.Set.mem debt v then Some idx else None)
+       head_vars
+;;
+
+(** Convert a debt to a singleton constraint set *)
+let constraint_of_debt debt ~head_vars =
+  Constraint.(singleton @@ atomic_constraint_of_debt ~head_vars debt)
+;;
+
+(** Extract the possible mode patterns for the variables in the head of the 
+    clause.
+    
+    Note that we only cosider the debt at _terminal_ vertices i.e. those for 
+    which all literals have been scheduled 
+*)
+let extract { head_vars; graph } =
+  Constraint.join_list
+  @@ List.filter_map ~f:(fun (Vertex.{ available; debt; _ }, _) ->
+         if List.is_empty available
+         then Some (constraint_of_debt ~head_vars debt)
+         else None)
+  @@ Tree.leaves graph
+;;
+
+(* == Ordering extraction =================================================== *)
 
 let permutations t =
-  let neq x y = not @@ Pred.equal x y in
+  let neq x y = not @@ Raw.Lit.equal x y in
   let rec aux = function
     | [] -> [ [] ]
     | xs ->
@@ -263,32 +384,69 @@ let permutations t =
 ;;
 
 let expand pss =
-  List.fold_left
-    ~init:[ [] ]
-    pss
-    ~f:(fun (paths : Pred.t list list) (pset : Pred.Set.t) ->
-      let segments = permutations @@ Set.elements pset in
+  List.fold_left ~init:[ [] ] pss ~f:(fun paths litset ->
+      let segments = permutations @@ Set.elements litset in
       List.(paths >>= fun path -> segments >>= fun seg -> return (path @ seg)))
 ;;
 
-(** Extract all compatible predicate orderings from the schedule *)
-let extract ?bpatt { head_vars; mog } =
-  (* determine which variables are available given the binding pattern
-     if no binding pattern is provided, assume all are bound
-  *)
-  let bound =
-    match bpatt with
-    | None -> Tmvar.Set.of_list head_vars
-    | Some bp ->
-      Tmvar.Set.of_list
-      @@ List.filter_map ~f:(function
-             | x, Adornment.Bound -> Some x
-             | _ -> None)
-      @@ List.zip_exn head_vars
-      @@ BindingPatt.to_list bp
-  in
-  List.concat_map ~f:(fun xs ->
-      let pss, cost = paths xs in
-      if Tmvar.Set.is_subset cost ~of_:bound then expand pss else [])
-  @@ Tree.flatten mog
+let bound_by { head_vars; _ } ~bpatt =
+  Var.Set.of_list
+  @@ List.filter_mapi ~f:(fun idx ->
+       function
+       | Adornment.Bound ->
+         Some (snd @@ List.find_exn head_vars ~f:(fun (i, _) -> i = idx))
+       | _ -> None)
+  @@ BindingPatt.to_list bpatt
 ;;
+
+let consistent_paths ({ graph; _ } as t) ~bpatt =
+  let bound = bound_by t ~bpatt in
+  let rec flatten
+      ( Edge.{ scheduled; _ }
+      , Tree.Node ((Vertex.{ available; debt; _ }, edges_out), ts) )
+    =
+    match ts with
+    | [] ->
+      if List.is_empty available
+      then if Var.Set.is_subset debt ~of_:bound then [ [ scheduled ] ] else []
+      else []
+    | ts ->
+      List.map ~f:(fun xs -> scheduled :: xs)
+      @@ List.concat_map ~f:flatten
+      @@ List.zip_exn edges_out ts
+  in
+  flatten (Edge.empty, graph)
+;;
+
+let orderings t ~bpatt = List.concat_map ~f:expand @@ consistent_paths t ~bpatt
+
+let pp_path ppf =
+  Fmt.(vbox @@ list ~sep:cut @@ hbox @@ brackets @@ list ~sep:comma Raw.Lit.pp)
+    ppf
+;;
+
+(* -- Pretty implementation ------------------------------------------------- *)
+
+include Pretty.Make0 (struct
+  type nonrec t = t
+
+  let pp_lbl ppf (vtx, edges) =
+    Fmt.(hbox @@ pair ~sep:sp Vertex.pp (braces @@ list ~sep:comma Edge.pp))
+      ppf
+      (vtx, edges)
+  ;;
+
+  let pp_head_vars ppf vs =
+    Fmt.(hbox @@ braces @@ list ~sep:comma @@ pair ~sep:(any "@") int Var.pp)
+      ppf
+      vs
+  ;;
+
+  let pp ppf { head_vars; graph } =
+    Fmt.(vbox @@ pair ~sep:cut pp_head_vars (Tree.pp pp_lbl))
+      ppf
+      (head_vars, graph)
+  ;;
+
+  let pp = `NoPrec pp
+end)

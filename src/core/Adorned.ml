@@ -3,14 +3,36 @@ open Lib
 open Reporting
 
 module Lit = struct
-  type t =
-    { pol : Polarity.t
-    ; pred : Pred.t
-    ; bpatt : BindingPatt.t
-    ; terms : Term.t list
-    ; region : Region.t [@compare.ignore] [@equal.ignore]
-    }
-  [@@deriving compare, sexp, eq]
+  module Minimal = struct
+    type t =
+      { pol : Polarity.t
+      ; pred : Pred.t
+      ; bpatt : BindingPatt.t
+      ; terms : Term.t list
+      ; region : Region.t [@compare.ignore] [@equal.ignore]
+      }
+    [@@deriving compare, sexp, eq]
+
+    let pp ppf { pol; pred; bpatt; terms; _ } =
+      Fmt.(
+        hbox
+        @@ pair Polarity.pp
+        @@ pair
+             (pair Pred.pp
+             @@ hbox
+             @@ prefix (any "<")
+             @@ suffix (any ">")
+             @@ BindingPatt.pp)
+        @@ parens
+        @@ list ~sep:comma Term.pp)
+        ppf
+        (pol, ((pred, bpatt), terms))
+    ;;
+
+    let pp = `NoPrec pp
+  end
+
+  include Minimal
 
   let from_raw Raw.Lit.{ pol; pred; terms; region } ~bpatt =
     { pol; pred; bpatt; terms; region }
@@ -40,27 +62,8 @@ module Lit = struct
   let region_of { region; _ } = region
 
   (* -- Pretty implementation ----------------------------------------------- *)
-  include Pretty.Make0 (struct
-    type nonrec t = t
-
-    let pp ppf { pol; pred; bpatt; terms; _ } =
-      Fmt.(
-        hbox
-        @@ pair Polarity.pp
-        @@ pair
-             (pair Pred.pp
-             @@ hbox
-             @@ prefix (any "<")
-             @@ suffix (any ">")
-             @@ BindingPatt.pp)
-        @@ parens
-        @@ list ~sep:comma Term.pp)
-        ppf
-        (pol, ((pred, bpatt), terms))
-    ;;
-
-    let pp = `NoPrec pp
-  end)
+  include Pretty.Make0 (Minimal)
+  module Set = Set.Make (Minimal)
 end
 
 module Clause = struct

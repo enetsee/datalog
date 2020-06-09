@@ -1,5 +1,6 @@
 open Lib
 open Reporting
+open Core_kernel
 
 module type S = sig
   type t [@@deriving compare, sexp, eq]
@@ -13,4 +14,6 @@ module type S = sig
   val pred_of : t -> Pred.t
   val pol_of : t -> Polarity.t
   val neg : t -> t
+
+  module Set : Set.S with type Elt.t := t
 end

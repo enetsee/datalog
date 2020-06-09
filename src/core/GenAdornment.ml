@@ -2,23 +2,23 @@ open Core_kernel
 open Lib
 
 (** Single step of the well-moding transform *)
-let step ~cnstrs ~pred ~clauses =
+let step ~cstrs ~pred ~clauses =
   let cstr =
     List.fold_left clauses ~init:Constraint.trivial ~f:(fun accu cl ->
-        Constraint.meet accu @@ Schedule.analyse ~cnstrs cl)
+        Constraint.meet accu @@ Schedule.extract @@ Schedule.of_clause ~cstrs cl)
   in
-  cstr, Pred.Map.update cnstrs pred ~f:Fn.(const cstr)
+  cstr, Pred.Map.update cstrs pred ~f:Fn.(const cstr)
 ;;
 
-let iterate ~deps ~cnstrs =
+let iterate ~deps ~cstrs =
   let rec aux cnstrs = function
     | [] -> cnstrs
     | next :: rest ->
       (* retrieve the current constraint and the clauses in which it appears *)
       let cstr_in =
-        Option.value ~default:Constraint.trivial @@ Pred.Map.find cnstrs next
+        Option.value ~default:Constraint.trivial @@ Pred.Map.find cstrs next
       and clauses = Raw.Dependency.clauses_of deps next in
-      let cstr_out, cnstrs' = step ~cnstrs ~pred:next ~clauses in
+      let cstr_out, cnstrs' = step ~cstrs ~pred:next ~clauses in
       (* If this predicate constraint is unchanged we don't need to update
          dependencies; if it is, retrieve dependencies which are related by
          a positive literal (since those related by a negative literal are
@@ -34,7 +34,7 @@ let iterate ~deps ~cnstrs =
       in
       aux cnstrs' ws
   in
-  aux cnstrs
+  aux cstrs
 ;;
 
 (** Determine the moding constraints of all clauses in a program with respect
@@ -42,7 +42,7 @@ let iterate ~deps ~cnstrs =
 let solve_constraints ?inits prog ~deps =
   Raw.(
     let ws = Option.value ~default:Program.(queries_of prog) inits in
-    iterate ~deps ~cnstrs:Program.(constraints_of prog) ws)
+    iterate ~deps ~cstrs:Program.(constraints_of prog) ws)
 ;;
 
 (* -- Generalized program adornment ----------------------------------------- *)
@@ -185,13 +185,9 @@ let adorn_program Raw.Program.{ cnstrts; queries; _ } ~deps ~ord =
 ;;
 
 (** Construct a ordering function from a set of constraints *)
-let ordering cnstrs bpatt cl =
-  let reorder body prds =
-    List.map prds ~f:(fun p ->
-        List.find_exn ~f:(fun lit -> Pred.equal p @@ Raw.Lit.pred_of lit) body)
-  in
-  match Schedule.(extract ~bpatt @@ min_obligation ~cnstrs cl) with
-  | prds :: _ -> Some { cl with body = reorder cl.body prds }
+let ordering cstrs bpatt cl =
+  match Schedule.(orderings ~bpatt @@ of_clause ~cstrs cl) with
+  | body :: _ -> Some { cl with body }
   | _ -> None
 ;;
 

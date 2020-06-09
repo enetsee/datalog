@@ -18,13 +18,30 @@ module Lit : sig
 end = struct
   exception MismatchArity of Pred.Name.t * int * int
 
-  type t =
-    { pol : Polarity.t
-    ; pred : Pred.t
-    ; terms : Term.t list
-    ; region : Region.t [@compare.ignore] [@equal.ignore]
-    }
-  [@@deriving compare, sexp, eq]
+  module Minimal = struct
+    type t =
+      { pol : Polarity.t
+      ; pred : Pred.t
+      ; terms : Term.t list
+      ; region : Region.t [@compare.ignore] [@equal.ignore]
+      }
+    [@@deriving compare, sexp, eq]
+
+    let pp ppf { pol; pred; terms; _ } =
+      Fmt.(
+        hbox
+        @@ pair Polarity.pp
+        @@ pair Pred.pp
+        @@ parens
+        @@ list ~sep:comma Term.pp)
+        ppf
+        (pol, (pred, terms))
+    ;;
+
+    let pp = `NoPrec pp
+  end
+
+  include Minimal
 
   let lit ?(pol = Polarity.Pos) ?(region = Region.empty) pred terms =
     let arity = Pred.arity_of pred
@@ -52,22 +69,8 @@ end = struct
   let region_of { region; _ } = region
 
   (* -- Pretty implementation ----------------------------------------------- *)
-  include Pretty.Make0 (struct
-    type nonrec t = t
-
-    let pp ppf { pol; pred; terms; _ } =
-      Fmt.(
-        hbox
-        @@ pair Polarity.pp
-        @@ pair Pred.pp
-        @@ parens
-        @@ list ~sep:comma Term.pp)
-        ppf
-        (pol, (pred, terms))
-    ;;
-
-    let pp = `NoPrec pp
-  end)
+  include Pretty.Make0 (Minimal)
+  module Set = Set.Make (Minimal)
 end
 
 module Clause = Clause.Make (Lit)

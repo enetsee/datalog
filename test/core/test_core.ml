@@ -3,5 +3,6 @@ let test_suite =
   ; "Dead clause elimination", DeadClause.test_cases
   ; "Range restriction repair", RangeRestrict.test_cases
   ; "Constraint", Constraint.test_cases
+  ; "Subgoal scheduling", Schedule.test_cases
   ]
 ;;
