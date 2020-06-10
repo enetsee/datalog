@@ -4,12 +4,14 @@ open Lib
 module X = struct
   type t =
     | EffRandom
-    | EffIO
+    | EffHTTP
+    | EffRW
   [@@deriving eq, compare, hash, sexp]
 
   let pp ppf = function
-    | EffRandom -> Fmt.string ppf "Random"
-    | EffIO -> Fmt.string ppf "IO"
+    | EffRandom -> Fmt.string ppf "RND"
+    | EffRW -> Fmt.string ppf "RW"
+    | EffHTTP -> Fmt.string ppf "HTTP"
   ;;
 
   let pp = `NoPrec pp
