@@ -8,7 +8,7 @@ module type S = sig
   type t =
     { clauses : Clause.t list
     ; queries : Pred.t list
-    ; cnstrts : Constraint.t Pred.Map.t
+    ; constraints : Constraint.t Pred.Map.t
     }
   [@@deriving compare, eq]
 
@@ -16,10 +16,12 @@ module type S = sig
   include Pretty.S0 with type t := t
 
   val program
-    :  ?cnstrts:Constraint.t Pred.Map.t
+    :  ?cstrs:Constraint.t Pred.Map.t
     -> Clause.t list
     -> Pred.t list
     -> t
+
+  val sorted: t -> t 
 
   val clauses_of : t -> Clause.t list
   val queries_of : t -> Pred.t list
@@ -33,12 +35,21 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
   type t =
     { clauses : Clause.t list
     ; queries : Pred.t list
-    ; cnstrts : Constraint.t Pred.Map.t
+    ; constraints : Constraint.t Pred.Map.t
     }
   [@@deriving compare, eq]
 
-  let program ?(cnstrts = Pred.Map.empty) clauses queries =
-    { clauses; queries; cnstrts }
+  (** Make a program  with standard ordering of queries and clauses 
+  *)
+  let program ?(cstrs = Pred.Map.empty) clauses queries =
+    { clauses;queries;constraints=cstrs}
+
+
+  let sorted { clauses;queries;constraints} = 
+    { clauses = List.sort ~compare:Clause.compare clauses
+    ; queries = List.sort ~compare:Pred.compare queries
+    ; constraints 
+    }
   ;;
 
   (** All predicates in a program *)
@@ -49,7 +60,7 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
 
   let clauses_of { clauses; _ } = clauses
   let queries_of { queries; _ } = queries
-  let constraints_of { cnstrts; _ } = cnstrts
+  let constraints_of { constraints; _ } = constraints
 
   (** Intensional predicates, i.e. those appearing in the head of a clause *)
   let intensionals { clauses; _ } =
@@ -64,22 +75,28 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
   include Pretty.Make0 (struct
     type nonrec t = t
 
-    let pp ppf { clauses; queries; cnstrts } =
+    let pp ppf { clauses; queries; constraints } =
       Fmt.(
         vbox
         @@ pair
              ~sep:cut
-             (prefix (any "Clauses") @@ prefix cut @@ list ~sep:cut @@ Clause.pp)
+             (prefix (any "Clauses@;")
+             @@ prefix cut
+             @@ list ~sep:cut
+             @@ Clause.pp)
         @@ pair
              ~sep:cut
-             (prefix (any "Queries") @@ prefix cut @@ list ~sep:cut @@ Pred.pp)
-             (prefix (any "Constraints")
+             (prefix (any "@;Queries@;")
+             @@ prefix cut
+             @@ list ~sep:cut
+             @@ Pred.pp)
+             (prefix (any "@;Constraints@;")
              @@ prefix cut
              @@ list ~sep:cut
              @@ hbox
              @@ pair ~sep:(any " => ") Pred.pp Constraint.pp))
         ppf
-        (clauses, (queries, Pred.Map.to_alist cnstrts))
+        (clauses, (queries, Pred.Map.to_alist constraints))
     ;;
 
     let pp = `NoPrec pp

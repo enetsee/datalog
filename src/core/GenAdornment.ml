@@ -167,13 +167,13 @@ let adorn_query ~deps ~ord ~seen qry_pred qry_clause =
         (WorkItem.from_clause aqcl)
     in
     work ~deps ~ord ~seen items
-    >>= fun (acls, seen') -> Some (aqcl :: acls, seen'))
+    >>= fun (acls, seen') -> Some (List.rev @@ aqcl :: acls, seen'))
 ;;
 
 (** Generalized program adornment *)
-let adorn_program Raw.Program.{ cnstrts; queries; _ } ~deps ~ord =
+let adorn_program Raw.Program.{ constraints; queries; _ } ~deps ~ord =
   let rec aux (accu, seen) = function
-    | [] -> Some Adorned.Program.{ clauses = accu; cnstrts; queries }
+    | [] -> Some Adorned.Program.(program ~cstrs:constraints (List.rev accu) queries )
     | (qry_pred, qry_clause) :: rest ->
       (match adorn_query ~deps ~ord ~seen qry_pred qry_clause with
       | None -> None
