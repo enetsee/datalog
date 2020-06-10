@@ -27,7 +27,6 @@ let cstr_f = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
 let cstr_g = Constraint.(of_list Atomic.[ of_list [ 0; 1 ]; of_list [ 0; 2 ] ])
 let cstr_h = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
 let cstr_i = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
-
 let lit_f_fig2 = Raw.Lit.(lit pred_f Term.[ var "X" ])
 let lit_g_fig2 = Raw.Lit.(lit pred_g Term.[ var "X"; var "Y"; var "Z" ])
 let lit_h_fig2 = Raw.Lit.(lit pred_h Term.[ var "Z" ])
@@ -101,8 +100,8 @@ j, i, f, g, h
 let clause_orderings_bf_fig_2 () =
   Alcotest.(check testable_orderings)
     "Paths compatible with {b,b} for Figure 2. from paper"
-    [ [ lit_i_fig2; lit_j_fig2; lit_f_fig2; lit_g_fig2; lit_h_fig2 ]    
-    ; [ lit_j_fig2; lit_i_fig2; lit_f_fig2; lit_g_fig2; lit_h_fig2 ]    
+    [ [ lit_i_fig2; lit_j_fig2; lit_f_fig2; lit_g_fig2; lit_h_fig2 ]
+    ; [ lit_j_fig2; lit_i_fig2; lit_f_fig2; lit_g_fig2; lit_h_fig2 ]
     ]
     Schedule.(
       orderings
@@ -168,11 +167,9 @@ let stuck_constraint () =
 let clause_orderings_stuck () =
   Alcotest.(check testable_orderings)
     "Paths compatible with {b} for stuck schedule graph"
-    [ ]
+    []
     Schedule.(
-      orderings
-        sched_stuck
-        ~bpatt:BindingPatt.(from_list Adornment.[ Bound ]))
+      orderings sched_stuck ~bpatt:BindingPatt.(from_list Adornment.[ Bound ]))
 ;;
 
 (** -- Wildcard, required ------------------------------------------------------
@@ -184,14 +181,14 @@ let cl_wildcard_req =
   Raw.(
     Clause.clause
       Lit.(lit pred_f Term.[ var "X" ])
-      Lit.[ lit_j_fig2; lit pred_h Term.[ wild () ]])
+      Lit.[ lit_j_fig2; lit pred_h Term.[ wild () ] ])
 ;;
 
-let cstrs_wildcard_req = 
-  Pred.Map.of_alist_exn [ pred_h, cstr_h ]
+let cstrs_wildcard_req = Pred.Map.of_alist_exn [ pred_h, cstr_h ]
 
-let sched_wildcard_req = Schedule.of_clause cl_wildcard_req ~cstrs:cstrs_wildcard_req
-
+let sched_wildcard_req =
+  Schedule.of_clause cl_wildcard_req ~cstrs:cstrs_wildcard_req
+;;
 
 let wildcard_req_constraint () =
   Alcotest.(check testable_constraint)
@@ -206,7 +203,9 @@ f(X) :- i(X), h(_).
 
 ----------------------------------------------------------------------------- *)
 
-let sched_wildcard_opt = Schedule.of_clause cl_wildcard_req ~cstrs:Pred.Map.empty
+let sched_wildcard_opt =
+  Schedule.of_clause cl_wildcard_req ~cstrs:Pred.Map.empty
+;;
 
 let wildcard_opt_constraint () =
   Alcotest.(check testable_constraint)
@@ -223,23 +222,20 @@ Negated literals must be fully bound; this case is schedulable since `X` occurs
 in the head of the clause and `Z` is not required in `h(Z)`.
 
 ----------------------------------------------------------------------------- *)
-let cl_neg_ok = 
+let cl_neg_ok =
   Raw.(
     Clause.clause
       Lit.(lit pred_r Term.[ var "Y"; var "X" ])
-      [ lit_f_fig2; Raw.Lit.neg lit_g_fig2; lit_h_fig2]
-      )
-
-let cstrs_neg_ok = 
-    Pred.Map.of_alist_exn [ pred_f, cstr_f ]
+      [ lit_f_fig2; Raw.Lit.neg lit_g_fig2; lit_h_fig2 ])
 ;;
 
+let cstrs_neg_ok = Pred.Map.of_alist_exn [ pred_f, cstr_f ]
 let sched_neg_ok = Schedule.of_clause cl_neg_ok ~cstrs:cstrs_neg_ok
 
 let neg_ok_constraint () =
   Alcotest.(check testable_constraint)
     "Negated literal, schedulable"
-    Constraint.(of_list Atomic.[of_list [0;1]])
+    Constraint.(of_list Atomic.[ of_list [ 0; 1 ] ])
     Schedule.(extract sched_neg_ok)
 ;;
 
@@ -250,11 +246,8 @@ r(Y,X) :- f{+}(?X), not g(?X,?Y,?Z), h{+}(?Z)
 This case is unschedulable since `Z` is required in both `g(X,Y,Z)` and `h(Z)`
 and does not occur in the head of the calsue.
 ----------------------------------------------------------------------------- *)
-  
-let cstrs_neg_bad =
-  Pred.Map.of_alist_exn [ pred_f, cstr_f; pred_h, cstr_h ]
-;;
 
+let cstrs_neg_bad = Pred.Map.of_alist_exn [ pred_f, cstr_f; pred_h, cstr_h ]
 let sched_neg_bad = Schedule.of_clause cl_neg_ok ~cstrs:cstrs_neg_bad
 
 let neg_bad_constraint () =
@@ -271,16 +264,102 @@ r(Y,X) :- f{+}(?X), not g{++?,+?+}(?X,?Y,?Z), h{+}(?Z)
 ----------------------------------------------------------------------------- *)
 
 let cstrs_neg_bad_override =
-  Pred.Map.of_alist_exn [ pred_f, cstr_f; pred_g,cstr_g;pred_h, cstr_h ]
+  Pred.Map.of_alist_exn [ pred_f, cstr_f; pred_g, cstr_g; pred_h, cstr_h ]
 ;;
 
-let sched_neg_bad_override= Schedule.of_clause cl_neg_ok ~cstrs:cstrs_neg_bad_override
+let sched_neg_bad_override =
+  Schedule.of_clause cl_neg_ok ~cstrs:cstrs_neg_bad_override
+;;
 
 let neg_bad_override_constraint () =
   Alcotest.(check testable_constraint)
     "Negated literal, constraint overriden, unschedulable"
     Constraint.ill
     Schedule.(extract sched_neg_bad_override)
+;;
+
+(** -- Effectful, schedulable --------------------------------------------------
+
+
+r(Y,X) :- n{+?}<RW>(Z,Y), m{+?}<HTTP>(X,Z).
+
+Without effects, we can simply move m in front of n so `Z` becomes bound. With
+effects we have to maintain the relative order of extralogical predicates
+where there effects sets intersect.
+
+Here we can still move `m` ahead of `n` since  they have non-intersecting 
+effects.
+
+----------------------------------------------------------------------------- *)
+
+let pred_m =
+  Pred.(extralogical ~eff:Eff.[ EffHTTP ] ~arity:2 @@ Name.from_string "m")
+;;
+
+let cstr_m = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
+
+let pred_n =
+  Pred.(extralogical ~eff:Eff.[ EffRW ] ~arity:2 @@ Name.from_string "n")
+;;
+
+let cstr_n = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
+
+let pred_o =
+  Pred.(
+    extralogical ~eff:Eff.[ EffRW; EffHTTP ] ~arity:2 @@ Name.from_string "o")
+;;
+
+let cstr_o = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
+
+let cl_eff_ok =
+  Raw.(
+    Clause.clause
+      Lit.(lit pred_r Term.[ var "Y"; var "X" ])
+      Lit.
+        [ lit pred_n Term.[ var "Z"; var "Y" ]
+        ; lit pred_m Term.[ var "X"; var "Z" ]
+        ])
+;;
+
+let cstr_eff =
+  Pred.Map.of_alist_exn [ pred_m, cstr_m; pred_n, cstr_n; pred_o, cstr_o ]
+;;
+
+let sched_eff_ok = Schedule.of_clause cl_eff_ok ~cstrs:cstr_eff
+
+let eff_ok_constraint () =
+  Alcotest.(check testable_constraint)
+    "Effectful literals, non-intersecting effects, schedulable"
+    Constraint.(of_list Atomic.[ of_list [ 1 ] ])
+    Schedule.(extract sched_eff_ok)
+;;
+
+(** -- Effectful, unschedulable ------------------------------------------------
+
+
+r(Y,X) :- n{+?}<RW>(Z,Y), o{+?}<RW,HTTP>(X,Z).
+
+Here we can't still move `om` ahead of `n` since  they have intersecting 
+effects.
+----------------------------------------------------------------------------- *)
+
+let cl_eff_bad =
+  Raw.(
+    Clause.clause
+      Lit.(lit pred_r Term.[ var "Y"; var "X" ])
+      Lit.
+        [ lit pred_n Term.[ var "Z"; var "Y" ]
+        ; lit pred_o Term.[ var "X"; var "Z" ]
+        ])
+;;
+
+let sched_eff_bad = Schedule.of_clause cl_eff_bad ~cstrs:cstr_eff
+
+let eff_bad_constraint () =
+  Alcotest.(check testable_constraint)
+    "Effectful literals, intersecting effects, unschedulable"
+    Constraint.ill
+    Schedule.(extract sched_eff_bad)
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)
@@ -292,16 +371,35 @@ let test_cases =
     ; test_case "Orderings for {b,f} on Fig 2" `Quick clause_orderings_bf_fig_2
     ; test_case "Orderings for {f,b} on Fig 2" `Quick clause_orderings_fb_fig_2
     ; test_case "Orderings for {f,f} on Fig 2" `Quick clause_orderings_ff_fig_2
-    ; test_case "Clause constraint for schedule graph stuck on requied wildcard" `Quick wildcard_req_constraint
-    ; test_case "Clause constraint for schedule graph with optional wilcard" `Quick wildcard_opt_constraint
+    ; test_case
+        "Clause constraint for schedule graph stuck on requied wildcard"
+        `Quick
+        wildcard_req_constraint
+    ; test_case
+        "Clause constraint for schedule graph with optional wilcard"
+        `Quick
+        wildcard_opt_constraint
     ; test_case
         "Clause constraint for stuck schedule graph"
         `Quick
         stuck_constraint
-    ; test_case "Orderings for {b} on stuck schedule graph " `Quick clause_orderings_stuck
-
+    ; test_case
+        "Orderings for {b} on stuck schedule graph "
+        `Quick
+        clause_orderings_stuck
     ; test_case "Negated literal, schedulable" `Quick neg_ok_constraint
     ; test_case "Negated literal, unschedulable" `Quick neg_bad_constraint
-    ; test_case "Negated literal, constraint overriden, unschedulable" `Quick neg_bad_override_constraint
+    ; test_case
+        "Negated literal, constraint overriden, unschedulable"
+        `Quick
+        neg_bad_override_constraint
+    ; test_case
+        "Effectful literals, non-intersecting effects, schedulable"
+        `Quick
+        eff_ok_constraint
+    ; test_case
+        "Effectful literals, intersecting effects, unschedulable"
+        `Quick
+        eff_bad_constraint
     ]
 ;;
