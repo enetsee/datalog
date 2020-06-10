@@ -372,6 +372,7 @@ let extract { head_vars; graph } =
 
 (* == Ordering extraction =================================================== *)
 
+(** Enumerate all permutations of literals in a path segment *)
 let permutations t =
   let neq x y = not @@ Raw.Lit.equal x y in
   let rec aux = function
@@ -383,12 +384,14 @@ let permutations t =
   aux t
 ;;
 
+(** Expand a list of path segments into all of path permutation *)
 let expand pss =
   List.fold_left ~init:[ [] ] pss ~f:(fun paths litset ->
       let segments = permutations @@ Set.elements litset in
       List.(paths >>= fun path -> segments >>= fun seg -> return (path @ seg)))
 ;;
 
+(** Helper to convert a binding pattern to a `Var.Set.t` *)
 let bound_by { head_vars; _ } ~bpatt =
   Var.Set.of_list
   @@ List.filter_mapi ~f:(fun idx ->
@@ -399,7 +402,12 @@ let bound_by { head_vars; _ } ~bpatt =
   @@ BindingPatt.to_list bpatt
 ;;
 
+(** Flatten the tree representation of the schedule graph collecting 
+    on terminal paths which are consistent with the binding pattern
+*)
 let consistent_paths ({ graph; _ } as t) ~bpatt =
+  (* Check consistency by subset rather than via `BindingPatt.consistent`
+     to avoid repeatedly converting `debt` to atomic constraints *)
   let bound = bound_by t ~bpatt in
   let rec flatten
       ( Edge.{ scheduled; _ }
@@ -418,11 +426,11 @@ let consistent_paths ({ graph; _ } as t) ~bpatt =
   flatten (Edge.empty, graph)
 ;;
 
-let orderings t ~bpatt = List.concat_map ~f:expand @@ consistent_paths t ~bpatt
-
-let pp_path ppf =
-  Fmt.(vbox @@ list ~sep:cut @@ hbox @@ brackets @@ list ~sep:comma Raw.Lit.pp)
-    ppf
+let orderings t ~bpatt =
+  List.(
+    dedup_and_sort ~compare:(compare Raw.Lit.compare)
+    @@ concat_map ~f:expand
+    @@ consistent_paths t ~bpatt)
 ;;
 
 (* -- Pretty implementation ------------------------------------------------- *)
