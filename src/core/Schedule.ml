@@ -3,7 +3,13 @@ open Lib
 
 module Var = struct
   module Minimal = struct
-    (** A `Var` is either a named variable or a wildcard *)
+    (** A `Var` is either a named variable or a wildcard; we use this 
+        representation to deal with situations where a constraint may indexes
+        a wildcard variable. When constructing a schedule graph, any test
+        to determine if the cost of scheduling a literal are `affordable` will
+        fail since only named variables are present in the head or become
+        bound during construction.
+    *)
     type t =
       | Named of Tmvar.t
       | Wild of int
@@ -177,7 +183,7 @@ let obligation_of lit ~cstr =
   @@ Constraint.elements cstr
 ;;
 
-(** Non-existential variables of a literal *)
+(** Non-existential variables of a literal and their indices *)
 let vars lit =
   List.filter_mapi ~f:(fun idx ->
     function
@@ -186,6 +192,7 @@ let vars lit =
   @@ Raw.Lit.terms_of lit
 ;;
 
+(** Unique non-existential variables *)
 let varset lit =
   Var.Set.of_list @@ List.map ~f:(fun v -> Var.Named v) @@ Raw.Lit.vars_of lit
 ;;
