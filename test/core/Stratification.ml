@@ -166,7 +166,6 @@ module Alice = struct
   let pr_comp = Pred.(logical ~arity:2 @@ Name.from_string "comp")
 end
 
-
 module Comp = struct
   let pr_n = Pred.(logical ~arity:1 @@ Name.from_string "n")
   let lit_n1 = Raw.Lit.(lit pr_n Term.[ var "X" ])
@@ -181,43 +180,42 @@ module Comp = struct
   let lit_ct = Raw.Lit.(lit pr_ct Term.[ var "X"; var "Y" ])
   let pr_qry = Pred.(logical ~arity:0 @@ Name.from_string "qry")
   let lit_qry = Raw.Lit.(lit pr_qry [])
-
   let bb = BindingPatt.(from_list [ Bound; Bound ])
   let ff = BindingPatt.(from_list [ Free; Free ])
   let bf = BindingPatt.(from_list [ Bound; Free ])
   let f = BindingPatt.(from_list [ Free ])
 
-  let cl_t1 =Adorned.(
+  let cl_t1 =
+    Adorned.(
       Clause.clause
-            Lit.(from_raw lit_t_head ~bpatt:bb)
-            Lit.[ from_raw lit_g1 ~bpatt:bb ])
-
-  let cl_t2 = Adorned.(
-      Clause.clause
-            Lit.(from_raw lit_t_head ~bpatt:bb)
-            Lit.[ from_raw lit_g2 ~bpatt:bf; from_raw lit_t_body ~bpatt:bb ] )
-
-  let cl_ct = Adorned.(
-      Clause.clause
-            Lit.(from_raw lit_ct ~bpatt:ff)
-            Lit.
-              [ from_raw lit_n1 ~bpatt:f
-              ; from_raw lit_n2 ~bpatt:f
-              ; neg @@ from_raw lit_t_head ~bpatt:bb
-              ] )
-
-          
-  let cls_adorned = [ cl_t1
-        ; cl_t2
-        ; cl_ct
-        ]
+        Lit.(from_raw lit_t_head ~bpatt:bb)
+        Lit.[ from_raw lit_g1 ~bpatt:bb ])
   ;;
 
-  let strata = 
-    [[cl_t1;cl_t2];[cl_ct]]
-  let queries = [pr_ct]
-  let prg_adrn = Adorned.Program.(sorted @@ program cls_adorned queries )
-  let prg_strat = Stratified.(sorted {strata; queries })
+  let cl_t2 =
+    Adorned.(
+      Clause.clause
+        Lit.(from_raw lit_t_head ~bpatt:bb)
+        Lit.[ from_raw lit_g2 ~bpatt:bf; from_raw lit_t_body ~bpatt:bb ])
+  ;;
+
+  let cl_ct =
+    Adorned.(
+      Clause.clause
+        Lit.(from_raw lit_ct ~bpatt:ff)
+        Lit.
+          [ from_raw lit_n1 ~bpatt:f
+          ; from_raw lit_n2 ~bpatt:f
+          ; neg @@ from_raw lit_t_head ~bpatt:bb
+          ])
+  ;;
+
+  let cls_adorned = [ cl_t1; cl_t2; cl_ct ]
+  let strata = [ [ cl_t1; cl_t2 ]; [ cl_ct ] ]
+  let queries = [ pr_ct ]
+  let prg_adrn = Adorned.Program.(sorted @@ program cls_adorned queries)
+  let prg_strat = Stratified.(sorted { strata; queries })
+
   let pos_cycle () =
     Alcotest.(check @@ result testable_strat testable_neg_cycles)
       "Alice example Pc,cmp, direct cycle"
@@ -225,6 +223,7 @@ module Comp = struct
       Compile.(Result.map ~f:Stratified.sorted @@ stratify prg_adrn)
   ;;
 end
+
 (* -- All cases ------------------------------------------------------------- *)
 
 let test_cases =

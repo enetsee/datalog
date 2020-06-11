@@ -15,11 +15,11 @@ module Atomic = struct
          function
          | Mode.Req -> idx
          | _ -> -1)
-    @@ ModeVector.to_list mv
+    @@ Mode.Vector.to_list mv
   ;;
 
   let to_MV t ~arity =
-    ModeVector.from_list
+    Mode.Vector.from_list
     @@ List.init arity ~f:(fun i -> if mem t i then Mode.Req else Mode.Opt)
   ;;
 
