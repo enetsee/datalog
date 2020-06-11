@@ -66,6 +66,7 @@ module Make (Lit : Lit.S) : S with module Lit := Lit = struct
         hovbox
         @@ pair ~sep:(any " :-@, ") Lit.pp
         @@ hovbox
+        @@ suffix (any ".")
         @@ list ~sep:comma Lit.pp)
         ppf
         (head, body)

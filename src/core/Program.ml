@@ -21,8 +21,7 @@ module type S = sig
     -> Pred.t list
     -> t
 
-  val sorted: t -> t 
-
+  val sorted : t -> t
   val clauses_of : t -> Clause.t list
   val queries_of : t -> Pred.t list
   val constraints_of : t -> Constraint.t Pred.Map.t
@@ -42,13 +41,13 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
   (** Make a program  with standard ordering of queries and clauses 
   *)
   let program ?(cstrs = Pred.Map.empty) clauses queries =
-    { clauses;queries;constraints=cstrs}
+    { clauses; queries; constraints = cstrs }
+  ;;
 
-
-  let sorted { clauses;queries;constraints} = 
+  let sorted { clauses; queries; constraints } =
     { clauses = List.sort ~compare:Clause.compare clauses
     ; queries = List.sort ~compare:Pred.compare queries
-    ; constraints 
+    ; constraints
     }
   ;;
 

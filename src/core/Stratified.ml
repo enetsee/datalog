@@ -25,13 +25,25 @@ type t =
   { strata : Adorned.Clause.t list list
   ; queries : Pred.t list
   }
-[@@deriving sexp]
+[@@deriving compare, eq, sexp]
+
+let sorted { strata; queries } =
+  { strata = List.(map ~f:(sort ~compare:Adorned.Clause.compare) strata)
+  ; queries = List.sort ~compare:Pred.compare queries
+  }
+;;
 
 include Pretty.Make0 (struct
   type nonrec t = t
 
   let pp ppf { strata; _ } =
-    Fmt.(vbox @@ list ~sep:cut @@ list ~sep:cut Adorned.Clause.pp) ppf strata
+    Fmt.(
+      vbox
+      @@ list ~sep:(suffix cut cut)
+      @@ pair ~sep:cut (prefix (any "stratum ") int)
+      @@ list ~sep:cut Adorned.Clause.pp)
+      ppf
+      (List.mapi ~f:(fun i cls -> i, cls) strata)
   ;;
 
   let pp = `NoPrec pp

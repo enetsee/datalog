@@ -362,6 +362,45 @@ let eff_bad_constraint () =
     Schedule.(extract sched_eff_bad)
 ;;
 
+(** Simple negation *)
+
+let cl_simple_neg =
+  Raw.(
+    Clause.clause
+      Lit.(lit pred_r Term.[ var "X"; var "Y" ])
+      Lit.[ lit ~pol:Neg pred_j Term.[ var "X"; var "Y" ] ])
+;;
+
+let sched_simple_neg = Schedule.of_clause cl_simple_neg ~cstrs:Pred.Map.empty
+
+let simple_neg_constraint () =
+  Alcotest.(check testable_constraint)
+    "Simple negation, schedulable"
+    Constraint.(of_list Atomic.[ of_list [ 0; 1 ] ])
+    Schedule.(extract sched_simple_neg)
+;;
+
+(** Recursion  *)
+
+let cl_recursion =
+  Raw.(
+    Clause.clause
+      Lit.(lit pred_r Term.[ var "X"; var "Y" ])
+      Lit.
+        [ lit pred_j Term.[ var "X"; var "Z" ]
+        ; lit pred_r Term.[ var "Z"; var "Y" ]
+        ])
+;;
+
+let sched_recursion = Schedule.of_clause cl_recursion ~cstrs:Pred.Map.empty
+
+let recursion_constraint () =
+  Alcotest.(check testable_constraint)
+    "Recursion, schedulable"
+    Constraint.trivial
+    Schedule.(extract sched_recursion)
+;;
+
 (* -- All cases ------------------------------------------------------------- *)
 
 let test_cases =
@@ -401,5 +440,7 @@ let test_cases =
         "Effectful literals, intersecting effects, unschedulable"
         `Quick
         eff_bad_constraint
+    ; test_case "Simple negation" `Quick simple_neg_constraint
+    ; test_case "Recursion" `Quick recursion_constraint
     ]
 ;;

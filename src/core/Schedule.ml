@@ -149,6 +149,8 @@ type t =
   }
 [@@deriving compare, eq]
 
+(* -- Intra-clausal analysis ------------------------------------------------ *)
+
 (* == Graph construction ==================================================== *)
 
 (** Helper to get the constraint of a literal. If a literal has negative 
@@ -438,6 +440,57 @@ let orderings t ~bpatt =
     dedup_and_sort ~compare:(compare Raw.Lit.compare)
     @@ concat_map ~f:expand
     @@ consistent_paths t ~bpatt)
+;;
+
+(* -- Inter-clausal analysis ------------------------------------------------ *)
+
+let iterate ~deps ~cstrs =
+  let rec aux cnstrs = function
+    | [] -> cnstrs
+    | pred :: rest ->
+      (* retrieve the current constraint and the clauses in which it appears *)
+      let cstr_in =
+        Option.value ~default:Constraint.trivial @@ Pred.Map.find cstrs pred
+      and clauses = Raw.Dependency.clauses_of deps pred in
+      (* determine the constraint for each clause an use `meet` to find the
+         constraint for the predicate, update the global map *)
+      let cstr_out =
+        Constraint.meet_list
+        @@ List.map ~f:Fn.(compose extract @@ of_clause ~cstrs) clauses
+      in
+      (* If this predicate constraint is unchanged we don't need to update
+         dependencies; if it is, retrieve dependencies which are related by
+         a positive literal (since those related by a negative literal are
+         already fully constrained) and add unique entries to the work list
+      *)
+      if Constraint.equal cstr_in cstr_out
+      then aux cstrs rest
+      else (
+        let cstrs' = Pred.Map.update cstrs pred ~f:Fn.(const cstr_out)
+        and ws =
+          if Constraint.equal cstr_in cstr_out
+          then rest
+          else (
+            let delta =
+              List.filter ~f:(fun p -> not @@ Pred.equal pred p)
+              @@ Raw.Dependency.pos_deps_of deps pred
+            in
+            List.dedup_and_sort ~compare:Pred.compare @@ rest @ delta)
+        in
+        aux cstrs' ws)
+  in
+  aux cstrs
+;;
+
+(** Determine the moding constraints of all clauses in a program with respect
+    to an initial set (defaults to exposed queries) *)
+let solve ?inits prog ~deps =
+  Raw.(
+    let ws =
+      List.dedup_and_sort ~compare:Pred.compare
+      @@ Option.value ~default:Program.(queries_of prog) inits
+    in
+    iterate ~deps ~cstrs:Program.(constraints_of prog) ws)
 ;;
 
 (* -- Pretty implementation ------------------------------------------------- *)

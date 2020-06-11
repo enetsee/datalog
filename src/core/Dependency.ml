@@ -17,8 +17,8 @@ struct
       - `predClauses` map from predicate ID to list of clause IDs for which the 
         predicate appears in the head literal i.e. the clauses comprising the 
         predicate
-      - `predEdges` the clauses in which the predicate appears as a literal 
-        along with the polarity of the literal
+      - `predEdges` map from source predicate to list of sink predicates 
+        along with the polarity of the edge
   *)
   type t =
     { clauseFwd : int Clause.Map.t
@@ -173,11 +173,13 @@ struct
       value
         ~default:[]
         (Pred.Map.find predFwd pred
-        >>= Int.Map.find predEdges
+        >>= fun pred_ix ->
+        Int.Map.find predEdges pred_ix
         |> map
              ~f:
                List.(
                  filter_map ~f:(fun (idx, pol) ->
+                     (* if idx = pred_ix then None else *)
                      if p pol then Int.Map.find predBwd idx else None))))
   ;;
 
@@ -303,11 +305,11 @@ struct
     Fmt.(
       vbox
       @@ list ~sep:cut
-      @@ pair ~sep:(always " => ") (prefix (any "pred ") int)
+      @@ pair ~sep:(always " => ") (prefix (any "dest pred ") int)
       @@ braces
       @@ list ~sep:comma
       @@ parens
-      @@ pair ~sep:comma (prefix (any "clause ") int) Polarity.pp_verbose)
+      @@ pair ~sep:comma (prefix (any "src pred ") int) Polarity.pp_verbose)
       ppf
     @@ Int.Map.to_alist predEdges
   ;;

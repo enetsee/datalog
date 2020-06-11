@@ -10,6 +10,10 @@ include Pretty.Make0 (struct
   let pp = `NoPrec pp
 end)
 
+let mk_free pred =
+  { bp = List.init ~f:Fn.(const Adornment.Free) @@ Pred.arity_of pred }
+;;
+
 let to_list { bp } = bp
 let from_list bp = { bp }
 

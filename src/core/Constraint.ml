@@ -48,9 +48,15 @@ include Set.Make (Atomic)
 let ill = empty
 let trivial = singleton @@ Atomic.empty
 
-let pp ppf xs =
-  Fmt.(hvbox @@ braces @@ list ~sep:comma Atomic.pp) ppf (elements xs)
-;;
+include Pretty.Make0 (struct
+  type nonrec t = t
+
+  let pp ppf xs =
+    Fmt.(hvbox @@ braces @@ list ~sep:comma Atomic.pp) ppf (elements xs)
+  ;;
+
+  let pp = `NoPrec pp
+end)
 
 let from_MVs mvs = of_list @@ List.map ~f:Atomic.from_MV mvs
 let to_MVs t ~arity = List.map ~f:(Atomic.to_MV ~arity) @@ elements t

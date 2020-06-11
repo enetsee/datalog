@@ -27,7 +27,7 @@ include Pretty.Make0 (struct
 
   let pp ppf = function
     | Pos -> ()
-    | Neg -> Fmt.char ppf '!'
+    | Neg -> Fmt.(suffix sp string) ppf "not"
   ;;
 
   let pp = `NoPrec pp
