@@ -342,3 +342,6 @@ struct
     let pp = `NoPrec pp
   end)
 end
+
+module Raw = Make (Lit.Raw) (Clause.Raw) (Program.Raw)
+module Adorned = Make (Lit.Adorned) (Clause.Adorned) (Program.Adorned)

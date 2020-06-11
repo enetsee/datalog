@@ -15,7 +15,7 @@ module type Minimal = sig
 end
 
 module TermMinimal :
-  Minimal with module Term = Term.Term and type repr = Core.Raw.Lit.t = struct
+  Minimal with module Term = Term.Term and type repr = Core.Lit.Raw.t = struct
   module Term = Term.Term
 
   type t =
@@ -24,7 +24,7 @@ module TermMinimal :
     ; nature : Core.Nature.t option
     }
 
-  type repr = Core.Raw.Lit.t
+  type repr = Core.Lit.Raw.t
 
   let to_core { predSym = Located.{ elem; region }; terms; nature } =
     MonadCompile.(
@@ -36,12 +36,12 @@ module TermMinimal :
                and nature = Option.value ~default:Nature.Logical nature
                and name = elem in
                let pred = Pred.{ name; arity; nature } in
-               Raw.Lit.(lit pred terms ~region))))
+               Lit.Raw.(lit pred terms ~region))))
   ;;
 end
 
 module TmvarMinimal :
-  Minimal with module Term = Term.Tmvar and type repr = Core.Raw.Lit.t = struct
+  Minimal with module Term = Term.Tmvar and type repr = Core.Lit.Raw.t = struct
   module Term = Term.Tmvar
 
   type t =
@@ -50,7 +50,7 @@ module TmvarMinimal :
     ; nature : Core.Nature.t option
     }
 
-  type repr = Core.Raw.Lit.t
+  type repr = Core.Lit.Raw.t
 
   let to_core { predSym = Located.{ elem; region }; terms; nature } =
     MonadCompile.(
@@ -62,7 +62,7 @@ module TmvarMinimal :
                and nature = Option.value ~default:Nature.Logical nature
                and name = elem in
                let pred = Pred.{ name; arity; nature } in
-               Raw.Lit.(lit pred terms ~region))))
+               Lit.Raw.(lit pred terms ~region))))
   ;;
 end
 

@@ -4,7 +4,7 @@ let testable_pred = Pred.(Alcotest.testable pp equal)
 
 module Neg = struct
   let vx = Term.var "X"
-  let mk_lit pr = Raw.Lit.(lit pr [ vx ])
+  let mk_lit pr = Lit.Raw.(lit pr [ vx ])
   let pr_a = Pred.(logical ~arity:1 @@ Name.from_string "a")
   let lit_a = mk_lit pr_a
   let pr_b = Pred.(logical ~arity:1 @@ Name.from_string "b")
@@ -26,14 +26,14 @@ module Neg = struct
   let pr_w = Pred.(logical ~arity:1 @@ Name.from_string "w")
   let lit_w = mk_lit pr_w
   let pr_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
-  let lit_qry = Raw.Lit.lit pr_qry []
+  let lit_qry = Lit.Raw.lit pr_qry []
 
   let cls =
-    Raw.Clause.
-      [ clause lit_s [ lit_b; Raw.Lit.neg lit_a ]
-      ; clause lit_t [ lit_c; Raw.Lit.neg lit_a ]
-      ; clause lit_u [ lit_d; Raw.Lit.neg lit_t ]
-      ; clause lit_v [ lit_e; Raw.Lit.neg lit_s; Raw.Lit.neg lit_u ]
+    Clause.Raw.
+      [ clause lit_s [ lit_b; Lit.Raw.neg lit_a ]
+      ; clause lit_t [ lit_c; Lit.Raw.neg lit_a ]
+      ; clause lit_u [ lit_d; Lit.Raw.neg lit_t ]
+      ; clause lit_v [ lit_e; Lit.Raw.neg lit_s; Lit.Raw.neg lit_u ]
       ; clause lit_qry [ lit_v ]
       ]
   ;;
@@ -56,89 +56,88 @@ module Neg = struct
            o- -ve - u()
   
   *)
-  let prg = Raw.Program.(sorted @@ program cls [ pr_qry ])
+  let prg = Program.Raw.(sorted @@ program cls [ pr_qry ])
 
-  let deps = Raw.Dependency.from_program prg
+  let deps = Dependency.Raw.from_program prg
 
   let pos_deps_query () =
     Alcotest.(check @@ list testable_pred)
       "`query` predicate has no outgoing positive edges"
       []
-      Raw.Dependency.(pos_deps_of deps pr_qry)
+      Dependency.Raw.(pos_deps_of deps pr_qry)
   ;;
 
   let neg_deps_query () =
     Alcotest.(check @@ list testable_pred)
       "`query` predicate has no outgoing negative edges"
       []
-      Raw.Dependency.(neg_deps_of deps pr_qry)
+      Dependency.Raw.(neg_deps_of deps pr_qry)
   ;;
 
   let pos_deps_v () =
     Alcotest.(check @@ list testable_pred)
       "`v` predicate has one outgoing positive edges"
       [ pr_qry ]
-      Raw.Dependency.(pos_deps_of deps pr_v)
+      Dependency.Raw.(pos_deps_of deps pr_v)
   ;;
 
   let neg_deps_v () =
     Alcotest.(check @@ list testable_pred)
       "`v` predicate has no outgoing negative edges"
       []
-      Raw.Dependency.(neg_deps_of deps pr_v)
+      Dependency.Raw.(neg_deps_of deps pr_v)
   ;;
 
   let neg_deps_s () =
     Alcotest.(check @@ list testable_pred)
       "`s` predicate has one outgoing negative edges"
       [ pr_v ]
-      Raw.Dependency.(neg_deps_of deps pr_s)
+      Dependency.Raw.(neg_deps_of deps pr_s)
   ;;
 
   let neg_deps_u () =
     Alcotest.(check @@ list testable_pred)
       "`u` predicate has one outgoing negative edges"
       [ pr_v ]
-      Raw.Dependency.(neg_deps_of deps pr_u)
+      Dependency.Raw.(neg_deps_of deps pr_u)
   ;;
 
   let pos_deps_s () =
     Alcotest.(check @@ list testable_pred)
       "`s` predicate has no outgoing positive edges"
       []
-      Raw.Dependency.(pos_deps_of deps pr_s)
+      Dependency.Raw.(pos_deps_of deps pr_s)
   ;;
 
   let pos_deps_u () =
     Alcotest.(check @@ list testable_pred)
       "`u` predicate has no outgoing positive edges"
       []
-      Raw.Dependency.(pos_deps_of deps pr_u)
+      Dependency.Raw.(pos_deps_of deps pr_u)
   ;;
 end
 
 module Comp = struct
   let pr_n = Pred.(logical ~arity:1 @@ Name.from_string "n")
-  let lit_n1 = Raw.Lit.(lit pr_n Term.[ var "X" ])
-  let lit_n2 = Raw.Lit.(lit pr_n Term.[ var "Y" ])
+  let lit_n1 = Lit.Raw.(lit pr_n Term.[ var "X" ])
+  let lit_n2 = Lit.Raw.(lit pr_n Term.[ var "Y" ])
   let pr_g = Pred.(logical ~arity:2 @@ Name.from_string "g")
-  let lit_g1 = Raw.Lit.(lit pr_g Term.[ var "X"; var "Y" ])
-  let lit_g2 = Raw.Lit.(lit pr_g Term.[ var "X"; var "Z" ])
+  let lit_g1 = Lit.Raw.(lit pr_g Term.[ var "X"; var "Y" ])
+  let lit_g2 = Lit.Raw.(lit pr_g Term.[ var "X"; var "Z" ])
   let pr_t = Pred.(logical ~arity:2 @@ Name.from_string "t")
-  let lit_t_head = Raw.Lit.(lit pr_t Term.[ var "X"; var "Y" ])
-  let lit_t_body = Raw.Lit.(lit pr_t Term.[ var "Z"; var "Y" ])
+  let lit_t_head = Lit.Raw.(lit pr_t Term.[ var "X"; var "Y" ])
+  let lit_t_body = Lit.Raw.(lit pr_t Term.[ var "Z"; var "Y" ])
   let pr_ct = Pred.(logical ~arity:2 @@ Name.from_string "ct")
-  let lit_ct = Raw.Lit.(lit pr_ct Term.[ var "X"; var "Y" ])
+  let lit_ct = Lit.Raw.(lit pr_ct Term.[ var "X"; var "Y" ])
   let pr_qry = Pred.(logical ~arity:0 @@ Name.from_string "qry")
-  let lit_qry = Raw.Lit.(lit pr_qry [])
+  let lit_qry = Lit.Raw.(lit pr_qry [])
 
   let cls =
-    Raw.(
-      Clause.
-        [ clause lit_t_head [ lit_g1 ]
-        ; clause lit_t_head [ lit_g2; lit_t_body ]
-        ; clause lit_ct Lit.[ lit_n1; lit_n2; neg lit_t_head ]
-        ])
+    Clause.Raw.
+      [ clause lit_t_head [ lit_g1 ]
+      ; clause lit_t_head [ lit_g2; lit_t_body ]
+      ; clause lit_ct Lit.Raw.[ lit_n1; lit_n2; neg lit_t_head ]
+      ]
   ;;
 
   (** 
@@ -150,36 +149,36 @@ module Comp = struct
                      |       |
                      o- +ve -o
   *)
-  let prg = Raw.Program.program cls [ pr_ct ]
+  let prg = Program.Raw.program cls [ pr_ct ]
 
-  let deps = Raw.Dependency.from_program prg
+  let deps = Dependency.Raw.from_program prg
 
   let neg_deps_ct () =
     Alcotest.(check @@ list testable_pred)
       "`ct` predicate has no outgoing negative edges"
       []
-      Raw.Dependency.(neg_deps_of deps pr_ct)
+      Dependency.Raw.(neg_deps_of deps pr_ct)
   ;;
 
   let neg_deps_t () =
     Alcotest.(check @@ list testable_pred)
       "`t` predicate has one outgoing negative edges"
       [ pr_ct ]
-      Raw.Dependency.(neg_deps_of deps pr_t)
+      Dependency.Raw.(neg_deps_of deps pr_t)
   ;;
 
   let pos_deps_ct () =
     Alcotest.(check @@ list testable_pred)
       "`ct` predicate has no outgoing positive edges"
       []
-      Raw.Dependency.(pos_deps_of deps pr_ct)
+      Dependency.Raw.(pos_deps_of deps pr_ct)
   ;;
 
   let pos_deps_t () =
     Alcotest.(check @@ list testable_pred)
       "`t` predicate has one outgoing positive edges"
       [ pr_t ]
-      Raw.Dependency.(pos_deps_of deps pr_t)
+      Dependency.Raw.(pos_deps_of deps pr_t)
   ;;
 end
 

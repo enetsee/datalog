@@ -4,7 +4,6 @@
 open Core_kernel
 
 open Core
-open Raw
 
 let pred_p = Pred.(logical ~arity:1 @@ Name.from_string "p")
 let pred_q = Pred.(logical ~arity:0 @@ Name.from_string "q")
@@ -27,15 +26,15 @@ let mk_guard () = Pred.(logical ~arity:1 @@ fresh_pred_sym "guard")
 (** Testable instance for violations *)
 let testable_violation = RangeRepair.Violation.(Alcotest.testable pp equal)
 
-let testable_prg = Program.(Alcotest.testable pp equal)
+let testable_prg = Program.Raw.(Alcotest.testable pp equal)
 
 let pp_prg_kb ppf (prg, kb) =
-  Fmt.(vbox @@ pair ~sep:cut Program.pp @@ list ~sep:cut Knowledge.pp)
+  Fmt.(vbox @@ pair ~sep:cut Program.Raw.pp @@ list ~sep:cut Knowledge.pp)
     ppf
     (prg, Knowledge.Set.to_list kb)
 ;;
 
-let eq_prg_kb = Tuple2.equal ~eq1:Program.equal ~eq2:Knowledge.Set.equal
+let eq_prg_kb = Tuple2.equal ~eq1:Program.Raw.equal ~eq2:Knowledge.Set.equal
 let testable_prg_kb = Alcotest.testable pp_prg_kb eq_prg_kb
 
 (** -- Fixable with guard ------------------------------------------------------
@@ -53,29 +52,29 @@ is range restricted.
 ----------------------------------------------------------------------------- *)
 
 let prg_fixable_guard =
-  Program.program
-    Clause.
-      [ clause Lit.(lit pred_p Term.[ var "X" ]) Lit.[ lit pred_q [] ]
+  Program.Raw.program
+    Clause.Raw.
+      [ clause Lit.Raw.(lit pred_p Term.[ var "X" ]) Lit.Raw.[ lit pred_q [] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
       ]
     [ pred_qry ]
 ;;
 
 let fixable_guard_expected =
   let pred_grd = mk_guard () in
-  ( Program.program
-      Clause.
+  ( Program.Raw.program
+      Clause.Raw.
         [ clause
-            Lit.(lit pred_p Term.[ var "X" ])
-            Lit.[ lit pred_grd Term.[ var "X" ]; lit pred_q [] ]
+            Lit.Raw.(lit pred_p Term.[ var "X" ])
+            Lit.Raw.[ lit pred_grd Term.[ var "X" ]; lit pred_q [] ]
         ; clause
-            Lit.(lit pred_qry [])
-            Lit.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
+            Lit.Raw.(lit pred_qry [])
+            Lit.Raw.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
         ; clause
-            Lit.(lit pred_grd Term.[ var "X" ])
-            Lit.[ lit pred_r Term.[ var "X" ] ]
+            Lit.Raw.(lit pred_grd Term.[ var "X" ])
+            Lit.Raw.[ lit pred_r Term.[ var "X" ] ]
         ]
       [ pred_qry ]
   , Knowledge.Set.empty )
@@ -100,26 +99,26 @@ query() :- p(1).
 ----------------------------------------------------------------------------- *)
 
 let prg_fixable_knowledge =
-  Program.program
-    Clause.
-      [ clause Lit.(lit pred_p Term.[ var "X" ]) Lit.[ lit pred_q [] ]
+  Program.Raw.program
+    Clause.Raw.
+      [ clause Lit.Raw.(lit pred_p Term.[ var "X" ]) Lit.Raw.[ lit pred_q [] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
 ;;
 
 let fixable_knowledge_expected =
   let pred_grd = mk_guard () in
-  ( Program.program
-      Clause.
+  ( Program.Raw.program
+      Clause.Raw.
         [ clause
-            Lit.(lit pred_p Term.[ var "X" ])
-            Lit.[ lit pred_grd Term.[ var "X" ]; lit pred_q [] ]
+            Lit.Raw.(lit pred_p Term.[ var "X" ])
+            Lit.Raw.[ lit pred_grd Term.[ var "X" ]; lit pred_q [] ]
         ; clause
-            Lit.(lit pred_qry [])
-            Lit.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
+            Lit.Raw.(lit pred_qry [])
+            Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
         ]
       [ pred_qry ]
   , Knowledge.(Set.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
@@ -136,35 +135,35 @@ let fixable_knowledge () =
 
 ----------------------------------------------------------------------------- *)
 let prg_fixable_multi =
-  Program.program
-    Clause.
-      [ clause Lit.(lit pred_p Term.[ var "X" ]) Lit.[ lit pred_q [] ]
+  Program.Raw.program
+    Clause.Raw.
+      [ clause Lit.Raw.(lit pred_p Term.[ var "X" ]) Lit.Raw.[ lit pred_q [] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_qry2 [])
-          Lit.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
+          Lit.Raw.(lit pred_qry2 [])
+          Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
 ;;
 
 let fixable_multi_expected =
   let pred_grd = mk_guard () in
-  ( Program.program
-      Clause.
+  ( Program.Raw.program
+      Clause.Raw.
         [ clause
-            Lit.(lit pred_p Term.[ var "X" ])
-            Lit.[ lit pred_grd Term.[ var "X" ]; lit pred_q [] ]
+            Lit.Raw.(lit pred_p Term.[ var "X" ])
+            Lit.Raw.[ lit pred_grd Term.[ var "X" ]; lit pred_q [] ]
         ; clause
-            Lit.(lit pred_qry [])
-            Lit.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
+            Lit.Raw.(lit pred_qry [])
+            Lit.Raw.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
         ; clause
-            Lit.(lit pred_qry2 [])
-            Lit.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
+            Lit.Raw.(lit pred_qry2 [])
+            Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
         ; clause
-            Lit.(lit pred_grd Term.[ var "X" ])
-            Lit.[ lit pred_r Term.[ var "X" ] ]
+            Lit.Raw.(lit pred_grd Term.[ var "X" ])
+            Lit.Raw.[ lit pred_r Term.[ var "X" ] ]
         ]
       [ pred_qry ]
   , Knowledge.(Set.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
@@ -189,12 +188,12 @@ This is currently unfixable even though  we could simply move `p(X)` in the
 ----------------------------------------------------------------------------- *)
 
 let prg_unfixable_unbound =
-  Program.program
-    Clause.
-      [ clause Lit.(lit pred_p Term.[ var "X" ]) Lit.[ lit pred_q [] ]
+  Program.Raw.program
+    Clause.Raw.
+      [ clause Lit.Raw.(lit pred_p Term.[ var "X" ]) Lit.Raw.[ lit pred_q [] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.[ lit pred_p Term.[ var "X" ]; lit pred_r Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.[ lit pred_p Term.[ var "X" ]; lit pred_r Term.[ var "X" ] ]
       ]
     [ pred_qry ]
 ;;
@@ -228,15 +227,15 @@ s(Y) :- p(X).          |
 ----------------------------------------------------------------------------- *)
 
 let prg_unfixable_multi =
-  Program.program
-    Clause.
-      [ clause Lit.(lit pred_p Term.[ var "X" ]) Lit.[ lit pred_q [] ]
+  Program.Raw.program
+    Clause.Raw.
+      [ clause Lit.Raw.(lit pred_p Term.[ var "X" ]) Lit.Raw.[ lit pred_q [] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_s Term.[ var "Y" ])
-          Lit.[ lit pred_p Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_s Term.[ var "Y" ])
+          Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
     [ pred_qry ]
 ;;

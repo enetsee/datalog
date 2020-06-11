@@ -1,5 +1,4 @@
 open Core
-open Raw
 
 let pred_a = Pred.(logical ~arity:1 @@ Name.from_string "a")
 let pred_p = Pred.(logical ~arity:1 @@ Name.from_string "p")
@@ -8,9 +7,9 @@ let pred_r = Pred.(logical ~arity:2 @@ Name.from_string "r")
 let pred_s = Pred.(logical ~arity:1 @@ Name.from_string "s")
 let pred_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
 let pred_qry2 = Pred.(logical ~arity:0 @@ Name.from_string "query2")
-let destQ = Dataflow.Dest.DLit (Lit.lit pred_q Term.[ var "X" ], 0)
+let destQ = Dataflow.Dest.DLit (Lit.Raw.lit pred_q Term.[ var "X" ], 0)
 let destP = Dataflow.Dest.DPred (pred_p, 0)
-let destR = Dataflow.Dest.DLit (Lit.lit pred_r Term.[ var "X"; var "X" ], 0)
+let destR = Dataflow.Dest.DLit (Lit.Raw.lit pred_r Term.[ var "X"; var "X" ], 0)
 let testable_src = Dataflow.Src.(Alcotest.testable pp equal)
 
 (** -- Covering constant -------------------------------------------------------
@@ -24,14 +23,14 @@ query() :- p(1).
  
 ----------------------------------------------------------------------------- *)
 let prg_const =
-  Program.program
-    Clause.
+  Program.Raw.program
+    Clause.Raw.
       [ clause
-          Lit.(lit pred_p Term.[ var "X" ])
-          Lit.[ lit pred_q Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_p Term.[ var "X" ])
+          Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
 ;;
@@ -60,17 +59,17 @@ s(X) :- p(X).
 
 ----------------------------------------------------------------------------- *)
 let prg_dead_path =
-  Program.program
-    Clause.
+  Program.Raw.program
+    Clause.Raw.
       [ clause
-          Lit.(lit pred_p Term.[ var "X" ])
-          Lit.[ lit pred_q Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_p Term.[ var "X" ])
+          Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ; clause
-          Lit.(lit pred_s Term.[ var "X" ])
-          Lit.[ lit pred_p Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_s Term.[ var "X" ])
+          Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
     [ pred_qry ]
 ;;
@@ -94,7 +93,7 @@ query() :- p(1).
  
 ----------------------------------------------------------------------------- *)
 let prg_const_exposed =
-  Program.{ prg_const with queries = pred_p :: prg_const.queries }
+  Program.Raw.{ prg_const with queries = pred_p :: prg_const.queries }
 ;;
 
 let const_exposed () =
@@ -114,12 +113,12 @@ query() :- p(_).
 
 ----------------------------------------------------------------------------- *)
 let prg_wild =
-  Program.program
-    Clause.
+  Program.Raw.program
+    Clause.Raw.
       [ clause
-          Lit.(lit pred_p Term.[ var "X" ])
-          Lit.[ lit pred_q Term.[ var "X" ] ]
-      ; clause Lit.(lit pred_qry []) Lit.[ lit pred_p Term.[ wild () ] ]
+          Lit.Raw.(lit pred_p Term.[ var "X" ])
+          Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
+      ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ wild () ] ]
       ]
     [ pred_qry ]
 ;;
@@ -143,12 +142,12 @@ query :- q(X). |
 
 ----------------------------------------------------------------------------- *)
 let prg_single_open =
-  Program.program
-    Clause.
+  Program.Raw.program
+    Clause.Raw.
       [ clause
-          Lit.(lit pred_p Term.[ var "X" ])
-          Lit.[ lit pred_q Term.[ var "X" ] ]
-      ; clause Lit.(lit pred_qry []) Lit.[ lit pred_p Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_p Term.[ var "X" ])
+          Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
+      ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
     [ pred_qry ]
 ;;
@@ -175,15 +174,15 @@ query() :- p(X).         |
 
 ----------------------------------------------------------------------------- *)
 let prg_multi_half_open =
-  Program.program
-    Clause.
+  Program.Raw.program
+    Clause.Raw.
       [ clause
-          Lit.(lit pred_p Term.[ var "X" ])
-          Lit.[ lit pred_q Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_p Term.[ var "X" ])
+          Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_qry2 [])
-          Lit.[ lit pred_a Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
-      ; clause Lit.(lit pred_qry []) Lit.[ lit pred_p Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_qry2 [])
+          Lit.Raw.[ lit pred_a Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
+      ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
     [ pred_qry ]
 ;;
@@ -209,14 +208,14 @@ query() :- a(X), r(X, 1).
 
 ----------------------------------------------------------------------------- *)
 let prg_alias_head_closed =
-  Program.program
-    Clause.
+  Program.Raw.program
+    Clause.Raw.
       [ clause
-          Lit.(lit pred_r Term.[ var "X"; var "X" ])
-          Lit.[ lit pred_q Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_r Term.[ var "X"; var "X" ])
+          Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.
             [ lit pred_a Term.[ var "X" ]
             ; lit pred_r Term.[ var "X"; sym @@ Symbol.from_int 1 ]
             ]
@@ -229,7 +228,7 @@ let alias_head_closed () =
     "Variable aliased in head , both covered"
     (Some
        Dataflow.
-         [ Src.SLit (Lit.lit pred_a Term.[ var "X" ], 0)
+         [ Src.SLit (Lit.Raw.lit pred_a Term.[ var "X" ], 0)
          ; Src.SConst (Const.CSym (Symbol.from_int 1))
          ])
     Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_alias_head_closed)
@@ -248,14 +247,14 @@ query() :- r(X, 1).
 
 ----------------------------------------------------------------------------- *)
 let prg_alias_head_half_open =
-  Program.program
-    Clause.
+  Program.Raw.program
+    Clause.Raw.
       [ clause
-          Lit.(lit pred_r Term.[ var "X"; var "X" ])
-          Lit.[ lit pred_q Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_r Term.[ var "X"; var "X" ])
+          Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.[ lit pred_r Term.[ var "X"; sym @@ Symbol.from_int 1 ] ]
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.[ lit pred_r Term.[ var "X"; sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
 ;;
@@ -276,11 +275,11 @@ query() :- a(X), r(X, 1).
 
 ----------------------------------------------------------------------------- *)
 let prg_alias_body =
-  Program.program
-    Clause.
+  Program.Raw.program
+    Clause.Raw.
       [ clause
-          Lit.(lit pred_qry [])
-          Lit.
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.
             [ lit pred_a Term.[ var "X" ]
             ; lit pred_r Term.[ var "X"; var "X" ]
             ]
@@ -291,7 +290,7 @@ let prg_alias_body =
 let alias_body () =
   Alcotest.(check @@ option @@ list testable_src)
     "Variable aliased in body , covered by preceeding literal"
-    (Some Dataflow.[ Src.SLit (Lit.lit pred_a Term.[ var "X" ], 0) ])
+    (Some Dataflow.[ Src.SLit (Lit.Raw.lit pred_a Term.[ var "X" ], 0) ])
     Dataflow.(coveringPositives ~dest:destR @@ from_prog prg_alias_body)
 ;;
 
@@ -314,17 +313,17 @@ query() :- p(1), s(2).
 
 ----------------------------------------------------------------------------- *)
 let prg_indirection =
-  Program.program
-    Clause.
+  Program.Raw.program
+    Clause.Raw.
       [ clause
-          Lit.(lit pred_s Term.[ var "X" ])
-          Lit.[ lit pred_q Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_s Term.[ var "X" ])
+          Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_p Term.[ var "X" ])
-          Lit.[ lit pred_s Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_p Term.[ var "X" ])
+          Lit.Raw.[ lit pred_s Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.
             [ lit pred_p Term.[ sym @@ Symbol.from_int 1 ]
             ; lit pred_s Term.[ sym @@ Symbol.from_int 2 ]
             ]
@@ -363,17 +362,17 @@ query() :- p(1).
 ----------------------------------------------------------------------------- *)
 
 let prg_rec_closed =
-  Program.program
-    Clause.
+  Program.Raw.program
+    Clause.Raw.
       [ clause
-          Lit.(lit pred_p Term.[ var "X" ])
-          Lit.[ lit pred_q Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_p Term.[ var "X" ])
+          Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_p Term.[ sym @@ Symbol.from_int 1 ])
-          Lit.[ lit pred_a Term.[ var "Y" ]; lit pred_p Term.[ var "Y" ] ]
+          Lit.Raw.(lit pred_p Term.[ sym @@ Symbol.from_int 1 ])
+          Lit.Raw.[ lit pred_a Term.[ var "Y" ]; lit pred_p Term.[ var "Y" ] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
 ;;
@@ -384,7 +383,7 @@ let rec_closed () =
     (Some
        Dataflow.
          [ Src.SConst (Const.CSym (Symbol.from_int 1))
-         ; Src.SLit (Lit.lit pred_a Term.[ var "Y" ], 0)
+         ; Src.SLit (Lit.Raw.lit pred_a Term.[ var "Y" ], 0)
          ])
     Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_rec_closed)
 ;;
@@ -410,17 +409,17 @@ query :- p(1).
  ----------------------------------------------------------------------------- *)
 
 let prg_rec_closed_indiff =
-  Program.program
-    Clause.
+  Program.Raw.program
+    Clause.Raw.
       [ clause
-          Lit.(lit pred_p Term.[ var "X" ])
-          Lit.[ lit pred_q Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_p Term.[ var "X" ])
+          Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_p Term.[ var "X" ])
-          Lit.[ lit pred_p Term.[ var "X" ] ]
+          Lit.Raw.(lit pred_p Term.[ var "X" ])
+          Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ; clause
-          Lit.(lit pred_qry [])
-          Lit.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
 ;;

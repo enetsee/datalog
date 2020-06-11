@@ -101,3 +101,63 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
     let pp = `NoPrec pp
   end)
 end
+
+module Raw = Make (Lit.Raw) (Clause.Raw)
+
+module Adorned = struct
+  include Make (Lit.Adorned) (Clause.Adorned)
+
+  let well_moded { clauses; _ } ~cstrs =
+    List.for_all clauses ~f:Clause.Adorned.(well_moded ~cstrs)
+  ;;
+end
+
+module Stratified = struct
+  (** A _stratified_ datalog program `D` is a partition of `D` into a _sequence 
+    of adorned programs_ (strata) `D1,...,Dn` such that, given a function 
+    `s : Predicate -> Int` mapping predicates to their stratum, we have:
+
+    - For each predicate `P`, all the clauses in `P` defining `P` are in the 
+      same stratum
+
+    - For each clause in `D` of the form `r(u) :- ... , r'(v), ... ` then if 
+      `r'` is an intensional predicate, `s(r') <= s(r)` i.e. predicates 
+      appearing as positive literals in the body of a clause must must be in the 
+      same stratum or strata before the predicate in the head of the clause.
+
+    - For each clause in `D` of the form `r(u) :- ... , not r'(v), ... ` then if 
+      `r'` is an intensional predicate, `s(r') < s(r)` i.e. predicates appearing 
+      as negative literals in the body of a clause must must be strata strictly 
+      before the predicate in the head of the clause.
+
+    A datalog program is stratifiable if its _precedence graph_ has no cycles 
+    containing a negative edge
+*)
+  type t =
+    { strata : Clause.Adorned.t list list
+    ; queries : Pred.t list
+    }
+  [@@deriving compare, eq, sexp]
+
+  let sorted { strata; queries } =
+    { strata = List.(map ~f:(sort ~compare:Clause.Adorned.compare) strata)
+    ; queries = List.sort ~compare:Pred.compare queries
+    }
+  ;;
+
+  include Pretty.Make0 (struct
+    type nonrec t = t
+
+    let pp ppf { strata; _ } =
+      Fmt.(
+        vbox
+        @@ list ~sep:(suffix cut cut)
+        @@ pair ~sep:cut (prefix (any "stratum ") int)
+        @@ list ~sep:cut Clause.Adorned.pp)
+        ppf
+        (List.mapi ~f:(fun i cls -> i, cls) strata)
+    ;;
+
+    let pp = `NoPrec pp
+  end)
+end

@@ -5,7 +5,7 @@ let test_suite =
   ; "Range restriction repair", RangeRestrict.test_cases
   ; "Constraint", Constraint.test_cases
   ; "Subgoal scheduling", Schedule.test_cases
-  ; "Generalized adornment", GenAdornment.test_cases
+  ; "Generalized adornment", Adornment.test_cases
   ; "Stratification", Stratification.test_cases
   ]
 ;;

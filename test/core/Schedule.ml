@@ -7,12 +7,12 @@ let testable_schedule = Schedule.(Alcotest.testable pp equal)
 let testable_orderings =
   let pp =
     Fmt.(
-      vbox @@ list ~sep:cut @@ hbox @@ brackets @@ list ~sep:comma Raw.Lit.pp)
+      vbox @@ list ~sep:cut @@ hbox @@ brackets @@ list ~sep:comma Lit.Raw.pp)
   (* sort the order of the orderings but not the orderings! *)
   and eq xxs yys =
-    let xxs' = List.sort ~compare:(List.compare Raw.Lit.compare) xxs
-    and yys' = List.sort ~compare:(List.compare Raw.Lit.compare) yys in
-    List.equal (List.equal Raw.Lit.equal) xxs' yys'
+    let xxs' = List.sort ~compare:(List.compare Lit.Raw.compare) xxs
+    and yys' = List.sort ~compare:(List.compare Lit.Raw.compare) yys in
+    List.equal (List.equal Lit.Raw.equal) xxs' yys'
   in
   Alcotest.testable pp eq
 ;;
@@ -27,11 +27,11 @@ let cstr_f = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
 let cstr_g = Constraint.(of_list Atomic.[ of_list [ 0; 1 ]; of_list [ 0; 2 ] ])
 let cstr_h = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
 let cstr_i = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
-let lit_f_fig2 = Raw.Lit.(lit pred_f Term.[ var "X" ])
-let lit_g_fig2 = Raw.Lit.(lit pred_g Term.[ var "X"; var "Y"; var "Z" ])
-let lit_h_fig2 = Raw.Lit.(lit pred_h Term.[ var "Z" ])
-let lit_i_fig2 = Raw.Lit.(lit pred_i Term.[ var "X" ])
-let lit_j_fig2 = Raw.Lit.(lit pred_j Term.[ var "X"; var "W" ])
+let lit_f_fig2 = Lit.Raw.(lit pred_f Term.[ var "X" ])
+let lit_g_fig2 = Lit.Raw.(lit pred_g Term.[ var "X"; var "Y"; var "Z" ])
+let lit_h_fig2 = Lit.Raw.(lit pred_h Term.[ var "Z" ])
+let lit_i_fig2 = Lit.Raw.(lit pred_i Term.[ var "X" ])
+let lit_j_fig2 = Lit.Raw.(lit pred_j Term.[ var "X"; var "W" ])
 
 (** -- Figure 2 from `Automatic reordering for dataflow safety in Datalog`  ----
 
@@ -48,10 +48,9 @@ L (i, j) {}
 
 ----------------------------------------------------------------------------- *)
 let cl_fig2 =
-  Raw.(
-    Clause.clause
-      Lit.(lit pred_r Term.[ var "Y"; var "Z" ])
-      [ lit_f_fig2; lit_g_fig2; lit_h_fig2; lit_i_fig2; lit_j_fig2 ])
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_r Term.[ var "Y"; var "Z" ])
+    [ lit_f_fig2; lit_g_fig2; lit_h_fig2; lit_i_fig2; lit_j_fig2 ]
 ;;
 
 let cstrs_fig2 =
@@ -84,10 +83,7 @@ let clause_orderings_bb_fig_2 () =
     ; [ lit_j_fig2; lit_i_fig2; lit_f_fig2; lit_g_fig2; lit_h_fig2 ]
     ; [ lit_j_fig2; lit_i_fig2; lit_f_fig2; lit_h_fig2; lit_g_fig2 ]
     ]
-    Schedule.(
-      orderings
-        sched_fig2
-        ~bpatt:BindingPatt.(from_list Adornment.[ Bound; Bound ]))
+    Schedule.(orderings sched_fig2 ~bpatt:Binding.(from_list [ Bound; Bound ]))
 ;;
 
 (**
@@ -103,10 +99,7 @@ let clause_orderings_bf_fig_2 () =
     [ [ lit_i_fig2; lit_j_fig2; lit_f_fig2; lit_g_fig2; lit_h_fig2 ]
     ; [ lit_j_fig2; lit_i_fig2; lit_f_fig2; lit_g_fig2; lit_h_fig2 ]
     ]
-    Schedule.(
-      orderings
-        sched_fig2
-        ~bpatt:BindingPatt.(from_list Adornment.[ Bound; Free ]))
+    Schedule.(orderings sched_fig2 ~bpatt:Binding.(from_list [ Bound; Free ]))
 ;;
 
 (** 
@@ -125,10 +118,7 @@ let clause_orderings_fb_fig_2 () =
     ; [ lit_j_fig2; lit_i_fig2; lit_f_fig2; lit_g_fig2; lit_h_fig2 ]
     ; [ lit_j_fig2; lit_i_fig2; lit_f_fig2; lit_h_fig2; lit_g_fig2 ]
     ]
-    Schedule.(
-      orderings
-        sched_fig2
-        ~bpatt:BindingPatt.(from_list Adornment.[ Free; Bound ]))
+    Schedule.(orderings sched_fig2 ~bpatt:Binding.(from_list [ Free; Bound ]))
 ;;
 
 (** ff *)
@@ -136,10 +126,7 @@ let clause_orderings_ff_fig_2 () =
   Alcotest.(check testable_orderings)
     "Paths compatible with {f,f} for Figure 2. from paper"
     []
-    Schedule.(
-      orderings
-        sched_fig2
-        ~bpatt:BindingPatt.(from_list Adornment.[ Free; Free ]))
+    Schedule.(orderings sched_fig2 ~bpatt:Binding.(from_list [ Free; Free ]))
 ;;
 
 (** -- Stuck construction ------------------------------------------------------
@@ -148,10 +135,9 @@ f(X) :- h{+}(Y), i{+}(X).
 
 ----------------------------------------------------------------------------- *)
 let cl_stuck =
-  Raw.(
-    Clause.clause
-      Lit.(lit pred_f Term.[ var "X" ])
-      Lit.[ lit pred_h Term.[ var "Y" ]; lit pred_i Term.[ var "X" ] ])
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_f Term.[ var "X" ])
+    Lit.Raw.[ lit pred_h Term.[ var "Y" ]; lit pred_i Term.[ var "X" ] ]
 ;;
 
 let cstrs_stuck = Pred.Map.of_alist_exn [ pred_i, cstr_i; pred_h, cstr_h ]
@@ -168,8 +154,7 @@ let clause_orderings_stuck () =
   Alcotest.(check testable_orderings)
     "Paths compatible with {b} for stuck schedule graph"
     []
-    Schedule.(
-      orderings sched_stuck ~bpatt:BindingPatt.(from_list Adornment.[ Bound ]))
+    Schedule.(orderings sched_stuck ~bpatt:Binding.(from_list [ Bound ]))
 ;;
 
 (** -- Wildcard, required ------------------------------------------------------
@@ -178,10 +163,9 @@ f(X) :- i(X), h{+}(_).
 
 ----------------------------------------------------------------------------- *)
 let cl_wildcard_req =
-  Raw.(
-    Clause.clause
-      Lit.(lit pred_f Term.[ var "X" ])
-      Lit.[ lit_j_fig2; lit pred_h Term.[ wild () ] ])
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_f Term.[ var "X" ])
+    Lit.Raw.[ lit_j_fig2; lit pred_h Term.[ wild () ] ]
 ;;
 
 let cstrs_wildcard_req = Pred.Map.of_alist_exn [ pred_h, cstr_h ]
@@ -223,10 +207,9 @@ in the head of the clause and `Z` is not required in `h(Z)`.
 
 ----------------------------------------------------------------------------- *)
 let cl_neg_ok =
-  Raw.(
-    Clause.clause
-      Lit.(lit pred_r Term.[ var "Y"; var "X" ])
-      [ lit_f_fig2; Raw.Lit.neg lit_g_fig2; lit_h_fig2 ])
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_r Term.[ var "Y"; var "X" ])
+    [ lit_f_fig2; Lit.Raw.neg lit_g_fig2; lit_h_fig2 ]
 ;;
 
 let cstrs_neg_ok = Pred.Map.of_alist_exn [ pred_f, cstr_f ]
@@ -312,13 +295,12 @@ let pred_o =
 let cstr_o = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
 
 let cl_eff_ok =
-  Raw.(
-    Clause.clause
-      Lit.(lit pred_r Term.[ var "Y"; var "X" ])
-      Lit.
-        [ lit pred_n Term.[ var "Z"; var "Y" ]
-        ; lit pred_m Term.[ var "X"; var "Z" ]
-        ])
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_r Term.[ var "Y"; var "X" ])
+    Lit.Raw.
+      [ lit pred_n Term.[ var "Z"; var "Y" ]
+      ; lit pred_m Term.[ var "X"; var "Z" ]
+      ]
 ;;
 
 let cstr_eff =
@@ -344,13 +326,12 @@ effects.
 ----------------------------------------------------------------------------- *)
 
 let cl_eff_bad =
-  Raw.(
-    Clause.clause
-      Lit.(lit pred_r Term.[ var "Y"; var "X" ])
-      Lit.
-        [ lit pred_n Term.[ var "Z"; var "Y" ]
-        ; lit pred_o Term.[ var "X"; var "Z" ]
-        ])
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_r Term.[ var "Y"; var "X" ])
+    Lit.Raw.
+      [ lit pred_n Term.[ var "Z"; var "Y" ]
+      ; lit pred_o Term.[ var "X"; var "Z" ]
+      ]
 ;;
 
 let sched_eff_bad = Schedule.of_clause cl_eff_bad ~cstrs:cstr_eff
@@ -365,10 +346,9 @@ let eff_bad_constraint () =
 (** Simple negation *)
 
 let cl_simple_neg =
-  Raw.(
-    Clause.clause
-      Lit.(lit pred_r Term.[ var "X"; var "Y" ])
-      Lit.[ lit ~pol:Neg pred_j Term.[ var "X"; var "Y" ] ])
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_r Term.[ var "X"; var "Y" ])
+    Lit.Raw.[ lit ~pol:Neg pred_j Term.[ var "X"; var "Y" ] ]
 ;;
 
 let sched_simple_neg = Schedule.of_clause cl_simple_neg ~cstrs:Pred.Map.empty
@@ -383,13 +363,12 @@ let simple_neg_constraint () =
 (** Recursion  *)
 
 let cl_recursion =
-  Raw.(
-    Clause.clause
-      Lit.(lit pred_r Term.[ var "X"; var "Y" ])
-      Lit.
-        [ lit pred_j Term.[ var "X"; var "Z" ]
-        ; lit pred_r Term.[ var "Z"; var "Y" ]
-        ])
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_r Term.[ var "X"; var "Y" ])
+    Lit.Raw.
+      [ lit pred_j Term.[ var "X"; var "Z" ]
+      ; lit pred_r Term.[ var "Z"; var "Y" ]
+      ]
 ;;
 
 let sched_recursion = Schedule.of_clause cl_recursion ~cstrs:Pred.Map.empty

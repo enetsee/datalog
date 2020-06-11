@@ -1,7 +1,7 @@
 open Core
 open Core_kernel
 
-let testable_strat = Stratified.(Alcotest.testable pp equal)
+let testable_strat = Program.Stratified.(Alcotest.testable pp equal)
 
 let testable_neg_cycles =
   let equal xs ys =
@@ -26,7 +26,7 @@ let testable_neg_cycles =
 
 module Alice = struct
   let vx = Term.var "X"
-  let mk_lit pr = Raw.Lit.(lit pr [ vx ])
+  let mk_lit pr = Lit.Raw.(lit pr [ vx ])
   let pr_a = Pred.(logical ~arity:1 @@ Name.from_string "a")
   let lit_a = mk_lit pr_a
   let pr_b = Pred.(logical ~arity:1 @@ Name.from_string "b")
@@ -46,59 +46,54 @@ module Alice = struct
   let pr_v = Pred.(logical ~arity:1 @@ Name.from_string "v")
   let lit_v = mk_lit pr_v
   let pr_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
-  let lit_qry = Raw.Lit.lit pr_qry []
+  let lit_qry = Lit.Raw.lit pr_qry []
 
   let cl_s =
-    Adorned.(
-      Clause.(
-        clause
-          Lit.(from_raw lit_s ~bpatt:BindingPatt.(from_list [ Bound ]))
-          Lit.
-            [ from_raw lit_b ~bpatt:BindingPatt.(from_list [ Bound ])
-            ; neg @@ from_raw lit_a ~bpatt:BindingPatt.(from_list [ Bound ])
-            ]))
+    Clause.Adorned.(
+      clause
+        Lit.Adorned.(from_raw lit_s ~bpatt:Binding.(from_list [ Bound ]))
+        Lit.Adorned.
+          [ from_raw lit_b ~bpatt:Binding.(from_list [ Bound ])
+          ; neg @@ from_raw lit_a ~bpatt:Binding.(from_list [ Bound ])
+          ])
   ;;
 
   let cl_t =
-    Adorned.(
-      Clause.(
-        clause
-          Lit.(from_raw lit_t ~bpatt:BindingPatt.(from_list [ Bound ]))
-          Lit.
-            [ from_raw lit_c ~bpatt:BindingPatt.(from_list [ Bound ])
-            ; neg @@ from_raw lit_a ~bpatt:BindingPatt.(from_list [ Bound ])
-            ]))
+    Clause.Adorned.(
+      clause
+        Lit.Adorned.(from_raw lit_t ~bpatt:Binding.(from_list [ Bound ]))
+        Lit.Adorned.
+          [ from_raw lit_c ~bpatt:Binding.(from_list [ Bound ])
+          ; neg @@ from_raw lit_a ~bpatt:Binding.(from_list [ Bound ])
+          ])
   ;;
 
   let cl_u =
-    Adorned.(
-      Clause.(
-        clause
-          Lit.(from_raw lit_u ~bpatt:BindingPatt.(from_list [ Bound ]))
-          Lit.
-            [ from_raw lit_d ~bpatt:BindingPatt.(from_list [ Bound ])
-            ; neg @@ from_raw lit_t ~bpatt:BindingPatt.(from_list [ Bound ])
-            ]))
+    Clause.Adorned.(
+      clause
+        Lit.Adorned.(from_raw lit_u ~bpatt:Binding.(from_list [ Bound ]))
+        Lit.Adorned.
+          [ from_raw lit_d ~bpatt:Binding.(from_list [ Bound ])
+          ; neg @@ from_raw lit_t ~bpatt:Binding.(from_list [ Bound ])
+          ])
   ;;
 
   let cl_v =
-    Adorned.(
-      Clause.(
-        clause
-          Lit.(from_raw lit_v ~bpatt:BindingPatt.(from_list [ Free ]))
-          Lit.
-            [ from_raw lit_e ~bpatt:BindingPatt.(from_list [ Free ])
-            ; neg @@ from_raw lit_s ~bpatt:BindingPatt.(from_list [ Bound ])
-            ; neg @@ from_raw lit_u ~bpatt:BindingPatt.(from_list [ Bound ])
-            ]))
+    Clause.Adorned.(
+      clause
+        Lit.Adorned.(from_raw lit_v ~bpatt:Binding.(from_list [ Free ]))
+        Lit.Adorned.
+          [ from_raw lit_e ~bpatt:Binding.(from_list [ Free ])
+          ; neg @@ from_raw lit_s ~bpatt:Binding.(from_list [ Bound ])
+          ; neg @@ from_raw lit_u ~bpatt:Binding.(from_list [ Bound ])
+          ])
   ;;
 
   let cl_qry =
-    Adorned.(
-      Clause.(
-        clause
-          Lit.(from_raw lit_qry ~bpatt:BindingPatt.(from_list []))
-          Lit.[ from_raw lit_v ~bpatt:BindingPatt.(from_list [ Free ]) ]))
+    Clause.Adorned.(
+      clause
+        Lit.Adorned.(from_raw lit_qry ~bpatt:Binding.(from_list []))
+        Lit.Adorned.[ from_raw lit_v ~bpatt:Binding.(from_list [ Free ]) ])
   ;;
 
   let cls_good = [ cl_s; cl_t; cl_u; cl_v; cl_qry ]
@@ -113,36 +108,35 @@ module Alice = struct
     v(X) :- e(x), not s(X), not u(X).
     query() :- v(X).
   *)
-  let prg_good = Adorned.Program.(sorted @@ program cls_good queries)
+  let prg_good = Program.Adorned.(sorted @@ program cls_good queries)
 
-  let prg_good_stratified = Stratified.(sorted { strata; queries })
+  let prg_good_stratified = Program.Stratified.(sorted { strata; queries })
 
   let no_cycles () =
     Alcotest.(check @@ result testable_strat testable_neg_cycles)
       "Alice example 15.2.5"
       (Ok prg_good_stratified)
-      Compile.(Result.map ~f:Stratified.sorted @@ stratify prg_good)
+      Compile.(Result.map ~f:Program.Stratified.sorted @@ stratify prg_good)
   ;;
 
   let cls_bad =
-    Adorned.(
-      Clause.
-        [ clause
-            Lit.(from_raw lit_s ~bpatt:BindingPatt.(from_list [ Bound ]))
-            Lit.
-              [ from_raw lit_a ~bpatt:BindingPatt.(from_list [ Bound ])
-              ; neg @@ from_raw lit_t ~bpatt:BindingPatt.(from_list [ Bound ])
-              ]
-        ; clause
-            Lit.(from_raw lit_t ~bpatt:BindingPatt.(from_list [ Bound ]))
-            Lit.
-              [ from_raw lit_b ~bpatt:BindingPatt.(from_list [ Bound ])
-              ; neg @@ from_raw lit_s ~bpatt:BindingPatt.(from_list [ Bound ])
-              ]
-        ; clause
-            Lit.(from_raw lit_qry ~bpatt:BindingPatt.(from_list []))
-            Lit.[ from_raw lit_t ~bpatt:BindingPatt.(from_list [ Free ]) ]
-        ])
+    Clause.Adorned.
+      [ clause
+          Lit.Adorned.(from_raw lit_s ~bpatt:Binding.(from_list [ Bound ]))
+          Lit.Adorned.
+            [ from_raw lit_a ~bpatt:Binding.(from_list [ Bound ])
+            ; neg @@ from_raw lit_t ~bpatt:Binding.(from_list [ Bound ])
+            ]
+      ; clause
+          Lit.Adorned.(from_raw lit_t ~bpatt:Binding.(from_list [ Bound ]))
+          Lit.Adorned.
+            [ from_raw lit_b ~bpatt:Binding.(from_list [ Bound ])
+            ; neg @@ from_raw lit_s ~bpatt:Binding.(from_list [ Bound ])
+            ]
+      ; clause
+          Lit.Adorned.(from_raw lit_qry ~bpatt:Binding.(from_list []))
+          Lit.Adorned.[ from_raw lit_t ~bpatt:Binding.(from_list [ Free ]) ]
+      ]
   ;;
 
   (** Example 15.1.1, adapted
@@ -152,13 +146,13 @@ module Alice = struct
     query() :- t(X).
 
   *)
-  let prg_bad = Adorned.Program.(sorted @@ program cls_bad queries)
+  let prg_bad = Program.Adorned.(sorted @@ program cls_bad queries)
 
   let direct_cycle () =
     Alcotest.(check @@ result testable_strat testable_neg_cycles)
       "Alice example Fig 15.1, direct cycle"
       (Error [ pr_t, pr_s; pr_s, pr_t ])
-      Compile.(Result.map ~f:Stratified.sorted @@ stratify prg_bad)
+      Compile.(Result.map ~f:Program.Stratified.sorted @@ stratify prg_bad)
   ;;
 
   let pr_edge = Pred.(logical ~arity:2 @@ Name.from_string "edge")
@@ -168,59 +162,56 @@ end
 
 module Comp = struct
   let pr_n = Pred.(logical ~arity:1 @@ Name.from_string "n")
-  let lit_n1 = Raw.Lit.(lit pr_n Term.[ var "X" ])
-  let lit_n2 = Raw.Lit.(lit pr_n Term.[ var "Y" ])
+  let lit_n1 = Lit.Raw.(lit pr_n Term.[ var "X" ])
+  let lit_n2 = Lit.Raw.(lit pr_n Term.[ var "Y" ])
   let pr_g = Pred.(logical ~arity:2 @@ Name.from_string "g")
-  let lit_g1 = Raw.Lit.(lit pr_g Term.[ var "X"; var "Y" ])
-  let lit_g2 = Raw.Lit.(lit pr_g Term.[ var "X"; var "Z" ])
+  let lit_g1 = Lit.Raw.(lit pr_g Term.[ var "X"; var "Y" ])
+  let lit_g2 = Lit.Raw.(lit pr_g Term.[ var "X"; var "Z" ])
   let pr_t = Pred.(logical ~arity:2 @@ Name.from_string "t")
-  let lit_t_head = Raw.Lit.(lit pr_t Term.[ var "X"; var "Y" ])
-  let lit_t_body = Raw.Lit.(lit pr_t Term.[ var "Z"; var "Y" ])
+  let lit_t_head = Lit.Raw.(lit pr_t Term.[ var "X"; var "Y" ])
+  let lit_t_body = Lit.Raw.(lit pr_t Term.[ var "Z"; var "Y" ])
   let pr_ct = Pred.(logical ~arity:2 @@ Name.from_string "ct")
-  let lit_ct = Raw.Lit.(lit pr_ct Term.[ var "X"; var "Y" ])
+  let lit_ct = Lit.Raw.(lit pr_ct Term.[ var "X"; var "Y" ])
   let pr_qry = Pred.(logical ~arity:0 @@ Name.from_string "qry")
-  let lit_qry = Raw.Lit.(lit pr_qry [])
-  let bb = BindingPatt.(from_list [ Bound; Bound ])
-  let ff = BindingPatt.(from_list [ Free; Free ])
-  let bf = BindingPatt.(from_list [ Bound; Free ])
-  let f = BindingPatt.(from_list [ Free ])
+  let lit_qry = Lit.Raw.(lit pr_qry [])
+  let bb = Binding.(from_list [ Bound; Bound ])
+  let ff = Binding.(from_list [ Free; Free ])
+  let bf = Binding.(from_list [ Bound; Free ])
+  let f = Binding.(from_list [ Free ])
 
   let cl_t1 =
-    Adorned.(
-      Clause.clause
-        Lit.(from_raw lit_t_head ~bpatt:bb)
-        Lit.[ from_raw lit_g1 ~bpatt:bb ])
+    Clause.Adorned.clause
+      Lit.Adorned.(from_raw lit_t_head ~bpatt:bb)
+      Lit.Adorned.[ from_raw lit_g1 ~bpatt:bb ]
   ;;
 
   let cl_t2 =
-    Adorned.(
-      Clause.clause
-        Lit.(from_raw lit_t_head ~bpatt:bb)
-        Lit.[ from_raw lit_g2 ~bpatt:bf; from_raw lit_t_body ~bpatt:bb ])
+    Clause.Adorned.clause
+      Lit.Adorned.(from_raw lit_t_head ~bpatt:bb)
+      Lit.Adorned.[ from_raw lit_g2 ~bpatt:bf; from_raw lit_t_body ~bpatt:bb ]
   ;;
 
   let cl_ct =
-    Adorned.(
-      Clause.clause
-        Lit.(from_raw lit_ct ~bpatt:ff)
-        Lit.
-          [ from_raw lit_n1 ~bpatt:f
-          ; from_raw lit_n2 ~bpatt:f
-          ; neg @@ from_raw lit_t_head ~bpatt:bb
-          ])
+    Clause.Adorned.clause
+      Lit.Adorned.(from_raw lit_ct ~bpatt:ff)
+      Lit.Adorned.
+        [ from_raw lit_n1 ~bpatt:f
+        ; from_raw lit_n2 ~bpatt:f
+        ; neg @@ from_raw lit_t_head ~bpatt:bb
+        ]
   ;;
 
   let cls_adorned = [ cl_t1; cl_t2; cl_ct ]
   let strata = [ [ cl_t1; cl_t2 ]; [ cl_ct ] ]
   let queries = [ pr_ct ]
-  let prg_adrn = Adorned.Program.(sorted @@ program cls_adorned queries)
-  let prg_strat = Stratified.(sorted { strata; queries })
+  let prg_adrn = Program.Adorned.(sorted @@ program cls_adorned queries)
+  let prg_strat = Program.Stratified.(sorted { strata; queries })
 
   let pos_cycle () =
     Alcotest.(check @@ result testable_strat testable_neg_cycles)
       "Alice example Pc,cmp, direct cycle"
       (Ok prg_strat)
-      Compile.(Result.map ~f:Stratified.sorted @@ stratify prg_adrn)
+      Compile.(Result.map ~f:Program.Stratified.sorted @@ stratify prg_adrn)
   ;;
 end
 

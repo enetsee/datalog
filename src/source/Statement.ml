@@ -17,8 +17,8 @@ type t =
   | SDecl of Decl.t
 
 type repr =
-  | RCls of Core.Raw.Clause.t
-  | RQry of Core.Raw.Clause.t
+  | RCls of Core.Clause.Raw.t
+  | RQry of Core.Clause.Raw.t
   | RKnw of Core.Knowledge.t
   | RDcl
 
@@ -95,7 +95,7 @@ let query_to_core head_opt body region =
       map2
         Head.Tmvar.(to_core head)
         Body.(to_core body)
-        ~f:(fun head body -> RCls Core.Raw.Clause.{ head; body; region })
+        ~f:(fun head body -> RCls Core.Clause.Raw.{ head; body; region })
     | _ -> fail Err.(QueryUnnamed region))
 ;;
 
@@ -103,7 +103,7 @@ let clause_to_core head body region =
   MonadCompile.map2
     Head.Term.(to_core head)
     Body.(to_core body)
-    ~f:(fun head body -> RCls Core.Raw.Clause.{ head; body; region })
+    ~f:(fun head body -> RCls Core.Clause.Raw.{ head; body; region })
 ;;
 
 let fact_to_core head =

@@ -1,6 +1,5 @@
 open Core_kernel
 open Lib
-open Raw
 
 module Const = struct
   type t =
@@ -26,7 +25,7 @@ module Node = struct
       | NNull
       | NConst of Const.t
       | NPred of Pred.t * int
-      | NLit of Lit.t * int
+      | NLit of Lit.Raw.t * int
     [@@deriving compare, eq, sexp]
 
     let pp ppf = function
@@ -37,7 +36,7 @@ module Node = struct
           ppf
           (pr, idx)
       | NLit (lit, idx) ->
-        Fmt.(hbox @@ prefix (always "lit: ") @@ pair ~sep:comma Lit.pp int)
+        Fmt.(hbox @@ prefix (always "lit: ") @@ pair ~sep:comma Lit.Raw.pp int)
           ppf
           (lit, idx)
     ;;
@@ -78,7 +77,7 @@ let updateBinders bindings ~var ~nodes =
 ;;
 
 (** accumulate bindings in the head literal of a clause *)
-let clauseHead Lit.{ terms; pred; _ } =
+let clauseHead Lit.Raw.{ terms; pred; _ } =
   fst
   @@ List.fold_left terms ~init:(Tmvar.Map.empty, 0) ~f:(fun (accu, idx) ->
        function
@@ -90,7 +89,7 @@ let clauseHead Lit.{ terms; pred; _ } =
 (** accumulate edges and bindings in a body literal of a clause *)
 let clauseBody
     ?(bindings = Tmvar.Map.empty)
-    (Lit.{ pol; pred; terms; _ } as lit)
+    (Lit.Raw.{ pol; pred; terms; _ } as lit)
     ~intensionals
   =
   fst
@@ -129,7 +128,7 @@ let clauseBody
            (edges' @ edges, bindings'), idx + 1)
 ;;
 
-let clauseEdges Clause.{ head; body; _ } ~intensionals =
+let clauseEdges Clause.Raw.{ head; body; _ } ~intensionals =
   fst
   @@ List.fold_left
        body
@@ -143,8 +142,8 @@ let queryEdges (Pred.{ arity; _ } as pred) =
   List.init arity ~f:(fun idx -> Node.(NNull, NPred (pred, idx)))
 ;;
 
-let progEdges (Program.{ clauses; queries; _ } as prog) =
-  let intensionals = Program.intensionals prog in
+let progEdges (Program.Raw.{ clauses; queries; _ } as prog) =
+  let intensionals = Program.Raw.intensionals prog in
   List.concat_map ~f:queryEdges queries
   @ List.concat_map ~f:(clauseEdges ~intensionals) clauses
 ;;
@@ -189,7 +188,7 @@ let context { edges; bwdMap; _ } (n : int) =
 
 module Src = struct
   type t =
-    | SLit of Lit.t * int
+    | SLit of Lit.Raw.t * int
     | SConst of Const.t
   [@@deriving compare, eq]
 
@@ -206,7 +205,7 @@ module Src = struct
         Fmt.(
           hbox
           @@ prefix (always "literal ")
-          @@ pair ~sep:(always "@") Lit.pp int)
+          @@ pair ~sep:(always "@") Lit.Raw.pp int)
           ppf
           (lit, idx)
       | SConst c -> Fmt.(prefix (always "constant ") Const.pp) ppf c
@@ -218,7 +217,7 @@ end
 
 module Dest = struct
   type t =
-    | DLit of Lit.t * int
+    | DLit of Lit.Raw.t * int
     | DPred of Pred.t * int
   [@@deriving compare, eq]
 
@@ -235,7 +234,7 @@ module Dest = struct
         Fmt.(
           hbox
           @@ prefix (always "literal ")
-          @@ pair ~sep:(always "@") Lit.pp int)
+          @@ pair ~sep:(always "@") Lit.Raw.pp int)
           ppf
           (lit, idx)
       | DPred (pred, idx) ->

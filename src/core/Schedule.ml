@@ -85,7 +85,7 @@ module Vertex = struct
       to make the ordering well-moded.
     *)
   type t =
-    { available : (int * Raw.Lit.t * Obligation.t) list
+    { available : (int * Lit.Raw.t * Obligation.t) list
     ; bound : Var.Set.t
     ; debt : Var.Set.t
     }
@@ -94,7 +94,7 @@ module Vertex = struct
   include Pretty.Make0 (struct
     type nonrec t = t
 
-    let pp_alt_elem ppf (_, lit, _) = Pred.pp ppf @@ Raw.Lit.pred_of lit
+    let pp_alt_elem ppf (_, lit, _) = Pred.pp ppf @@ Lit.Raw.pred_of lit
 
     let pp_alt ppf alt =
       Fmt.(hovbox @@ parens @@ list ~sep:comma pp_alt_elem) ppf alt
@@ -121,12 +121,12 @@ module Edge = struct
       - `scheduled` literals from those available in the source vertex; and 
       - `cost` of scheduling those literals *)
   type t =
-    { scheduled : Raw.Lit.Set.t
+    { scheduled : Lit.Raw.Set.t
     ; cost : Var.Set.t
     }
   [@@deriving compare, eq]
 
-  let empty = { scheduled = Raw.Lit.Set.empty; cost = Var.Set.empty }
+  let empty = { scheduled = Lit.Raw.Set.empty; cost = Var.Set.empty }
 
   include Pretty.Make0 (struct
     type nonrec t = t
@@ -135,7 +135,7 @@ module Edge = struct
       Fmt.(
         hovbox @@ pair ~sep:comma (braces @@ list ~sep:comma Pred.pp) Var.Set.pp)
         ppf
-        (List.map ~f:Raw.Lit.(pred_of) @@ Raw.Lit.Set.elements scheduled, cost)
+        (List.map ~f:Lit.Raw.(pred_of) @@ Lit.Raw.Set.elements scheduled, cost)
     ;;
 
     let pp = `NoPrec pp
@@ -159,20 +159,20 @@ type t =
     constraint.
 *)
 let constraint_of lit ~cstrs =
-  match Raw.Lit.pol_of lit with
+  match Lit.Raw.pol_of lit with
   | Polarity.Pos ->
     Option.value ~default:Constraint.trivial
     @@ Pred.Map.find cstrs
-    @@ Raw.Lit.pred_of lit
+    @@ Lit.Raw.pred_of lit
   | Neg ->
-    let n = Pred.arity_of @@ Raw.Lit.pred_of lit in
+    let n = Pred.arity_of @@ Lit.Raw.pred_of lit in
     Constraint.(singleton @@ Atomic.of_list @@ List.init n ~f:(fun i -> i))
 ;;
 
 (** The obligation of a literal is a translation from a dataflow constraint to 
     the literals variables *)
 let obligation_of lit ~cstr =
-  let terms = Raw.Lit.terms_of lit in
+  let terms = Lit.Raw.terms_of lit in
   Obligation.of_list
   @@ List.map ~f:(fun acstr ->
          Var.Set.of_list
@@ -191,12 +191,12 @@ let vars lit =
     function
     | Term.TVar (v, _) -> Some (idx, Var.Named v)
     | _ -> None)
-  @@ Raw.Lit.terms_of lit
+  @@ Lit.Raw.terms_of lit
 ;;
 
 (** Unique non-existential variables *)
 let varset lit =
-  Var.Set.of_list @@ List.map ~f:(fun v -> Var.Named v) @@ Raw.Lit.vars_of lit
+  Var.Set.of_list @@ List.map ~f:(fun v -> Var.Named v) @@ Lit.Raw.vars_of lit
 ;;
 
 (* -- Vertex construction --------------------------------------------------- *)
@@ -207,7 +207,7 @@ let root cl ~cstrs =
     { bound = Var.Set.empty
     ; debt = Var.Set.empty
     ; available =
-        List.mapi (Raw.Clause.body_of cl) ~f:(fun idx lit ->
+        List.mapi (Clause.Raw.body_of cl) ~f:(fun idx lit ->
             idx, lit, obligation_of lit ~cstr:(constraint_of ~cstrs lit))
     }
 ;;
@@ -217,7 +217,7 @@ let root cl ~cstrs =
 *)
 let nextAvailable Vertex.{ available; _ } Edge.{ scheduled; _ } =
   List.filter available ~f:(fun (_, lit, _) ->
-      not @@ Raw.Lit.Set.mem scheduled lit)
+      not @@ Lit.Raw.Set.mem scheduled lit)
 ;;
 
 (** The next set of bound variables are  the current set of bound variables 
@@ -227,7 +227,7 @@ let nextBound Vertex.{ bound; _ } Edge.{ scheduled; _ } =
   Var.Set.union_list
   @@ List.cons bound
   @@ List.map ~f:varset
-  @@ Raw.Lit.Set.elements scheduled
+  @@ Lit.Raw.Set.elements scheduled
 ;;
 
 (** The cost at the next vertex is the cost of the previous vertex union
@@ -279,7 +279,7 @@ let affordable (idx, lit, costs) ~head_vars =
        other literals with and intersecting set of effects
 *)
 let restricted_effects Vertex.{ available; _ } (idx, lit, cost) =
-  let eff = Raw.Lit.effects_of lit in
+  let eff = Lit.Raw.effects_of lit in
   if Eff.Set.is_empty eff
   then Some (lit, cost)
   else (
@@ -288,7 +288,7 @@ let restricted_effects Vertex.{ available; _ } (idx, lit, cost) =
           if idx2 >= idx
           then false
           else (
-            let eff2 = Raw.Lit.effects_of lit2 in
+            let eff2 = Lit.Raw.effects_of lit2 in
             not @@ Eff.Set.is_empty @@ Eff.Set.inter eff eff2))
     in
     if restricted then None else Some (lit, cost))
@@ -321,7 +321,7 @@ let select Vertex.({ available; _ } as vtx) ~head_vars =
 
 (** Given the selected literals, group them by cost and construct edges *)
 let edges selected =
-  let mk_edge lits cost = Edge.{ scheduled = Raw.Lit.Set.of_list lits; cost } in
+  let mk_edge lits cost = Edge.{ scheduled = Lit.Raw.Set.of_list lits; cost } in
   let rec aux accu lits cur_cost = function
     | [] ->
       Option.value_map cur_cost ~default:accu ~f:(fun cost ->
@@ -341,7 +341,7 @@ let edges selected =
     constriants 
 *)
 let of_clause cl ~cstrs =
-  let head_vars = vars @@ Raw.Clause.head_of cl in
+  let head_vars = vars @@ Clause.Raw.head_of cl in
   let nexts vtx =
     let es = edges @@ select vtx ~head_vars in
     (vtx, es), List.map ~f:(mk_vertex vtx) es
@@ -383,7 +383,7 @@ let extract { head_vars; graph } =
 
 (** Enumerate all permutations of literals in a path segment *)
 let permutations t =
-  let neq x y = not @@ Raw.Lit.equal x y in
+  let neq x y = not @@ Lit.Raw.equal x y in
   let rec aux = function
     | [] -> [ [] ]
     | xs ->
@@ -405,17 +405,17 @@ let bound_by { head_vars; _ } ~bpatt =
   Var.Set.of_list
   @@ List.filter_mapi ~f:(fun idx ->
        function
-       | Adornment.Bound ->
+       | Binding.Bound ->
          Some (snd @@ List.find_exn head_vars ~f:(fun (i, _) -> i = idx))
        | _ -> None)
-  @@ BindingPatt.to_list bpatt
+  @@ Binding.to_list bpatt
 ;;
 
 (** Flatten the tree representation of the schedule graph collecting 
     on terminal paths which are consistent with the binding pattern
 *)
 let consistent_paths ({ graph; _ } as t) ~bpatt =
-  (* Check consistency by subset rather than via `BindingPatt.consistent`
+  (* Check consistency by subset rather than via `Binding.consistent`
      to avoid repeatedly converting `debt` to atomic constraints *)
   let bound = bound_by t ~bpatt in
   let rec flatten
@@ -437,7 +437,7 @@ let consistent_paths ({ graph; _ } as t) ~bpatt =
 
 let orderings t ~bpatt =
   List.(
-    dedup_and_sort ~compare:(compare Raw.Lit.compare)
+    dedup_and_sort ~compare:(compare Lit.Raw.compare)
     @@ concat_map ~f:expand
     @@ consistent_paths t ~bpatt)
 ;;
@@ -451,7 +451,7 @@ let iterate ~deps ~cstrs =
       (* retrieve the current constraint and the clauses in which it appears *)
       let cstr_in =
         Option.value ~default:Constraint.trivial @@ Pred.Map.find cstrs pred
-      and clauses = Raw.Dependency.clauses_of deps pred in
+      and clauses = Dependency.Raw.clauses_of deps pred in
       (* determine the constraint for each clause an use `meet` to find the
          constraint for the predicate, update the global map *)
       let cstr_out =
@@ -473,7 +473,7 @@ let iterate ~deps ~cstrs =
           else (
             let delta =
               List.filter ~f:(fun p -> not @@ Pred.equal pred p)
-              @@ Raw.Dependency.pos_deps_of deps pred
+              @@ Dependency.Raw.pos_deps_of deps pred
             in
             List.dedup_and_sort ~compare:Pred.compare @@ rest @ delta)
         in
@@ -485,12 +485,11 @@ let iterate ~deps ~cstrs =
 (** Determine the moding constraints of all clauses in a program with respect
     to an initial set (defaults to exposed queries) *)
 let solve ?inits prog ~deps =
-  Raw.(
-    let ws =
-      List.dedup_and_sort ~compare:Pred.compare
-      @@ Option.value ~default:Program.(queries_of prog) inits
-    in
-    iterate ~deps ~cstrs:Program.(constraints_of prog) ws)
+  let ws =
+    List.dedup_and_sort ~compare:Pred.compare
+    @@ Option.value ~default:Program.Raw.(queries_of prog) inits
+  in
+  iterate ~deps ~cstrs:Program.Raw.(constraints_of prog) ws
 ;;
 
 (* -- Pretty implementation ------------------------------------------------- *)

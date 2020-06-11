@@ -1,6 +1,5 @@
 open Core_kernel
 open Reporting
-open Raw
 open Lib
 
 module Violation = struct
@@ -28,10 +27,10 @@ end
 
 type repair =
   | Unfixable of Violation.t
-  | Guard of Lit.t * Clause.t list * Knowledge.Set.t
+  | Guard of Lit.Raw.t * Clause.Raw.t list * Knowledge.Set.t
 
 type guard =
-  | GClause of Clause.t
+  | GClause of Clause.Raw.t
   | GFact of Knowledge.t
 
 let partitionGuards gs =
@@ -44,12 +43,12 @@ let partitionGuards gs =
 ;;
 
 let mk_guard_body lit var idx =
-  let pred = Lit.pred_of lit in
+  let pred = Lit.Raw.pred_of lit in
   let terms =
     List.init pred.arity ~f:(fun i ->
         if i = idx then Term.var' var else Term.wild ())
   in
-  [ Lit.lit pred terms ]
+  [ Lit.Raw.lit pred terms ]
 ;;
 
 (* TODO:  monadic approach *)
@@ -65,7 +64,7 @@ let guard_from_src grdLit grdPred v src =
   Dataflow.(
     match src with
     | Src.SLit (lit, idx) ->
-      Some (GClause Clause.(clause grdLit @@ mk_guard_body lit v idx))
+      Some (GClause Clause.Raw.(clause grdLit @@ mk_guard_body lit v idx))
     | SConst (Const.CSym sym) ->
       Some (GFact (Knowledge.knowledge grdPred [ sym ]))
     | SConst Const.CWild -> None)
@@ -73,7 +72,7 @@ let guard_from_src grdLit grdPred v src =
 
 let mk_guard srcs (Violation.{ tmvar; _ } as violation) =
   let grdPred = Pred.logical ~arity:1 @@ fresh_pred_sym "guard" in
-  let grdLit = Lit.lit grdPred Term.[ var' tmvar ] in
+  let grdLit = Lit.Raw.lit grdPred Term.[ var' tmvar ] in
   Option.value_map ~default:(Unfixable violation) ~f:(fun gs ->
       let cls, fcts = partitionGuards gs in
       Guard (grdLit, cls, fcts))
@@ -104,14 +103,14 @@ let collect_repairs rps =
 (** The (potential) range-restriction violations of a clause are the 
     variables appearing in the head of the clause which do not appear in any 
     _positive_ literal in the body of the clause *)
-let violations Clause.{ head; body; _ } =
-  let head_pred = Lit.pred_of head
+let violations Clause.Raw.{ head; body; _ } =
+  let head_pred = Lit.Raw.pred_of head
   and body_vars =
     Tmvar.Set.of_list
-    @@ List.concat_map body ~f:(fun (Lit.{ pol; _ } as lit) ->
-           if Polarity.isPos pol then Lit.vars_of lit else [])
+    @@ List.concat_map body ~f:(fun (Lit.Raw.{ pol; _ } as lit) ->
+           if Polarity.isPos pol then Lit.Raw.vars_of lit else [])
   in
-  List.filter_mapi (Lit.terms_of head) ~f:(fun idx ->
+  List.filter_mapi (Lit.Raw.terms_of head) ~f:(fun idx ->
     function
     | Term.TVar (v, region) when Tmvar.Set.(not @@ mem body_vars v) ->
       let dest = Dataflow.Dest.DPred (head_pred, idx) in
@@ -123,7 +122,7 @@ let violations Clause.{ head; body; _ } =
     the unrestricted variable *)
 let fix_clause fg cl =
   Result.map ~f:(fun (lits, clss, fcts) ->
-      ( Clause.
+      ( Clause.Raw.
           { cl with
             body =
               List.fold_right ~init:cl.body ~f:(fun x accu -> x :: accu) lits
@@ -140,8 +139,8 @@ let apply prog =
   Result.map ~f:(fun rps ->
       let cls, gclss, kbs = List.unzip3 rps in
       let clauses = cls @ List.concat gclss in
-      Program.{ prog with clauses }, Knowledge.Set.union_list kbs)
+      Program.Raw.{ prog with clauses }, Knowledge.Set.union_list kbs)
   @@ Result.all
   @@ List.map ~f:(fix_clause fg)
-  @@ Raw.Program.clauses_of prog
+  @@ Program.Raw.clauses_of prog
 ;;
