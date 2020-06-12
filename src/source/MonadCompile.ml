@@ -117,7 +117,7 @@ module Env = struct
     { extras = Core.Pred.Name.Map.empty
     ; cnstrts = Core.Pred.Map.empty
     ; reserved_names = []
-    ; query_prefix = "_query"
+    ; query_prefix = "query"
     }
   ;;
 end

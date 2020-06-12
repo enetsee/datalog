@@ -4,7 +4,7 @@ open Lib
 
 module Err = struct
   type t =
-    | RangeWildcard of Dataflow.Dest.t * Region.t
+    | WildcardsInHead of Region.t list
     | RangeViolations of Violation.t list
     | NoCompatibleOrder of (Binding.t * Region.t) list
     | NegativeCycles of (Pred.t * Pred.t) list
@@ -51,9 +51,17 @@ module Err = struct
         (src, dest)
     ;;
 
+    let pp_wildcard =
+      Fmt.(
+        hovbox
+        @@ prefix
+             (any "Wildcards are not permitted in the head of a clause at ")
+             Region.pp)
+    ;;
+
     let pp ppf = function
-      | RangeWildcard (_, region) ->
-        Fmt.(hovbox @@ suffix (any "") Region.pp) ppf region
+      | WildcardsInHead regions ->
+        Fmt.(vbox @@ list ~sep:cut pp_wildcard) ppf regions
       | RangeViolations vs -> Fmt.(vbox @@ list ~sep:cut pp_violation) ppf vs
       | NoCompatibleOrder cls ->
         Fmt.(vbox @@ suffix (any ":@;") @@ list ~sep:cut pp_no_order) ppf cls

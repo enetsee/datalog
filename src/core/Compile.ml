@@ -1,6 +1,19 @@
 open Core_kernel
 
-(** -- Wildcards in head ---------------------------------------------------- *)
+let wildcards_in_head prog =
+  let errs =
+    List.concat_map ~f:(fun cl ->
+        List.filter_map ~f:(function
+            | Term.TWild region -> Some region
+            | _ -> None)
+        @@ Lit.Raw.terms_of
+        @@ Clause.Raw.head_of cl)
+    @@ Program.Raw.clauses_of prog
+  in
+  match errs with
+  | [] -> MonadCompile.return prog
+  | _ -> MonadCompile.(fail Err.(WildcardsInHead errs))
+;;
 
 let elim_dead_clauses prog =
   MonadCompile.(
@@ -26,7 +39,8 @@ let stratify (Program.Adorned.{ queries; _ } as prog) =
 let to_stratified (prog, kb) =
   MonadCompile.(
     prog
-    |> elim_dead_clauses
+    |> wildcards_in_head
+    >>= elim_dead_clauses
     >>= RangeRepair.apply
     >>= fun (prog, kb') ->
     Adorn.adorn_program prog
