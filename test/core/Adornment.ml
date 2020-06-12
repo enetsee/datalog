@@ -1,19 +1,7 @@
 open Core
 open Core_kernel
-open Reporting
 
-let testable_adorned_program = Program.Adorned.(Alcotest.testable pp equal)
-
-let testable_adornment_error =
-  let pp =
-    Fmt.(
-      vbox
-      @@ list ~sep:cut
-      @@ hbox
-      @@ pair ~sep:(any " @ ") Binding.pp Region.pp)
-  and eq = List.equal Tuple2.(equal ~eq1:Binding.equal ~eq2:Region.equal) in
-  Alcotest.testable pp eq
-;;
+let output = Alcotest.(result Testable.adorned_program Testable.err)
 
 module ClientServer = struct
   let p_check_client =
@@ -121,10 +109,13 @@ module ClientServer = struct
   ;;
 
   let client_server () =
-    Alcotest.(check @@ result testable_adorned_program testable_adornment_error)
+    Alcotest.(check output)
       "Client/server generalized adornment example"
       (Ok prg_client_server_adorned)
-      Adorn.(Result.map ~f:Program.Adorned.sorted @@ apply prg_client_server)
+      MonadCompile.(
+        eval
+        @@ map ~f:Program.Adorned.sorted
+        @@ Adorn.adorn_program prg_client_server)
   ;;
 end
 
@@ -201,10 +192,11 @@ module Negation = struct
   let prg_adorned = Program.Adorned.(sorted @@ program cls_adorned [ pr_qry ])
 
   let negation () =
-    Alcotest.(check @@ result testable_adorned_program testable_adornment_error)
+    Alcotest.(check output)
       "Negation generalized adornment example"
       (Ok prg_adorned)
-      Adorn.(Result.map ~f:Program.Adorned.sorted @@ apply prg_raw)
+      MonadCompile.(
+        eval @@ map ~f:Program.Adorned.sorted @@ Adorn.adorn_program prg_raw)
   ;;
 end
 
@@ -259,10 +251,11 @@ module Complement = struct
   let prg_adrn = Program.Adorned.(sorted @@ program cls_adorned [ pr_ct ])
 
   let complement () =
-    Alcotest.(check @@ result testable_adorned_program testable_adornment_error)
+    Alcotest.(check output)
       "Complement of transitive closure"
       (Ok prg_adrn)
-      Adorn.(Result.map ~f:Program.Adorned.sorted @@ apply prg_raw)
+      MonadCompile.(
+        eval @@ map ~f:Program.Adorned.sorted @@ Adorn.adorn_program prg_raw)
   ;;
 end
 

@@ -23,4 +23,14 @@ end
 
 include Minimal
 include Pretty.Make0 (Minimal)
-module Set = Set.Make (Minimal)
+
+module Base = struct
+  include Set.Make (Minimal)
+
+  include Pretty.Make0 (struct
+    type nonrec t = t
+
+    let pp ppf kb = Fmt.(vbox @@ list ~sep:cut pp) ppf @@ elements kb
+    let pp = `NoPrec pp
+  end)
+end

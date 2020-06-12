@@ -96,7 +96,7 @@ let ordering cstrs bpatt cl =
   | _ -> None
 ;;
 
-let apply prog =
+let adorn_program prog =
   let deps = Dependency.Raw.from_program prog in
   let cstrs = Schedule.solve prog ~deps in
   let ord = ordering cstrs in
@@ -125,6 +125,6 @@ let apply prog =
     @@ List.map queries ~f:(fun pred -> pred, Binding.mk_free pred)
   in
   match errs with
-  | [] -> Ok Program.Adorned.(program ~cstrs clauses queries)
-  | _ -> Error errs
+  | [] -> MonadCompile.return Program.Adorned.(program ~cstrs clauses queries)
+  | _ -> MonadCompile.(fail Err.(NoCompatibleOrder errs))
 ;;

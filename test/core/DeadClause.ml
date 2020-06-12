@@ -10,7 +10,6 @@ let pred_r = Pred.(logical ~arity:2 @@ Name.from_string "r")
 let pred_s = Pred.(logical ~arity:1 @@ Name.from_string "s")
 let pred_w = Pred.(logical ~arity:1 @@ Name.from_string "w")
 let pred_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
-let testable_prg = Program.Raw.(Alcotest.testable pp equal)
 
 (** -- Program with single dead clause `q` -------------------------------------
 
@@ -57,11 +56,10 @@ let prg_dead_clause_single_expected =
 ;;
 
 let dead_clause_single () =
-  Alcotest.check
-    testable_prg
+  Alcotest.(check @@ Testable.(result raw_program err))
     "single covering constant symbol"
-    prg_dead_clause_single_expected
-    Compile.(elim_dead_clauses prg_dead_clause_single)
+    (Ok prg_dead_clause_single_expected)
+    Compile.(MonadCompile.eval @@ elim_dead_clauses prg_dead_clause_single)
 ;;
 
 (** -- Program with no exposed queries -------------------------------------- *)
@@ -70,11 +68,10 @@ let prg_no_query = Program.Raw.{ prg_dead_clause_single with queries = [] }
 let prg_empty = Program.Raw.program [] []
 
 let no_query () =
-  Alcotest.check
-    testable_prg
+  Alcotest.(check @@ Testable.(result raw_program err))
     "no exposed queries"
-    prg_empty
-    Compile.(elim_dead_clauses prg_no_query)
+    (Ok prg_empty)
+    Compile.(MonadCompile.eval @@ elim_dead_clauses prg_no_query)
 ;;
 
 (** -- Deeply nested ----------------------------------------------------------
@@ -119,11 +116,10 @@ let prg_deeply_nested =
 ;;
 
 let deeply_nested () =
-  Alcotest.check
-    testable_prg
+  Alcotest.(check @@ Testable.(result raw_program err))
     "deeply nested, no dead clauses"
-    prg_deeply_nested
-    Compile.(elim_dead_clauses prg_deeply_nested)
+    (Ok prg_deeply_nested)
+    (MonadCompile.eval @@ Compile.elim_dead_clauses prg_deeply_nested)
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)

@@ -1,33 +1,8 @@
 open Core_kernel
-open Reporting
-open Lib
-
-module Violation = struct
-  type t =
-    { dest : Dataflow.Dest.t
-    ; tmvar : Tmvar.t
-    ; region : Region.t [@compare.ignore]
-    }
-  [@@deriving compare, eq]
-
-  let violation ?(region = Region.empty) dest tmvar = { dest; tmvar; region }
-
-  include Pretty.Make0 (struct
-    type nonrec t = t
-
-    let pp ppf { dest; tmvar; _ } =
-      Fmt.(hbox @@ pair ~sep:sp Dataflow.Dest.pp (quote Tmvar.pp))
-        ppf
-        (dest, tmvar)
-    ;;
-
-    let pp = `NoPrec pp
-  end)
-end
 
 type repair =
   | Unfixable of Violation.t
-  | Guard of Lit.Raw.t * Clause.Raw.t list * Knowledge.Set.t
+  | Guard of Lit.Raw.t * Clause.Raw.t list * Knowledge.Base.t
 
 type guard =
   | GClause of Clause.Raw.t
@@ -37,9 +12,9 @@ let partitionGuards gs =
   let rec aux (cls, fcts) = function
     | [] -> List.rev cls, fcts
     | GClause cl :: rest -> aux (cl :: cls, fcts) rest
-    | GFact fct :: rest -> aux (cls, Knowledge.Set.add fcts fct) rest
+    | GFact fct :: rest -> aux (cls, Knowledge.Base.add fcts fct) rest
   in
-  aux ([], Knowledge.Set.empty) gs
+  aux ([], Knowledge.Base.empty) gs
 ;;
 
 let mk_guard_body lit var idx =
@@ -49,15 +24,6 @@ let mk_guard_body lit var idx =
         if i = idx then Term.var' var else Term.wild ())
   in
   [ Lit.Raw.lit pred terms ]
-;;
-
-(* TODO:  monadic approach *)
-let fresh_pred_sym =
-  let i = ref 0 in
-  fun pfx ->
-    let sym = pfx ^ string_of_int !i in
-    i := !i + 1;
-    Pred.Name.from_string sym
 ;;
 
 let guard_from_src grdLit grdPred v src =
@@ -71,31 +37,35 @@ let guard_from_src grdLit grdPred v src =
 ;;
 
 let mk_guard srcs (Violation.{ tmvar; _ } as violation) =
-  let grdPred = Pred.logical ~arity:1 @@ fresh_pred_sym "guard" in
-  let grdLit = Lit.Raw.lit grdPred Term.[ var' tmvar ] in
-  Option.value_map ~default:(Unfixable violation) ~f:(fun gs ->
-      let cls, fcts = partitionGuards gs in
-      Guard (grdLit, cls, fcts))
-  @@ Option.all
-  @@ List.map srcs ~f:(guard_from_src grdLit grdPred tmvar)
+  MonadCompile.(
+    fresh_guardsym
+    >>= fun name ->
+    let grdPred = Pred.logical ~arity:1 name in
+    let grdLit = Lit.Raw.lit grdPred Term.[ var' tmvar ] in
+    return
+    @@ Option.value_map ~default:(Unfixable violation) ~f:(fun gs ->
+           let cls, fcts = partitionGuards gs in
+           Guard (grdLit, cls, fcts))
+    @@ Option.all
+    @@ List.map srcs ~f:(guard_from_src grdLit grdPred tmvar))
 ;;
 
 let fix_violation fg (Violation.{ dest; _ } as violation) =
   match Dataflow.coveringPositives fg ~dest with
   | Some srcs -> mk_guard srcs violation
-  | None -> Unfixable violation
+  | None -> MonadCompile.return @@ Unfixable violation
 ;;
 
 let collect_repairs rps =
   let rec aux (lits, cls, fcts) = function
     | Guard (lit, cl, fct) :: rest ->
       aux (lit :: lits, cl :: cls, fct :: fcts) rest
-    | [] -> Ok (lits, cls, fcts)
+    | [] -> MonadCompile.return (lits, cls, fcts)
     | Unfixable violation :: rest -> aux_violation [ violation ] rest
   and aux_violation accu = function
     | Unfixable violation :: rest -> aux_violation (violation :: accu) rest
     | _ :: rest -> aux_violation accu rest
-    | _ -> Error (List.rev accu)
+    | _ -> MonadCompile.(fail (Err.RangeViolations (List.rev accu)))
   in
   aux ([], [], []) rps
 ;;
@@ -121,26 +91,29 @@ let violations Clause.Raw.{ head; body; _ } =
 (** Attempt to fix each violation in a clause by adding guards witnessing
     the unrestricted variable *)
 let fix_clause fg cl =
-  Result.map ~f:(fun (lits, clss, fcts) ->
+  MonadCompile.(
+    List.map ~f:(fix_violation fg) @@ violations cl
+    |> all
+    >>= collect_repairs
+    >>= fun (lits, clss, fcts) ->
+    return
       ( Clause.Raw.
           { cl with
             body =
               List.fold_right ~init:cl.body ~f:(fun x accu -> x :: accu) lits
           }
       , List.concat clss
-      , Knowledge.Set.union_list fcts ))
-  @@ collect_repairs
-  @@ List.map ~f:(fix_violation fg)
-  @@ violations cl
+      , Knowledge.Base.union_list fcts ))
 ;;
 
 let apply prog =
   let fg = Dataflow.from_prog prog in
-  Result.map ~f:(fun rps ->
-      let cls, gclss, kbs = List.unzip3 rps in
-      let clauses = cls @ List.concat gclss in
-      Program.Raw.{ prog with clauses }, Knowledge.Set.union_list kbs)
-  @@ Result.all
-  @@ List.map ~f:(fix_clause fg)
-  @@ Program.Raw.clauses_of prog
+  MonadCompile.(
+    map ~f:(fun rps ->
+        let cls, gclss, kbs = List.unzip3 rps in
+        let clauses = cls @ List.concat gclss in
+        Program.Raw.{ prog with clauses }, Knowledge.Base.union_list kbs)
+    @@ all
+    @@ List.map ~f:(fix_clause fg)
+    @@ Program.Raw.clauses_of prog)
 ;;

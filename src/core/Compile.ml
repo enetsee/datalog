@@ -1,64 +1,35 @@
 open Core_kernel
-open Reporting
-open Lib
 
-module Err = struct
-  type t =
-    | RangeWildcard of Dataflow.Dest.t * Region.t
-    | RangeViolations of RangeRepair.Violation.t list
-    | NoCompatibleOrder of (Binding.t * Region.t) list
-    | NegativeCycles of (Pred.t * Pred.t) list
-end
+(** -- Wildcards in head ---------------------------------------------------- *)
 
-module Warn = struct
-  type t = UnusedClause of Region.t
-
-  include Pretty.Make0 (struct
-    type nonrec t = t
-
-    let pp ppf = function
-      | UnusedClause region ->
-        Fmt.(suffix (any ": unused clause") Region.pp) ppf region
-    ;;
-
-    let pp = `NoPrec pp
-  end)
-end
-
-module Topic = struct
-  module X = struct
-    type t = Warn.t list
-
-    let mempty = []
-    let append x y = x @ y
-    let pp ppf xs = Fmt.(vbox @@ list ~sep:cut Warn.pp) ppf xs
-    let pp = `NoPrec pp
-  end
-
-  include X
-  include Monoid.Make0 (X)
-  include Pretty.Make0 (X)
-end
-
-(** -- Dead code elimination ------------------------------------------------ *)
 let elim_dead_clauses prog =
-  let deps = Dependency.Raw.from_program prog in
-  let dead = Dependency.Raw.dead_clauses deps prog in
-  { prog with
-    clauses =
-      List.filteri ~f:(fun idx _ -> not @@ Int.Set.mem dead idx) prog.clauses
-  }
+  MonadCompile.(
+    let deps = Dependency.Raw.from_program prog in
+    let dead_idxs = Dependency.Raw.dead_clauses deps prog in
+    let alive, dead =
+      List.partition_map ~f:(fun (idx, cl) ->
+          if Int.Set.mem dead_idxs idx
+          then `Snd (Warn.UnusedClause (Clause.Raw.region_of cl))
+          else `Fst cl)
+      @@ List.mapi ~f:Tuple2.create
+      @@ Program.Raw.clauses_of prog
+    in
+    warns dead >>= fun _ -> return { prog with clauses = alive })
 ;;
 
-(** -- Range-restriction repair --------------------------------------------- *)
-let repair_range_violation prog = RangeRepair.apply prog
+let stratify (Program.Adorned.{ queries; _ } as prog) =
+  match Dependency.Adorned.(stratify @@ from_program prog) with
+  | Ok strata -> MonadCompile.return Program.Stratified.{ strata; queries }
+  | Error cycles -> MonadCompile.(fail Err.(NegativeCycles cycles))
+;;
 
-(** -- Automatic subgoal scheduling / generalized adornment ----------------- *)
-let generalized_adornment prog = Adorn.apply prog
-
-(* -- Stratification -------------------------------------------------------- *)
-let stratify prog =
-  let queries = Program.Adorned.queries_of prog in
-  Result.map ~f:(fun strata -> Program.Stratified.{ strata; queries })
-  @@ Dependency.Adorned.(stratify @@ from_program prog)
+let to_stratified (prog, kb) =
+  MonadCompile.(
+    prog
+    |> elim_dead_clauses
+    >>= RangeRepair.apply
+    >>= fun (prog, kb') ->
+    Adorn.adorn_program prog
+    >>= stratify
+    |> map ~f:(fun prog -> prog, Knowledge.Base.union kb kb'))
 ;;

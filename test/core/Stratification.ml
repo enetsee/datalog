@@ -1,26 +1,7 @@
 open Core
 open Core_kernel
 
-let testable_strat = Program.Stratified.(Alcotest.testable pp equal)
-
-let testable_neg_cycles =
-  let equal xs ys =
-    let xs' =
-      List.sort
-        ~compare:Tuple2.(compare ~cmp1:Pred.compare ~cmp2:Pred.compare)
-        xs
-    and ys' =
-      List.sort
-        ~compare:Tuple2.(compare ~cmp1:Pred.compare ~cmp2:Pred.compare)
-        ys
-    in
-    List.equal Tuple2.(equal ~eq1:Pred.equal ~eq2:Pred.equal) xs' ys'
-  and pp =
-    Fmt.(
-      vbox @@ list ~sep:cut @@ hbox @@ pair ~sep:(any " => ") Pred.pp Pred.pp)
-  in
-  Alcotest.testable pp equal
-;;
+let output = Alcotest.result Testable.stratified_program Testable.err
 
 (* == Examples adapted from chapter 15 of 'Foundations of Databases' ======== *)
 
@@ -113,10 +94,11 @@ module Alice = struct
   let prg_good_stratified = Program.Stratified.(sorted { strata; queries })
 
   let no_cycles () =
-    Alcotest.(check @@ result testable_strat testable_neg_cycles)
+    Alcotest.(check output)
       "Alice example 15.2.5"
       (Ok prg_good_stratified)
-      Compile.(Result.map ~f:Program.Stratified.sorted @@ stratify prg_good)
+      MonadCompile.(
+        eval @@ map ~f:Program.Stratified.sorted @@ Compile.stratify prg_good)
   ;;
 
   let cls_bad =
@@ -149,10 +131,11 @@ module Alice = struct
   let prg_bad = Program.Adorned.(sorted @@ program cls_bad queries)
 
   let direct_cycle () =
-    Alcotest.(check @@ result testable_strat testable_neg_cycles)
+    Alcotest.(check output)
       "Alice example Fig 15.1, direct cycle"
-      (Error [ pr_t, pr_s; pr_s, pr_t ])
-      Compile.(Result.map ~f:Program.Stratified.sorted @@ stratify prg_bad)
+      (Error MonadCompile.Err.(NegativeCycles [ pr_t, pr_s; pr_s, pr_t ]))
+      MonadCompile.(
+        eval @@ map ~f:Program.Stratified.sorted @@ Compile.stratify prg_bad)
   ;;
 
   let pr_edge = Pred.(logical ~arity:2 @@ Name.from_string "edge")
@@ -208,10 +191,11 @@ module Comp = struct
   let prg_strat = Program.Stratified.(sorted { strata; queries })
 
   let pos_cycle () =
-    Alcotest.(check @@ result testable_strat testable_neg_cycles)
+    Alcotest.(check output)
       "Alice example Pc,cmp, direct cycle"
       (Ok prg_strat)
-      Compile.(Result.map ~f:Program.Stratified.sorted @@ stratify prg_adrn)
+      MonadCompile.(
+        eval @@ map ~f:Program.Stratified.sorted @@ Compile.stratify prg_adrn)
   ;;
 end
 
@@ -220,7 +204,10 @@ end
 let test_cases =
   Alcotest.
     [ test_case "Alice examples, no cycles" `Quick Alice.no_cycles
-    ; test_case "Alice examples, direct cycle" `Quick Alice.direct_cycle
+    ; test_case
+        "Alice examples, direct negative cycle"
+        `Quick
+        Alice.direct_cycle
     ; test_case "Alice examples, direct positive cycle" `Quick Comp.pos_cycle
     ]
 ;;

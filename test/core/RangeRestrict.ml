@@ -11,31 +11,21 @@ let pred_r = Pred.(logical ~arity:1 @@ Name.from_string "r")
 let pred_s = Pred.(logical ~arity:1 @@ Name.from_string "s")
 let pred_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
 let pred_qry2 = Pred.(logical ~arity:0 @@ Name.from_string "query2")
+let i = ref 0
+let reset () = i := 0
 
-(* TODO:  monadic approach *)
-let fresh_pred_sym =
-  let i = ref 0 in
-  fun pfx ->
-    let sym = pfx ^ string_of_int !i in
-    i := !i + 1;
-    Pred.Name.from_string sym
+let fresh_pred_sym pfx =
+  let sym = pfx ^ string_of_int !i in
+  i := !i + 1;
+  Pred.Name.from_string sym
 ;;
 
 let mk_guard () = Pred.(logical ~arity:1 @@ fresh_pred_sym "guard")
 
-(** Testable instance for violations *)
-let testable_violation = RangeRepair.Violation.(Alcotest.testable pp equal)
-
-let testable_prg = Program.Raw.(Alcotest.testable pp equal)
-
-let pp_prg_kb ppf (prg, kb) =
-  Fmt.(vbox @@ pair ~sep:cut Program.Raw.pp @@ list ~sep:cut Knowledge.pp)
-    ppf
-    (prg, Knowledge.Set.to_list kb)
+let output =
+  Alcotest.(
+    Testable.(result (tuple2 (module Program.Raw) (module Knowledge.Base)) err))
 ;;
-
-let eq_prg_kb = Tuple2.equal ~eq1:Program.Raw.equal ~eq2:Knowledge.Set.equal
-let testable_prg_kb = Alcotest.testable pp_prg_kb eq_prg_kb
 
 (** -- Fixable with guard ------------------------------------------------------
   #
@@ -63,6 +53,7 @@ let prg_fixable_guard =
 ;;
 
 let fixable_guard_expected =
+  reset ();
   let pred_grd = mk_guard () in
   ( Program.Raw.program
       Clause.Raw.
@@ -77,14 +68,14 @@ let fixable_guard_expected =
             Lit.Raw.[ lit pred_r Term.[ var "X" ] ]
         ]
       [ pred_qry ]
-  , Knowledge.Set.empty )
+  , Knowledge.Base.empty )
 ;;
 
 let fixable_guard () =
-  Alcotest.(check @@ result testable_prg_kb @@ list testable_violation)
+  Alcotest.(check output)
     "Fixable with guard"
     (Ok fixable_guard_expected)
-    RangeRepair.(apply prg_fixable_guard)
+    (MonadCompile.eval RangeRepair.(apply prg_fixable_guard))
 ;;
 
 (** -- Fixable with knowledge --------------------------------------------------
@@ -110,6 +101,7 @@ let prg_fixable_knowledge =
 ;;
 
 let fixable_knowledge_expected =
+  reset ();
   let pred_grd = mk_guard () in
   ( Program.Raw.program
       Clause.Raw.
@@ -121,14 +113,14 @@ let fixable_knowledge_expected =
             Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
         ]
       [ pred_qry ]
-  , Knowledge.(Set.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
+  , Knowledge.(Base.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
 ;;
 
 let fixable_knowledge () =
-  Alcotest.(check @@ result testable_prg_kb @@ list testable_violation)
+  Alcotest.(check output)
     "Fixable with knowledge"
     (Ok fixable_knowledge_expected)
-    RangeRepair.(apply prg_fixable_knowledge)
+    (MonadCompile.eval RangeRepair.(apply prg_fixable_knowledge))
 ;;
 
 (** -- Fixable, multiple paths -------------------------------------------------
@@ -149,6 +141,7 @@ let prg_fixable_multi =
 ;;
 
 let fixable_multi_expected =
+  reset ();
   let pred_grd = mk_guard () in
   ( Program.Raw.program
       Clause.Raw.
@@ -166,14 +159,14 @@ let fixable_multi_expected =
             Lit.Raw.[ lit pred_r Term.[ var "X" ] ]
         ]
       [ pred_qry ]
-  , Knowledge.(Set.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
+  , Knowledge.(Base.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
 ;;
 
 let fixable_multi () =
-  Alcotest.(check @@ result testable_prg_kb @@ list testable_violation)
+  Alcotest.(check output)
     "Fixable on multiple paths"
     (Ok fixable_multi_expected)
-    RangeRepair.(apply prg_fixable_multi)
+    (MonadCompile.eval RangeRepair.(apply prg_fixable_multi))
 ;;
 
 (** -- Unfixable  --------------------------------------------------------------
@@ -199,15 +192,19 @@ let prg_unfixable_unbound =
 ;;
 
 let unfixable_unbound_expected =
-  RangeRepair.Violation.
-    [ violation Dataflow.Dest.(DPred (pred_p, 0)) Tmvar.(from_string "X") ]
+  reset ();
+  MonadCompile.Err.RangeViolations
+    [ Violation.violation
+        Dataflow.Dest.(DPred (pred_p, 0))
+        Tmvar.(from_string "X")
+    ]
 ;;
 
 let unfixable_unbound () =
-  Alcotest.(check @@ result testable_prg_kb @@ list testable_violation)
+  Alcotest.(check output)
     "Unfixable, unbound variable"
     (Error unfixable_unbound_expected)
-    RangeRepair.(apply prg_unfixable_unbound)
+    (MonadCompile.eval RangeRepair.(apply prg_unfixable_unbound))
 ;;
 
 (** -- Unfixable, multiple paths, one fixable, one unfixable -------------------
@@ -241,15 +238,18 @@ let prg_unfixable_multi =
 ;;
 
 let unfixable_multi_expected =
-  RangeRepair.Violation.
-    [ violation Dataflow.Dest.(DPred (pred_p, 0)) Tmvar.(from_string "X") ]
+  reset ();
+  MonadCompile.Err.RangeViolations
+    Violation.
+      [ violation Dataflow.Dest.(DPred (pred_p, 0)) Tmvar.(from_string "X") ]
 ;;
 
 let unfixable_multi () =
-  Alcotest.(check @@ result testable_prg_kb @@ list testable_violation)
+  Alcotest.(check output)
     "Unfixable on one path, fixable on other."
     (Error unfixable_multi_expected)
-    RangeRepair.(apply prg_unfixable_multi)
+    (MonadCompile.eval RangeRepair.(apply prg_unfixable_multi));
+  reset ()
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)
