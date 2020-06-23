@@ -95,7 +95,7 @@ let query_to_core head_opt body region =
       map2
         Head.Tmvar.(to_core head)
         Body.(to_core body)
-        ~f:(fun head body -> RCls Core.Clause.Raw.{ head; body; region })
+        ~f:(fun head body -> RQry Core.Clause.Raw.{ head; body; region })
     | _ -> fail Err.(QueryUnnamed region))
 ;;
 
@@ -125,20 +125,23 @@ include Pretty.Make0 (struct
   let pp ppf = function
     | SClause { head; body; _ } ->
       Fmt.(
-        hvbox
+        hovbox
         @@ suffix (any ".")
-        @@ pair ~sep:(any " :-@, ") Head.Term.pp Body.pp)
+        @@ pair ~sep:(any " :-@; ") Head.Term.pp Body.pp)
         ppf
         (head, body)
     | SQuery { head = Some hd; body; _ } ->
       Fmt.(
-        hvbox
+        hovbox
         @@ suffix (any ".")
-        @@ pair ~sep:(any " :-@, ") Head.Tmvar.pp Body.pp)
+        @@ pair ~sep:(any " :-@; ") Head.Tmvar.pp Body.pp)
         ppf
         (hd, body)
-    | SQuery { body; _ } -> Fmt.(hvbox @@ suffix (any ".") @@ Body.pp) ppf body
-    | SFact head -> Fmt.(hvbox @@ suffix (any ".") @@ Head.Symbol.pp) ppf head
+    | SQuery { body; _ } ->
+      Fmt.(hovbox @@ prefix (any "?-@; ") @@ suffix (any ".") @@ Body.pp)
+        ppf
+        body
+    | SFact head -> Fmt.(hovbox @@ suffix (any ".") @@ Head.Symbol.pp) ppf head
     | SDecl d -> Decl.pp ppf d
   ;;
 

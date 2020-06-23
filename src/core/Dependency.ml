@@ -50,7 +50,8 @@ struct
   ;;
 
   (** Map from predicate to all clauses in which it appears as the conclusion *)
-  let predClauses ~predFwd Program.{ clauses; _ } =
+  let predClauses ~predFwd prog =
+    let clauses = Program.clauses_of prog in
     let ungrouped, clidxs =
       List.unzip
       @@ List.mapi clauses ~f:(fun idx (Clause.{ head; _ } as cl) ->
@@ -95,7 +96,8 @@ struct
       q => { (Pos,p) }       
       r => { (Neg,p) , (Pos,q) } 
   *)
-  let predEdges ~predFwd ~predBwd (Program.{ clauses; _ } as prog) =
+  let predEdges ~predFwd ~predBwd prog =
+    let clauses = Program.clauses_of prog in
     let itnls = Program.intensionals prog in
     Int.Map.of_alist_exn
     (* Ensure all intensional predicates are included *)
@@ -117,7 +119,8 @@ struct
           body)
   ;;
 
-  let clausePreds ~predFwd Program.{ clauses; _ } =
+  let clausePreds ~predFwd prog =
+    let clauses = Program.clauses_of prog in
     Int.Map.of_alist_exn
     @@ List.mapi clauses ~f:(fun cl_idx cl ->
            let prds =
@@ -203,10 +206,7 @@ struct
   (** The `dead` clauses are those which are not accessible from any exposed
       query. This exposes how clause indexes are created.
   *)
-  let dead_clauses
-      { predFwd; predClauses; clausePreds; clauseBwd; _ }
-      Program.{ queries; _ }
-    =
+  let dead_clauses { predFwd; predClauses; clausePreds; clauseBwd; _ } prog =
     let rec aux dead_cls seen_prd = function
       | [] -> dead_cls
       | prd_idx :: rest ->
@@ -228,7 +228,8 @@ struct
     in
     let cl_ids = Int.Set.of_list @@ Int.Map.keys clauseBwd in
     aux cl_ids Int.Set.empty
-    @@ List.filter_map ~f:(Pred.Map.find predFwd) queries
+    @@ List.filter_map ~f:(Pred.Map.find predFwd)
+    @@ Program.queries_of prog
   ;;
 
   (* -- Stratification ------------------------------------------------------ *)
@@ -345,3 +346,4 @@ end
 
 module Raw = Make (Lit.Raw) (Clause.Raw) (Program.Raw)
 module Adorned = Make (Lit.Adorned) (Clause.Adorned) (Program.Adorned)
+module Stratified = Make (Lit.Adorned) (Clause.Adorned) (Program.Stratified)

@@ -14,6 +14,9 @@ _build/
 # opam switch directory
 _opam/
 
+# local test fixtures
+fixtures/
+
 # ocamlbuild targets
 *.byte
 *.native

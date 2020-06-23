@@ -7,6 +7,7 @@ module X = struct
     | SReal of string
     | SInt of int
     | SBool of bool
+    | SNull
   [@@deriving eq, compare, hash, sexp]
 
   let pp ppf = function
@@ -14,6 +15,7 @@ module X = struct
     | SReal s -> Fmt.string ppf s
     | SInt n -> Fmt.int ppf n
     | SBool b -> Fmt.bool ppf b
+    | SNull -> Fmt.string ppf "null"
   ;;
 
   let pp = `NoPrec pp
@@ -25,3 +27,4 @@ include Pretty.Make0 (X)
 let from_string s = SText s
 let from_int n = SInt n
 let from_bool n = SBool n
+let null = SNull

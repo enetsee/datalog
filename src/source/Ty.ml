@@ -11,10 +11,10 @@ module Prim = struct
     [@@deriving eq, compare]
 
     let pp ppf = function
-      | TySymbol -> Fmt.string ppf "@Symbol"
-      | TyReal -> Fmt.string ppf "@Real"
-      | TyInt -> Fmt.string ppf "@Int"
-      | TyBool -> Fmt.string ppf "@Bool"
+      | TySymbol -> Fmt.string ppf "Symbol"
+      | TyReal -> Fmt.string ppf "Real"
+      | TyInt -> Fmt.string ppf "Int"
+      | TyBool -> Fmt.string ppf "Bool"
     ;;
 
     let pp = `NoPrec pp
@@ -28,7 +28,7 @@ module Name = struct
   module X = struct
     type t = { name : string } [@@deriving eq, compare, hash, sexp]
 
-    let pp ppf { name } = Fmt.(any "@" ++ string) ppf name
+    let pp ppf { name } = Fmt.string ppf name
     let pp = `NoPrec pp
   end
 

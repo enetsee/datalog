@@ -5,21 +5,10 @@ module type S = sig
   module Lit : Lit.S
   module Clause : Clause.S with module Lit := Lit
 
-  type t =
-    { clauses : Clause.t list
-    ; queries : Pred.t list
-    ; constraints : Constraint.t Pred.Map.t
-    }
-  [@@deriving compare, eq]
+  type t
 
   include HasPreds.S with type t := t
   include Pretty.S0 with type t := t
-
-  val program
-    :  ?cstrs:Constraint.t Pred.Map.t
-    -> Clause.t list
-    -> Pred.t list
-    -> t
 
   val sorted : t -> t
   val clauses_of : t -> Clause.t list
@@ -29,8 +18,28 @@ module type S = sig
   val extensionals : t -> Pred.Set.t
 end
 
+module type S_Unstratified = sig
+  module Lit : Lit.S
+  module Clause : Clause.S with module Lit := Lit
+
+  type t =
+    { clauses : Clause.t list
+    ; queries : Pred.t list
+    ; constraints : Constraint.t Pred.Map.t
+    }
+  [@@deriving compare, eq]
+
+  val program
+    :  ?cstrs:Constraint.t Pred.Map.t
+    -> Clause.t list
+    -> Pred.t list
+    -> t
+
+  include S with module Lit := Lit and module Clause := Clause and type t := t
+end
+
 module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
-  S with module Lit := Lit and module Clause := Clause = struct
+  S_Unstratified with module Lit := Lit and module Clause := Clause = struct
   type t =
     { clauses : Clause.t list
     ; queries : Pred.t list
@@ -112,7 +121,23 @@ module Adorned = struct
   ;;
 end
 
-module Stratified = struct
+module type S_Stratified = sig
+  type t =
+    { strata : Clause.Adorned.t list list
+    ; queries : Pred.t list
+    }
+  [@@deriving compare, eq, sexp]
+
+  include
+    S
+      with module Lit := Lit.Adorned
+       and module Clause := Clause.Adorned
+       and type t := t
+
+  val strata_of : t -> Clause.Adorned.t list list
+end
+
+module Stratified : S_Stratified = struct
   (** A _stratified_ datalog program `D` is a partition of `D` into a _sequence 
     of adorned programs_ (strata) `D1,...,Dn` such that, given a function 
     `s : Predicate -> Int` mapping predicates to their stratum, we have:
@@ -143,6 +168,30 @@ module Stratified = struct
     { strata = List.(map ~f:(sort ~compare:Clause.Adorned.compare) strata)
     ; queries = List.sort ~compare:Pred.compare queries
     }
+  ;;
+
+  let strata_of { strata; _ } = strata
+  let queries_of { queries; _ } = queries
+  let clauses_of { strata; _ } = List.concat strata
+
+  let preds_of t =
+    List.dedup_and_sort ~compare:Pred.compare
+    @@ List.concat_map ~f:Clause.Adorned.preds_of
+    @@ clauses_of t
+  ;;
+
+  let constraints_of _ = Pred.Map.empty
+
+  (** Intensional predicates, i.e. those appearing in the head of a clause *)
+  let intensionals t =
+    Pred.Set.of_list
+    @@ List.map ~f:(fun cl -> Clause.Adorned.head_pred_of cl)
+    @@ clauses_of t
+  ;;
+
+  (** Intensional predicates, i.e. those appearing only in the body of a clause *)
+  let extensionals prog =
+    Pred.Set.diff (Pred.Set.of_list @@ preds_of prog) (intensionals prog)
   ;;
 
   include Pretty.Make0 (struct

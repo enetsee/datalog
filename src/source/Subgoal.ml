@@ -215,7 +215,7 @@ module Make (Ops : OpSet.S) (Atom : Atom.S) :
   include Pretty.Make0 (struct
     type nonrec t = t
 
-    let rec pp_ ppf t = SubgoalF.pp pp_ ppf @@ proj t
-    let pp = `NoPrec pp_
+    let rec pp_prec prec ppf t = SubgoalF.pp_prec prec pp_prec ppf @@ proj t
+    let pp = `WithPrec pp_prec
   end)
 end

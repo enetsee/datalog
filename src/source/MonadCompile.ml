@@ -106,6 +106,21 @@ module Warn = struct
 end
 
 module Env = struct
+  let built_in =
+    Core.(
+      Pred.Map.of_alist_exn
+        [ ( Pred.(extralogical ~arity:2 @@ Name.from_string "gt")
+          , Constraint.(of_list Atomic.[ of_list [ 0; 1 ] ]) )
+        ])
+  ;;
+
+  let extras =
+    Core.(
+      Pred.Name.Map.of_alist_exn
+      @@ List.map ~f:(fun (k, _) -> Pred.(name_of k, nature_of k))
+      @@ Map.to_alist built_in)
+  ;;
+
   type t =
     { extras : Core.Nature.t Core.Pred.Name.Map.t
     ; cnstrts : Core.Constraint.t Core.Pred.Map.t
@@ -114,11 +129,7 @@ module Env = struct
     }
 
   let default =
-    { extras = Core.Pred.Name.Map.empty
-    ; cnstrts = Core.Pred.Map.empty
-    ; reserved_names = []
-    ; query_prefix = "query"
-    }
+    { extras; cnstrts = built_in; reserved_names = []; query_prefix = "query" }
   ;;
 end
 
@@ -146,6 +157,12 @@ end
 include Effect.MonadRWSError.Make (Err) (Topic) (State) (Env)
 
 let run ?(env = Env.default) ?(st = State.default) t = run ~env ~st t
+
+let eval ?env ?st t =
+  let res, _, _ = run ?env ?st t in
+  res
+;;
+
 let warn w = tell [ w ]
 
 let incr =

@@ -74,8 +74,8 @@ let collect_disj t =
         , SBinOp ({ elem = Disj; _ }, s1, s2)
         , SBinOp ({ elem = Disj; _ }, s3, s4) ) ->
       (* (s1 + s2) * (s3 + s4) <=>
-            (s1 * s2) + (s1 * s4) + (s2 * s3) + (s2 * s4) *)
-      disj ~region (conj ~region s1 s2)
+            (s1 * s3) + (s1 * s4) + (s2 * s3) + (s2 * s4) *)
+      disj ~region (conj ~region s1 s3)
       @@ disj ~region (conj ~region s1 s4)
       @@ disj ~region (conj ~region s2 s3) (conj ~region s2 s4)
     | SBinOp ({ elem = Conj; region }, SBinOp ({ elem = Disj; _ }, s1, s2), s3)
