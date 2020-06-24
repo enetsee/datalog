@@ -84,17 +84,22 @@ module Minimal = struct
       alternating between the two partitions.
 
       Example: 
-            0           0
-                         \
-      P = 0   0   Q = 0   0
-             /            
-            0           0
 
-                 0
+      P = {{1},{2},{3,4}}
+      Q = {{1,3},{2},{4}}
+      P \/ Q  = {{1,3,4},{2}}
+
+            1           1
+                         \
+      P = 2   3   Q = 2   3
+             /            
+            4           4
+
+                 1
       P \/ Q =   |\
-               0 | 0
+               2 | 3
                  |/
-                 0
+                 4
   *)
   let join t1 t2 =
     let step accu qs =
