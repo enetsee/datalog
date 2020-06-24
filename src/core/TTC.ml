@@ -22,8 +22,10 @@ let ttc ?equiv tys =
 ;;
 
 let arity_of { tys; _ } = List.length tys
-let with_constraint t ~cstr:(i, j)  = 
+
+let with_constraint t ~cstr:(i, j) =
   { t with equiv = Partition.update_exn (i, j) t.equiv }
+;;
 
 (** For given arity `n`, ( _|_, ... , _|_ | {{1..n}} ) *)
 let bottom n =
@@ -43,12 +45,22 @@ include Pretty.Make0 (struct
   type nonrec t = t
 
   let pp ppf { tys; equiv } =
-    Fmt.(
-      parens
-      @@ hovbox
-      @@ pair ~sep:(always " @;|@; ") (list ~sep:comma Ty.pp) Partition.pp)
-      ppf
-      (tys, equiv)
+    match
+      List.filter ~f:(fun elem -> Int.Set.length elem > 1)
+      @@ Partition.to_list equiv
+    with
+    | [] -> Fmt.(parens @@ hovbox @@ list ~sep:comma Ty.pp) ppf tys
+    | elems ->
+      Fmt.(
+        parens
+        @@ hovbox
+        @@ pair ~sep:(always " @;|@; ") (list ~sep:comma Ty.pp)
+        @@ braces
+        @@ list ~sep:comma
+        @@ braces
+        @@ list ~sep:comma int)
+        ppf
+        (tys, List.map ~f:Int.Set.(to_list) elems)
   ;;
 
   let pp = `NoPrec pp
@@ -87,7 +99,7 @@ let meet_helper tys ~equiv ~trg =
   (u1,...,un) (|) r := (u1',...,un') where ui'= {uj | i ∼ j}
 *)
 let meet { tys = ts1; equiv = p1 } { tys = ts2; equiv = p2 } ~trg =
-  let equiv = Partition.(meet p1 p2) in
+  let equiv = Partition.(join p1 p2) in
   { tys = meet_helper (List.map2_exn ~f:Ty.(meet ~trg) ts1 ts2) ~equiv ~trg
   ; equiv
   }

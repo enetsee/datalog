@@ -98,5 +98,12 @@ let meet t1 t2 ~trg =
         ~default:Bot
         (Map.find trg t1
         >>= fun s1 ->
-        Map.find trg t2 >>= fun s2 -> List.hd @@ Set.(elements @@ inter s1 s2)))
+        if Set.mem s1 t2
+        then Some t2
+        else
+          Map.find trg t2
+          >>= fun s2 ->
+          if Set.mem s2 t1
+          then Some t1
+          else List.hd @@ Set.(elements @@ inter s1 s2)))
 ;;

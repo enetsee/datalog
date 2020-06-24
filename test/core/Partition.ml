@@ -64,7 +64,9 @@ let make_finer_than x ~than =
 let make_not_finer_than x ~than =
   let msg =
     Fmt.(
-      to_to_string @@ hovbox @@ pair ~sep:(any " /<| ") Partition.pp Partition.pp)
+      to_to_string
+      @@ hovbox
+      @@ pair ~sep:(any " /<| ") Partition.pp Partition.pp)
       (x, than)
   in
   let f () = Alcotest.(check bool) msg false Partition.(is_finer x ~than) in
@@ -97,24 +99,27 @@ let mk_meet expect x y =
   Alcotest.test_case msg `Quick f
 ;;
 
-let mk_constrain expect cstrs x = 
-  let pp_cstr ppf (i,j) = 
-    Fmt.(prefix (any "sig") @@ braces @@ pair ~sep:(any " ~ ") int int) ppf (i,j)
-  in 
-  let msg = 
+let mk_constrain expect cstrs x =
+  let pp_cstr ppf (i, j) =
+    Fmt.(prefix (any "sig") @@ braces @@ pair ~sep:(any " ~ ") int int)
+      ppf
+      (i, j)
+  in
+  let msg =
     Fmt.(
       to_to_string
       @@ pair ~sep:(any " === ") Partition.pp
-      @@ pair (list pp_cstr) @@ parens Partition.pp
-    )
-    (expect,(cstrs,x))
-  in 
-  let actual = 
-    List.fold_left cstrs ~init:x ~f:(fun accu cstr -> Partition.update_exn cstr accu)
-  in 
-  let f () = Alcotest.(check partition) msg expect actual
+      @@ pair (list pp_cstr)
+      @@ parens Partition.pp)
+      (expect, (cstrs, x))
   in
+  let actual =
+    List.fold_left cstrs ~init:x ~f:(fun accu cstr ->
+        Partition.update_exn cstr accu)
+  in
+  let f () = Alcotest.(check partition) msg expect actual in
   Alcotest.test_case msg `Quick f
+;;
 
 let test_cases =
   List.concat
@@ -168,13 +173,13 @@ let test_cases =
       ; mk_meet three_c two_e two_f
       ; mk_meet three_d two_e two_g
       ; mk_meet three_f two_f two_g
-      ; mk_constrain three_a [(1,3)] four
-      ; mk_constrain three_b [(2,3)] four
-      ; mk_constrain three_c [(3,4)] four
-      ; mk_constrain three_d [(1,2)] four
-      ; mk_constrain three_e [(1,4)] four
-      ; mk_constrain three_f [(2,4)] four
-      ; mk_constrain one [(1,2);(2,3);(3,4)] four
+      ; mk_constrain three_a [ 1, 3 ] four
+      ; mk_constrain three_b [ 2, 3 ] four
+      ; mk_constrain three_c [ 3, 4 ] four
+      ; mk_constrain three_d [ 1, 2 ] four
+      ; mk_constrain three_e [ 1, 4 ] four
+      ; mk_constrain three_f [ 2, 4 ] four
+      ; mk_constrain one [ 1, 2; 2, 3; 3, 4 ] four
       ]
     ]
 ;;

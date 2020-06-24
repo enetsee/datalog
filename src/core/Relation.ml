@@ -38,7 +38,7 @@ module F = struct
       Fmt.(braces @@ list ~sep:comma int) ppf @@ Int.Set.to_list s
     ;;
 
-    let pp_eqs = Fmt.(hbox @@ pair ~sep:(any "@;~@;") int int)
+    let pp_eqs = Fmt.(hbox @@ parens @@ pair ~sep:(any "@;~@;") int int)
 
     let pp prec pp_a ppf = function
       | RPred pr -> Pred.pp ppf pr
@@ -56,7 +56,7 @@ module F = struct
         let prec' = 4 in
         let fmt =
           let g =
-            Fmt.(hbox @@ prefix (any "pi@;") @@ pair pp_projset @@ pp_a prec')
+            Fmt.(hbox @@ prefix (any "pi") @@ pair pp_projset @@ pp_a prec')
           in
           if prec' < prec then Fmt.(parens g) else g
         in
@@ -65,7 +65,7 @@ module F = struct
         let prec' = 4 in
         let fmt =
           let g =
-            Fmt.(hbox @@ prefix (any "sig@;") @@ pair pp_eqs @@ pp_a prec')
+            Fmt.(hbox @@ prefix (any "sig") @@ pair pp_eqs @@ pp_a prec')
           in
           if prec' < prec then Fmt.(parens g) else g
         in

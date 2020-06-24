@@ -27,28 +27,29 @@ let of_schema tys =
 ;;
 
 let bottom = empty
-
 let top n = singleton @@ TTC.top n
 
 (**  T1 /\\ T2 = { t1 /\\ t2 | t1 in T1, t2 in T2, not degenerate t1 /\\ t2 } *)
 let meet t1 t2 ~trg =
-  let meet = TTC.meet ~trg 
-  and xs, ys= to_list t1 , to_list t2 in
-  of_list
-  @@ List.( xs >>= fun x -> ys >>= fun y -> return @@ meet x y)
+  let meet = TTC.meet ~trg
+  and xs, ys = to_list t1, to_list t2 in
+  of_list @@ List.(xs >>= fun x -> ys >>= fun y -> return @@ meet x y)
 ;;
 
 let join t1 t2 = union t1 t2
 
-
 let product t1 t2 =
-  let xs, ys= to_list t1 , to_list t2 in
-  of_list
-  @@ List.(
-       xs >>= fun x -> ys >>= fun y -> return @@ TTC.product x y)
+  let xs, ys = to_list t1, to_list t2 in
+  of_list @@ List.(xs >>= fun x -> ys >>= fun y -> return @@ TTC.product x y)
 ;;
 
 let project t ~flds = of_list @@ List.map ~f:(TTC.project ~flds) @@ to_list t
+
+let restrict t ~trg ~cstr =
+  meet ~trg t
+  @@ Option.value_map (arity_of t) ~default:bottom ~f:(fun n ->
+         singleton @@ TTC.with_constraint ~cstr @@ TTC.top n)
+;;
 
 let interpret rel ~trg ~edb ~stratum =
   let algebra = function
@@ -58,10 +59,7 @@ let interpret rel ~trg ~edb ~stratum =
         @@ first_some Pred.Map.(find edb pred) Pred.Map.(find stratum pred))
     | RComp ty -> Option.value_map ~default:bottom ~f:top @@ arity_of ty
     | RProj (flds, ty) -> project ty ~flds
-    | RRestr (cstr, ty) ->
-      meet ~trg ty
-      @@ Option.value_map (arity_of ty) ~default:bottom ~f:(fun n ->
-             singleton @@ TTC.with_constraint ~cstr @@ TTC.top n)
+    | RRestr (cstr, ty) -> restrict ty ~cstr ~trg
     | RUnion (ty1, ty2) -> join ty1 ty2
     | RInter (ty1, ty2) -> meet ~trg ty1 ty2
     | RProd (ty1, ty2) -> product ty1 ty2
@@ -101,8 +99,7 @@ let type_of_stratum stratum ~trg ~edb =
     @@ groupBy ~proj:Clause.Adorned.head_pred_of ~cmp:Pred.compare stratum
   in
   let init =
-    Pred.Map.of_alist_exn
-    @@ List.map rels ~f:(fun (pred, _) -> pred, top @@ Pred.arity_of pred)
+    Pred.Map.of_alist_exn @@ List.map rels ~f:(fun (pred, _) -> pred, empty)
   in
   let step typings =
     List.fold_left rels ~init:typings ~f:(fun stratum (pred, rel) ->
