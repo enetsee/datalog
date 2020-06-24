@@ -121,6 +121,16 @@ let mk_constrain expect cstrs x =
   Alcotest.test_case msg `Quick f
 ;;
 
+(** Meet of two partitions is finer than both the operands *)
+let meet_is_finer () =
+  Alcotest.(check bool)
+    "Meet of two partitions is finer than both the operands"
+    true
+    Partition.(
+      let m = meet two_a two_b in
+      is_finer m ~than:two_a && is_finer m ~than:two_b)
+;;
+
 let test_cases =
   List.concat
     [ [ mk_meet b a b; mk_join a a b ]
@@ -181,5 +191,11 @@ let test_cases =
       ; mk_constrain three_f [ 2, 4 ] four
       ; mk_constrain one [ 1, 2; 2, 3; 3, 4 ] four
       ]
+    ; Alcotest.
+        [ test_case
+            "Meet of two partitions is finer than both the operands"
+            `Quick
+            meet_is_finer
+        ]
     ]
 ;;

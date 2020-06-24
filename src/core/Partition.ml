@@ -14,6 +14,7 @@ module Minimal = struct
   ;;
 
   let pp = `NoPrec pp
+  let trivial n = of_list @@ List.init n ~f:Int.Set.singleton
 
   (** Update a partition such that the sets containing i and j are combined *)
   let update (i, j) t =
@@ -28,8 +29,6 @@ module Minimal = struct
     aux None None [] @@ elements t
   ;;
 
-  let trivial n = of_list @@ List.init n ~f:Int.Set.singleton
-
   let update_exn eq t =
     match update eq t with
     | Some t -> t
@@ -43,8 +42,16 @@ module Minimal = struct
     for_all p ~f:(fun e -> exists q ~f:(fun of_ -> Int.Set.is_subset e ~of_))
   ;;
 
+  (** The set of all partitions is partially ordered by refinement *)
   let leq p q = is_finer p ~than:q
 
+  (** 
+    The greatest lower bound of P and Q is a partition which 
+    is finer than P and Q. This is the set of non-empty 
+    intersections of the elements of the product of P and Q.
+    
+    P /\ Q = { p `inter` q | p in P, q in Q, p `inter` q /= 0 }
+  *)
   let meet p q =
     of_list
     @@ List.(
@@ -69,6 +76,26 @@ module Minimal = struct
                   Int.Set.((not @@ equal x y) && is_subset x ~of_:y)))
   ;;
 
+  (** The least upper bound of P and Q is a partition of which both P and Q are
+      refinements.
+
+      This can be found by repeatedly taking the union of the the Cartesian 
+      product of P and Q such that the intersection is not empty whilst
+      alternating between the two partitions.
+
+      Example: 
+            0           0
+                         \
+      P = 0   0   Q = 0   0
+             /            
+            0           0
+
+                 0
+      P \/ Q =   |\
+               0 | 0
+                 |/
+                 0
+  *)
   let join t1 t2 =
     let step accu qs =
       min_of
