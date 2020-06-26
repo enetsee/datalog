@@ -1,8 +1,229 @@
 open Core_kernel
 
 module Stratified = struct
+  module SocialInsurance = struct
+    let ty_employee = Core.Ty.(named "employee")
+    let ty_regular = Core.Ty.(named "regular")
+    let ty_student = Core.Ty.(named "student")
+
+    let subtys =
+      [ ty_employee, Core.Ty.Symbol
+      ; ty_regular, ty_employee
+      ; ty_student, ty_employee
+      ]
+    ;;
+
+    let trg =
+      Core.Ty.Map.of_alist_exn
+        Core.Ty.
+          [ Symbol, Set.of_list [ Symbol; ty_employee; ty_regular; ty_student ]
+          ; ty_employee, Set.of_list [ ty_employee; ty_regular; ty_student ]
+          ; ty_regular, Set.singleton ty_regular
+          ; ty_student, Set.singleton ty_student
+          ]
+    ;;
+
+    (* -- Predicates -------------------------------------------------------- *)
+    let pr_regular = Core.Pred.(pred ~arity:1 @@ Name.from_string "regular")
+    let pr_student = Core.Pred.(pred ~arity:1 @@ Name.from_string "student")
+    let pr_age = Core.Pred.(pred ~arity:2 @@ Name.from_string "age")
+    let pr_employee = Core.Pred.(pred ~arity:1 @@ Name.from_string "employee")
+    let pr_salary = Core.Pred.(pred ~arity:2 @@ Name.from_string "salary")
+    let pr_socins = Core.Pred.(pred ~arity:2 @@ Name.from_string "socins")
+    let pr_mult = Core.Pred.(extralogical ~arity:3 @@ Name.from_string "mult")
+    let pr_eq = Core.Pred.(extralogical ~arity:2 @@ Name.from_string "eq")
+    let pr_query = Core.Pred.(pred ~arity:2 @@ Name.from_string "query")
+
+    (* -- Typings ----------------------------------------------------------- *)
+
+    let typing_regular = Core.Typing.of_schema [ ty_regular ]
+    let typing_student = Core.Typing.of_schema [ ty_student ]
+    let typing_age = Core.Typing.of_schema [ ty_employee; Core.Ty.Real ]
+
+    let typing_mult =
+      Core.Typing.singleton
+      @@ Core.TTC.ttc
+           Core.Ty.[ Number; Number; Number ]
+           ~equiv:Core.Partition.(singleton @@ Int.Set.of_list [ 0; 1; 2 ])
+    ;;
+
+    let typing_eq =
+      Core.Typing.singleton
+      @@ Core.TTC.ttc
+           Core.Ty.[ Top; Top ]
+           ~equiv:Core.Partition.(singleton @@ Int.Set.of_list [ 0; 1 ])
+    ;;
+
+    let typing_employee =
+      Core.Typing.of_list Core.TTC.[ ttc [ ty_regular ]; ttc [ ty_student ] ]
+    ;;
+
+    let typing_salary =
+      Core.Typing.of_list
+        Core.TTC.
+          [ ttc [ ty_regular; Core.Ty.Real ]; ttc [ ty_student; Core.Ty.Real ] ]
+    ;;
+
+    let typing_socins =
+      Core.Typing.of_list
+        Core.TTC.
+          [ ttc [ ty_regular; Core.Ty.Real ]; ttc [ ty_student; Core.Ty.Real ] ]
+    ;;
+
+    let typing_query =
+      Core.Typing.of_list Core.TTC.[ ttc [ ty_student; Core.Ty.Real ] ]
+    ;;
+
+    (* -- Extensional typings ----------------------------------------------- *)
+
+    let edb0 =
+      Core.Pred.Map.of_alist_exn
+        [ pr_regular, typing_regular
+        ; pr_student, typing_student
+        ; pr_age, typing_age
+        ; pr_mult, typing_mult
+        ; pr_eq, typing_eq
+        ]
+    ;;
+
+    let edb1 = Core.Pred.Map.add_exn ~key:pr_employee ~data:typing_employee edb0
+    let edb2 = Core.Pred.Map.add_exn ~key:pr_salary ~data:typing_salary edb1
+    let edb3 = Core.Pred.Map.add_exn ~key:pr_socins ~data:typing_socins edb2
+    let edb4 = Core.Pred.Map.add_exn ~key:pr_query ~data:typing_query edb3
+
+    (* -- Literals appearing ------------------------------------------------ *)
+
+    let vx, vy, vz, int20, int1, int50 =
+      Core.Term.(
+        ( var "x"
+        , var "y"
+        , var "z"
+        , sym @@ Core.Symbol.from_float 20.0
+        , sym @@ Core.Symbol.from_float 0.1
+        , sym @@ Core.Symbol.from_float 50.0 ))
+    ;;
+
+    let f = Core.Binding.from_list [ Free ]
+    let ff = Core.Binding.from_list [ Free; Free ]
+    let bf = Core.Binding.from_list [ Bound; Free ]
+    let bbf = Core.Binding.from_list [ Bound; Bound; Free ]
+
+    let lit_employee_x =
+      Core.Lit.Adorned.from_raw ~bpatt:f @@ Core.Lit.Raw.lit pr_employee [ vx ]
+    ;;
+
+    let lit_regular_x =
+      Core.Lit.Adorned.from_raw ~bpatt:f @@ Core.Lit.Raw.lit pr_regular [ vx ]
+    ;;
+
+    let lit_student_x =
+      Core.Lit.Adorned.from_raw ~bpatt:f @@ Core.Lit.Raw.lit pr_student [ vx ]
+    ;;
+
+    let lit_not_student_x =
+      Core.Lit.Adorned.from_raw ~bpatt:f
+      @@ Core.Lit.Raw.lit ~pol:Neg pr_student [ vx ]
+    ;;
+
+    let lit_salary_x_y =
+      Core.Lit.Adorned.from_raw ~bpatt:ff
+      @@ Core.Lit.Raw.lit pr_salary [ vx; vy ]
+    ;;
+
+    let lit_salary_x_z =
+      Core.Lit.Adorned.from_raw ~bpatt:ff
+      @@ Core.Lit.Raw.lit pr_salary [ vx; vz ]
+    ;;
+
+    let lit_socins_x_y =
+      Core.Lit.Adorned.from_raw ~bpatt:ff
+      @@ Core.Lit.Raw.lit pr_socins [ vx; vy ]
+    ;;
+
+    let lit_age_x_z =
+      Core.Lit.Adorned.from_raw ~bpatt:ff @@ Core.Lit.Raw.lit pr_age [ vx; vz ]
+    ;;
+
+    let lit_mult_20_z_y =
+      Core.Lit.Adorned.from_raw ~bpatt:bbf
+      @@ Core.Lit.Raw.lit pr_mult [ int20; vz; vy ]
+    ;;
+
+    let lit_mult_1_z_y =
+      Core.Lit.Adorned.from_raw ~bpatt:bbf
+      @@ Core.Lit.Raw.lit pr_mult [ int1; vz; vy ]
+    ;;
+
+    let lit_eq_50_y =
+      Core.Lit.Adorned.from_raw ~bpatt:bf
+      @@ Core.Lit.Raw.lit pr_eq [ int50; vy ]
+    ;;
+
+    let lit_query_x_y =
+      Core.Lit.Adorned.from_raw ~bpatt:ff
+      @@ Core.Lit.Raw.lit pr_query [ vx; vy ]
+    ;;
+
+    (* -- Program strata ---------------------------------------------------- *)
+    let stratum1 =
+      Core.Clause.Adorned.
+        [ clause lit_employee_x [ lit_regular_x ]
+        ; clause lit_employee_x [ lit_student_x ]
+        ]
+    ;;
+
+    let stratum2 =
+      Core.Clause.Adorned.
+        [ clause lit_salary_x_y [ lit_age_x_z; lit_mult_20_z_y; lit_employee_x ]
+        ]
+    ;;
+
+    let stratum3 =
+      Core.Clause.Adorned.
+        [ clause
+            lit_socins_x_y
+            [ lit_salary_x_z
+            ; lit_mult_1_z_y
+            ; lit_employee_x
+            ; lit_not_student_x
+            ]
+        ; clause lit_socins_x_y [ lit_eq_50_y; lit_student_x ]
+        ]
+    ;;
+
+    let rel_socins =
+      Core.Relation.(
+        union
+          (project ~flds:[ 0; 3 ]
+          @@ restrict ~equiv:(1, 2)
+          @@ restrict ~equiv:(0, 4)
+          @@ restrict ~equiv:(0, 5)
+          @@ product
+               (product
+                  (product
+                     (pred pr_salary)
+                     (project ~flds:[ 1; 2 ]
+                     @@ pred pr_mult ~ty_idxs:[ 0, Core.Ty.Real ]))
+                  (pred pr_employee))
+               (comp @@ pred pr_student))
+          (project ~flds:[ 1; 0 ]
+          @@ product
+               (project ~flds:[ 1 ] @@ pred pr_eq ~ty_idxs:[ 0, Core.Ty.Real ])
+               (pred pr_student)))
+    ;;
+
+    let stratum4 =
+      Core.Clause.Adorned.
+        [ clause lit_query_x_y [ lit_socins_x_y; lit_student_x ] ]
+    ;;
+
+    let strata = [ stratum1; stratum2; stratum3; stratum4 ]
+    let queries = [ pr_query ]
+    let program = Core.Program.Stratified.{ strata; queries }
+  end
+
   module BikeShop = struct
-    (* -- Types used & subtyping relationships ---------------------------------- *)
+    (* -- Types used & subtyping relationships ------------------------------ *)
     let ty_cycle = Core.Ty.(named "cycle")
     let ty_bicycle = Core.Ty.(named "bicycle")
     let ty_unicycle = Core.Ty.(named "unicycle")
@@ -369,6 +590,15 @@ module Stratified = struct
         [ clause lit_hasPartTC [ lit_hasPartHead ]
         ; clause lit_hasPartTC [ lit_hasPartTCBody; lit_hasPartBody ]
         ]
+    ;;
+
+    let rel_hasPartTC =
+      Core.Relation.(
+        union
+          (project ~flds:[ 0; 1 ] @@ pred pr_hasPart)
+          (project ~flds:[ 0; 3 ]
+          @@ restrict ~equiv:(1, 2)
+          @@ product (pred pr_hasPartTC) (pred pr_hasPart)))
     ;;
 
     let stratum3 =

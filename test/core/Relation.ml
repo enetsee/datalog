@@ -1,23 +1,27 @@
-open Core_kernel
 open Core
 open Programs.Stratified
 
-let rel_has_part_tc () =
+let relation_of_hasPartTC () =
   Alcotest.check
     Testable.relation
-    "Recursive transitive closure definition"
-    Relation.(
-      union (pred BikeShop.pr_hasPart)
-      @@ project ~flds:Int.Set.(of_list [ 0; 3 ])
-      @@ restrict ~equiv:(1, 2)
-      @@ product (pred BikeShop.pr_hasPartTC) (pred BikeShop.pr_hasPart))
+    "Relation for recursive clause"
+    BikeShop.rel_hasPartTC
     Relation.(of_clauses BikeShop.stratum2)
+;;
+
+let relation_of_socins () =
+  Alcotest.check
+    Testable.relation
+    "Relation with variable reordering"
+    SocialInsurance.rel_socins
+    Relation.(of_clauses SocialInsurance.stratum3)
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)
 
 let test_cases =
   Alcotest.
-    [ test_case "Recursive transitive closure definition" `Quick rel_has_part_tc
+    [ test_case "Relation for recursive clause" `Quick relation_of_hasPartTC
+    ; test_case "Relation with variable reordering" `Quick relation_of_socins
     ]
 ;;

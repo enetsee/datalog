@@ -74,7 +74,7 @@ let mk_ttc_project expect flds rhs =
       @@ pair ~sep:(any "@;===@;") TTC.pp
       @@ pair (prefix (any "pi") @@ braces @@ list ~sep:comma int)
       @@ parens TTC.pp)
-      (expect, (Int.Set.to_list flds, rhs))
+      (expect, (flds, rhs))
   in
   let f () = Alcotest.check Testable.ttc msg expect TTC.(project rhs ~flds) in
   Alcotest.test_case msg `Quick f
@@ -102,9 +102,9 @@ let test_cases =
     ; mk_ttc_meet Stratified.BikeShop.closure ttc_bot2_eq ttc_a_eq ttc_b_eq
     ; mk_ttc_product ttc_a_b ttc_a ttc_b
     ; mk_ttc_product ttc_a_b_eq ttc_a_eq ttc_b_eq
-    ; mk_ttc_project ttc_a Int.Set.(of_list [ 0; 1 ]) ttc_a_b
-    ; mk_ttc_project ttc_b Int.Set.(of_list [ 2; 3 ]) ttc_a_b
-    ; mk_ttc_project ttc_a_eq Int.Set.(of_list [ 0; 1 ]) ttc_a_b_eq
-    ; mk_ttc_project ttc_b_eq Int.Set.(of_list [ 2; 3 ]) ttc_a_b_eq
+    ; mk_ttc_project ttc_a [ 0; 1 ] ttc_a_b
+    ; mk_ttc_project ttc_b [ 2; 3 ] ttc_a_b
+    ; mk_ttc_project ttc_a_eq [ 0; 1 ] ttc_a_b_eq
+    ; mk_ttc_project ttc_b_eq [ 2; 3 ] ttc_a_b_eq
     ]
 ;;

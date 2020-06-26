@@ -90,8 +90,8 @@ let meet t1 t2 ~trg =
   | _ when equal t1 t2 -> t1
   | Top, t | t, Top -> t
   | Bot, _ | _, Bot -> Bot
-  | Number, Real | Real, Number -> Real
   | Number, Int | Int, Number -> Int
+  | Number, Real | Real, Number -> Real
   | _ ->
     Option.(
       value

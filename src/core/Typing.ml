@@ -51,12 +51,16 @@ let restrict t ~trg ~cstr =
          singleton @@ TTC.with_constraint ~cstr @@ TTC.top n)
 ;;
 
+let specialize t ~ty_idxs ~trg =
+  of_list @@ List.map ~f:(TTC.specialize ~ty_idxs ~trg) @@ to_list t
+;;
+
 let interpret rel ~trg ~edb ~stratum =
   let algebra = function
-    | Relation.F.RPred pred ->
+    | Relation.F.RPred (pr, ty_idxs) ->
       Option.(
-        value ~default:bottom
-        @@ first_some Pred.Map.(find edb pred) Pred.Map.(find stratum pred))
+        value_map ~f:(specialize ~ty_idxs ~trg) ~default:bottom
+        @@ first_some Pred.Map.(find edb pr) Pred.Map.(find stratum pr))
     | RComp ty -> Option.value_map ~default:bottom ~f:top @@ arity_of ty
     | RProj (flds, ty) -> project ty ~flds
     | RRestr (cstr, ty) -> restrict ty ~cstr ~trg

@@ -3,16 +3,16 @@ open Lib
 
 module F = struct
   type 'a t =
-    | RPred of Pred.t
+    | RPred of Pred.t * (int * Ty.t) list
     | RUnion of 'a * 'a
     | RInter of 'a * 'a
     | RProd of 'a * 'a
     | RComp of 'a
-    | RProj of Int.Set.t * 'a
+    | RProj of int list * 'a
     | RRestr of (int * int) * 'a
   [@@deriving map, compare, eq]
 
-  let pred pred = RPred pred
+  let pred ?(ty_idxs = []) pred = RPred (pred, ty_idxs)
   let union a b = RUnion (a, b)
   let inter a b = RInter (a, b)
   let product a b = RProd (a, b)
@@ -34,14 +34,24 @@ module F = struct
       if prec' < prec then Fmt.parens g else g
     ;;
 
-    let pp_projset ppf s =
-      Fmt.(braces @@ list ~sep:comma int) ppf @@ Int.Set.to_list s
-    ;;
-
+    let pp_projset = Fmt.(braces @@ list ~sep:comma int)
     let pp_eqs = Fmt.(hbox @@ parens @@ pair ~sep:(any "@;~@;") int int)
 
+    let pp_pred ppf pr = function
+      | [] -> Pred.pp ppf pr
+      | ty_idxs ->
+        Fmt.(
+          hbox
+          @@ pair Pred.pp
+          @@ parens
+          @@ list ~sep:comma
+          @@ pair ~sep:(any "@;:@;") int Ty.pp)
+          ppf
+          (pr, ty_idxs)
+    ;;
+
     let pp prec pp_a ppf = function
-      | RPred pr -> Pred.pp ppf pr
+      | RPred (pr, ty_idxs) -> pp_pred ppf pr ty_idxs
       | RUnion (a, b) -> (pp_binop prec pp_a 1 Fmt.(any "@;\\/@;")) ppf (a, b)
       | RInter (a, b) -> (pp_binop prec pp_a 2 Fmt.(any "@;/\\@;")) ppf (a, b)
       | RProd (a, b) -> (pp_binop prec pp_a 3 Fmt.(any "@;*@;")) ppf (a, b)
@@ -80,7 +90,7 @@ include Fix.Make (F)
 
 (* -- Helpers --------------------------------------------------------------- *)
 
-let pred pred = embed @@ F.pred pred
+let pred ?ty_idxs pred = embed @@ F.pred pred ?ty_idxs
 let union t1 t2 = embed @@ F.union t1 t2
 let inter t1 t2 = embed @@ F.inter t1 t2
 let product t1 t2 = embed @@ F.product t1 t2
@@ -90,8 +100,8 @@ let restrict t ~equiv = embed @@ F.restrict t ~equiv
 
 let arity_of t =
   let algebra = function
-    | F.RPred p -> Pred.arity_of p
-    | RProj (flds, _) -> Set.length flds
+    | F.RPred (p, _) -> Pred.arity_of p
+    | RProj (flds, _) -> List.length flds
     | RRestr (_, n) -> n
     | RComp n -> n
     | RUnion (n, _) -> n
@@ -114,6 +124,12 @@ let of_lit lit (n, bound, equivs) =
       ~f:(fun idx -> function
         | Term.TVar (v, _) -> Some (idx, v)
         | _ -> None)
+  and ty_idxs =
+    List.filter_mapi
+      Lit.Adorned.(terms_of lit)
+      ~f:(fun idx -> function
+        | Term.TSym (sym, _) -> Some (idx, Symbol.type_of sym)
+        | _ -> None)
   in
   let nvars = List.length vars
   and arity = Pred.arity_of pr in
@@ -134,10 +150,8 @@ let of_lit lit (n, bound, equivs) =
   (* Construct relation *)
   let r =
     (if Polarity.isPos @@ Lit.Adorned.pol_of lit then Fn.id else comp)
-    @@ (if nvars = arity
-       then Fn.id
-       else project ~flds:(Int.Set.of_list @@ List.map ~f:fst vars))
-    @@ pred pr
+    @@ (if nvars = arity then Fn.id else project ~flds:(List.map ~f:fst vars))
+    @@ pred pr ~ty_idxs
   in
   st, r
 ;;
@@ -160,23 +174,24 @@ let of_body body =
 
 (** Example: 
   
-    query(x,y) :- one(x,z,_), two(z,y), three(x,y).
-    
-    ===
-    
+    query(x,y) :- one(x,z,_), two(z,y), three(x,y).        
+    ===    
     RProj (RProd(RProd( , RPred 'two') , RPred 'three'))
+
+
+    query(x,y) :- one(y), two(x).
+    RP
   *)
 let of_clause Clause.Adorned.{ head; body; _ } =
   let bound, r = of_body body in
   let head_vars = Lit.Adorned.vars_of head in
   let flds =
-    Int.Set.of_list
-    @@ List.map head_vars ~f:(fun v ->
-           match List.find bound ~f:(fun (_, w) -> Tmvar.equal v w) with
-           | Some (idx, _) -> idx
-           | _ -> failwith "Not range restricted")
+    List.map head_vars ~f:(fun v ->
+        match List.find bound ~f:(fun (_, w) -> Tmvar.equal v w) with
+        | Some (idx, _) -> idx
+        | _ -> failwith "Not range restricted")
   in
-  if arity_of r = List.length head_vars then r else project r ~flds
+  project r ~flds
 ;;
 
 let of_clauses cls =

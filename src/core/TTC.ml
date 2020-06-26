@@ -124,11 +124,39 @@ let product { tys = ts1; equiv = p1 } { tys = ts2; equiv = p2 } =
   }
 ;;
 
-(** Projection *)
+(** Projection: given an ordered list of tuple indices, return the TTC with 
+    a tuple of corresponding types and update the equivalence classes if 
+    types change index
+*)
 let project { tys; equiv } ~flds =
-  { tys =
-      List.filter_mapi tys ~f:(fun idx ty ->
-          if Int.Set.mem flds idx then Some ty else None)
-  ; equiv = Partition.project ~flds equiv
-  }
+  let lut =
+    Int.Map.of_alist_exn
+    @@ List.mapi flds ~f:(fun new_idx old_idx -> old_idx, new_idx)
+  and tylut =
+    Int.Map.of_alist_exn @@ List.mapi tys ~f:(fun idx ty -> idx, ty)
+  in
+  let tys = List.map flds ~f:Int.Map.(find_exn tylut)
+  and equiv =
+    Partition.of_list
+    @@ List.filter_map ~f:(fun elts ->
+           match
+             List.filter_map ~f:Int.Map.(find lut) @@ Int.Set.to_list elts
+           with
+           | [] -> None
+           | elts -> Some (Int.Set.of_list elts))
+    @@ Partition.to_list equiv
+  in
+  { tys; equiv }
+;;
+
+(** Given a list of types with their indicies, specialize the TTC based
+    on this information and the by finding the meet of the types within
+    their equivalence classes *)
+let specialize ({ tys; equiv } as t) ~ty_idxs ~trg =
+  let lut = Int.Map.of_alist_exn ty_idxs in
+  let tys' =
+    List.mapi tys ~f:(fun idx ty ->
+        Option.value ~default:ty @@ Int.Map.find lut idx)
+  in
+  meet t { tys = tys'; equiv } ~trg
 ;;

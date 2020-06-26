@@ -1,30 +1,34 @@
 open Core_kernel
 open Lib
 
-module X = struct
-  type t =
-    | SText of string
-    | SReal of string
-    | SInt of int
-    | SBool of bool
-    | SNull
-  [@@deriving eq, compare, hash, sexp]
+type t =
+  | SText of string
+  | SReal of string
+  | SInt of int
+  | SBool of bool
+[@@deriving eq, compare, hash, sexp]
+
+let from_string s = SText s
+let from_int n = SInt n
+let from_float f = SReal (string_of_float f)
+let from_bool n = SBool n
+
+let type_of = function
+  | SText _ -> Ty.Symbol
+  | SReal _ -> Ty.Real
+  | SInt _ -> Ty.Int
+  | SBool _ -> Ty.Bool
+;;
+
+include Pretty.Make0 (struct
+  type nonrec t = t
 
   let pp ppf = function
     | SText s -> Fmt.string ppf s
     | SReal s -> Fmt.string ppf s
     | SInt n -> Fmt.int ppf n
     | SBool b -> Fmt.bool ppf b
-    | SNull -> Fmt.string ppf "null"
   ;;
 
   let pp = `NoPrec pp
-end
-
-include X
-include Pretty.Make0 (X)
-
-let from_string s = SText s
-let from_int n = SInt n
-let from_bool n = SBool n
-let null = SNull
+end)
