@@ -2,29 +2,19 @@ open Core_kernel
 open Lib
 open Reporting
 
-module X = struct
-  (** A `Term` is either:
+(** A `Term` is either:
     - A term `Symbol` or constant;
     - A term variable `Tmvar`; or
     - A term wildcard, corresponding to an existential variable. 
   *)
-  type t =
-    | TVar of Tmvar.t * (Region.t[@compare.ignore] [@equal.ignore])
-    | TSym of Symbol.t * (Region.t[@compare.ignore] [@equal.ignore])
-    | TWild of (Region.t[@compare.ignore] [@equal.ignore])
-  [@@deriving compare, sexp, eq]
+type t =
+  | TVar of Tmvar.t * (Region.t[@compare.ignore] [@equal.ignore])
+  | TSym of Symbol.t * (Region.t[@compare.ignore] [@equal.ignore])
+  | TWild of (Region.t[@compare.ignore] [@equal.ignore])
+[@@deriving compare, sexp, eq]
 
-  let pp ppf = function
-    | TVar (tv, _) -> Tmvar.pp ppf tv
-    | TSym (sym, _) -> Symbol.pp ppf sym
-    | TWild _ -> Fmt.string ppf "_"
-  ;;
-
-  let pp = `NoPrec pp
-end
-
-include X
-include Pretty.Make0 (X)
+exception NotAVariable of t
+exception NotASymbol of t
 
 (* -- Constructors ---------------------------------------------------------- *)
 
@@ -44,17 +34,53 @@ let is_var = function
   | _ -> false
 ;;
 
+let is_sym = function
+  | TSym _ -> true
+  | _ -> false
+;;
+
+let is_wild = function
+  | TWild _ -> true
+  | _ -> false
+;;
+
 let lower_var = function
   | TVar (v, _) -> Some v
   | _ -> None
 ;;
 
+let lower_sym = function
+  | TSym (s, _) -> Some s
+  | _ -> None
+;;
+
 let lower_var_exn = function
   | TVar (v, _) -> v
-  | _ -> failwith "Term.lower_var_exn: not a variable"
+  | t -> raise (NotAVariable t)
 ;;
+
+let lower_sym_exn = function
+  | TSym (s, _) -> s
+  | t -> raise (NotASymbol t)
+;;
+
+(* -- HasVars implementation ------------------------------------------------ *)
 
 let vars_of = function
   | TVar (t, _) -> [ t ]
   | _ -> []
 ;;
+
+(* -- Pretty implementation ------------------------------------------------- *)
+
+include Pretty.Make0 (struct
+  type nonrec t = t
+
+  let pp ppf = function
+    | TVar (tv, _) -> Tmvar.pp ppf tv
+    | TSym (sym, _) -> Symbol.pp ppf sym
+    | TWild _ -> Fmt.string ppf "_"
+  ;;
+
+  let pp = `NoPrec pp
+end)
