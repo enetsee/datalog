@@ -31,6 +31,10 @@ include Pretty.Make0 (X)
 let var' ?(region = Region.empty) t = TVar (t, region)
 let var ?(region = Region.empty) t = var' ~region @@ Tmvar.from_string t
 let sym ?(region = Region.empty) s = TSym (s, region)
+let text ?region str = sym ?region @@ Symbol.from_string str
+let real ?region f = sym ?region @@ Symbol.from_float f
+let int ?region n = sym ?region @@ Symbol.from_int n
+let bool ?region b = sym ?region @@ Symbol.from_bool b
 let wild ?(region = Region.empty) () = TWild region
 
 (* -- Query ----------------------------------------------------------------- *)
