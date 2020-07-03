@@ -1,15 +1,15 @@
 open Core
 
-let pred_a = Pred.(logical ~arity:1 @@ Name.from_string "a")
-let pred_b = Pred.(logical ~arity:1 @@ Name.from_string "b")
-let pred_c = Pred.(logical ~arity:1 @@ Name.from_string "c")
-let pred_d = Pred.(logical ~arity:1 @@ Name.from_string "d")
-let pred_p = Pred.(logical ~arity:1 @@ Name.from_string "p")
-let pred_q = Pred.(logical ~arity:1 @@ Name.from_string "q")
-let pred_r = Pred.(logical ~arity:2 @@ Name.from_string "r")
-let pred_s = Pred.(logical ~arity:1 @@ Name.from_string "s")
-let pred_w = Pred.(logical ~arity:1 @@ Name.from_string "w")
-let pred_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
+let pred_a = Pred.(pred ~arity:1 @@ Name.from_string "a")
+let pred_b = Pred.(pred ~arity:1 @@ Name.from_string "b")
+let pred_c = Pred.(pred ~arity:1 @@ Name.from_string "c")
+let pred_d = Pred.(pred ~arity:1 @@ Name.from_string "d")
+let pred_p = Pred.(pred ~arity:1 @@ Name.from_string "p")
+let pred_q = Pred.(pred ~arity:1 @@ Name.from_string "q")
+let pred_r = Pred.(pred ~arity:2 @@ Name.from_string "r")
+let pred_s = Pred.(pred ~arity:1 @@ Name.from_string "s")
+let pred_w = Pred.(pred ~arity:1 @@ Name.from_string "w")
+let pred_qry = Pred.(pred ~arity:0 @@ Name.from_string "query")
 
 (** -- Program with single dead clause `q` -------------------------------------
 
@@ -37,6 +37,8 @@ let prg_dead_clause_single =
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 2 ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let prg_dead_clause_single_expected =
@@ -53,6 +55,8 @@ let prg_dead_clause_single_expected =
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 2 ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let dead_clause_single () =
@@ -65,7 +69,7 @@ let dead_clause_single () =
 (** -- Program with no exposed queries -------------------------------------- *)
 
 let prg_no_query = Program.Raw.{ prg_dead_clause_single with queries = [] }
-let prg_empty = Program.Raw.program [] []
+let prg_empty = Program.Raw.program [] [] [] []
 
 let no_query () =
   Alcotest.(check @@ Testable.(result raw_program err))
@@ -113,6 +117,8 @@ let prg_deeply_nested =
           Lit.Raw.[ lit pred_w Term.[ var "X" ]; lit pred_s Term.[ var "X" ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let deeply_nested () =

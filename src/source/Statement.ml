@@ -8,19 +8,23 @@ type t =
       ; body : Body.t
       ; region : Region.t
       }
-  | SQuery of
-      { head : Head.Tmvar.t option
-      ; body : Body.t
+  | SFact of Head.Symbol.t
+  | STy of
+      { name : Core.Name.t Located.t
+      ; defn : Core.Ty.t Located.t
       ; region : Region.t
       }
-  | SFact of Head.Symbol.t
-  | SDecl of Decl.t
-
-type repr =
-  | RCls of Core.Clause.Raw.t
-  | RQry of Core.Clause.Raw.t
-  | RKnw of Core.Knowledge.t
-  | RDcl
+  | SData of
+      { name : Core.Name.t Located.t
+      ; attrs : (string * Core.Ty.t Located.t) list
+      ; region : Region.t
+      }
+  | SParam of
+      { name : Core.Name.t Located.t
+      ; ty : Core.Ty.t Located.t
+      ; region : Region.t
+      }
+  | SExport of Core.Name.t Located.t
 
 (* -- Helpers --------------------------------------------------------------- *)
 let clause ?region head body =
@@ -32,53 +36,38 @@ let clause ?region head body =
   SClause { head; body; region }
 ;;
 
-let query ?region body =
-  let region = Option.value region ~default:Body.(region body) in
-  SQuery { head = None; body; region }
+let fact head = SFact head
+let export pred = SExport pred
+
+let param ?region name ty =
+  let region =
+    Option.value
+      region
+      ~default:Region.(merge Located.(region_of name) Located.(region_of ty))
+  in
+  SParam { name; ty; region }
 ;;
 
-let fact head = SFact head
-let decl d = SDecl d
+let data name attrs =
+  let region =
+    match List.last attrs with
+    | Some (_, ty) ->
+      Region.merge Located.(region_of name) Located.(region_of ty)
+    | _ -> Located.(region_of name)
+  in
+  SData { name; attrs; region }
+;;
+
+let tydefn ?region name defn =
+  let region =
+    Option.value
+      region
+      ~default:Region.(merge Located.(region_of name) Located.(region_of defn))
+  in
+  STy { name; defn; region }
+;;
 
 (* -- Transformation -------------------------------------------------------- *)
-
-let generate_query_head t =
-  MonadCompile.(
-    match t with
-    | SQuery { head = Some _; region; _ } -> fail (Err.QueryNamed region)
-    | SQuery { body; region; _ } ->
-      fresh_querysym
-      >>= fun predSym ->
-      let vars =
-        List.map ~f:Located.(locate ~region)
-        @@ List.dedup_and_sort ~compare:Core.Tmvar.compare
-        @@ Body.vars_of body
-      in
-      let atom = Atom.Tmvar.atom Located.(locate predSym ~region) vars in
-      let hd = Head.Tmvar.atom @@ Located.locate atom ~region in
-      return @@ SQuery { head = Some hd; body; region }
-    | t -> return t)
-;;
-
-let set_nature t =
-  MonadCompile.(
-    match t with
-    | SDecl _ -> return t
-    | SFact head ->
-      Head.Symbol.check_extralogical_clash head >>= fun _ -> return t
-    | SClause { head; body; region } ->
-      Head.Term.check_extralogical_clash head
-      >>= fun _ ->
-      Body.set_nature body >>= fun body -> return @@ clause ~region head body
-    | SQuery { head = Some hd; body; region } ->
-      Head.Tmvar.check_extralogical_clash hd
-      >>= fun _ ->
-      Body.set_nature body
-      >>= fun body -> return @@ SQuery { head = Some hd; body; region }
-    | SQuery { head; body; region } ->
-      Body.set_nature body
-      >>= fun body -> return @@ SQuery { head; body; region })
-;;
 
 let normalize = function
   | SClause ({ body; _ } as t) ->
@@ -86,41 +75,48 @@ let normalize = function
   | t -> [ t ]
 ;;
 
-(* -- HasCoreRepr implementation ------------------------------------------ *)
+(* -- HasCoreRepr implementation -------------------------------------------- *)
 
-let query_to_core head_opt body region =
-  MonadCompile.(
-    match head_opt with
-    | Some head ->
-      map2
-        Head.Tmvar.(to_core head)
-        Body.(to_core body)
-        ~f:(fun head body -> RQry Core.Clause.Raw.{ head; body; region })
-    | _ -> fail Err.(QueryUnnamed region))
-;;
-
-let clause_to_core head body region =
-  MonadCompile.map2
-    Head.Term.(to_core head)
-    Body.(to_core body)
-    ~f:(fun head body -> RCls Core.Clause.Raw.{ head; body; region })
-;;
-
-let fact_to_core head =
-  MonadCompile.map ~f:(fun k -> RKnw k) @@ Head.Symbol.to_core head
-;;
+type repr =
+  | RCls of Core.Clause.Raw.t
+  | RKnw of Core.Knowledge.t
+  | RTy of Core.Name.t * Core.Ty.t
+  | RData of Core.Name.t * Core.Typing.t
+  | RParam of Core.Name.t * Core.Ty.t
+  | RExport of Core.Name.t
 
 let to_core = function
-  | SClause { head; body; region } -> clause_to_core head body region
-  | SQuery { head; body; region } -> query_to_core head body region
-  | SFact head -> fact_to_core head
-  | SDecl _ -> MonadCompile.return RDcl
+  | SClause { head; body; region } ->
+    Result.combine
+      Head.Term.(to_core head)
+      Body.(to_core body)
+      ~ok:(fun head body -> RCls Core.Clause.Raw.{ head; body; region })
+      ~err:Fn.const
+  | SFact head -> Result.map ~f:(fun k -> RKnw k) @@ Head.Symbol.to_core head
+  | STy { name; defn; _ } ->
+    Result.return @@ RTy (Located.(elem_of name), Located.elem_of defn)
+  | SData { name; attrs; _ } ->
+    let name = Located.elem_of name
+    and typing =
+      Core.Typing.of_schema
+      @@ List.map attrs ~f:(fun (_, ty) -> Located.elem_of ty)
+    in
+    Result.return (RData (name, typing))
+  | SParam { name; ty; _ } ->
+    Result.return @@ RParam (Located.(elem_of name), Located.elem_of ty)
+  | SExport pred -> Result.return @@ RExport Located.(elem_of pred)
 ;;
 
 (* -- Pretty implementation ----------------------------------------------- *)
 
 include Pretty.Make0 (struct
   type nonrec t = t
+
+  let pp_attr ppf (v, ty) =
+    Fmt.(hbox @@ pair ~sep:(any " : ") string (Located.pp Core.Ty.pp))
+      ppf
+      (v, ty)
+  ;;
 
   let pp ppf = function
     | SClause { head; body; _ } ->
@@ -130,19 +126,32 @@ include Pretty.Make0 (struct
         @@ pair ~sep:(any " :-@; ") Head.Term.pp Body.pp)
         ppf
         (head, body)
-    | SQuery { head = Some hd; body; _ } ->
+    | SFact head -> Fmt.(hovbox @@ suffix (any ".") @@ Head.Symbol.pp) ppf head
+    | STy { name; defn; _ } ->
+      Fmt.(
+        hbox
+        @@ pair ~sep:(any " <: ") (any "type @" ++ Located.pp Core.Name.pp)
+        @@ Located.pp Core.Ty.pp)
+        ppf
+        (name, defn)
+    | SData { name; attrs; _ } ->
       Fmt.(
         hovbox
-        @@ suffix (any ".")
-        @@ pair ~sep:(any " :-@; ") Head.Tmvar.pp Body.pp)
+        @@ prefix (any "data@;")
+        @@ pair
+             (Located.pp Core.Name.pp)
+             (hovbox @@ parens @@ list ~sep:comma pp_attr))
         ppf
-        (hd, body)
-    | SQuery { body; _ } ->
-      Fmt.(hovbox @@ prefix (any "?-@; ") @@ suffix (any ".") @@ Body.pp)
+        (name, attrs)
+    | SParam { name; ty; _ } ->
+      Fmt.(
+        hovbox
+        @@ pair ~sep:(any "@;:@;") (any "param $" ++ Located.pp Core.Name.pp)
+        @@ Located.pp Core.Ty.pp)
         ppf
-        body
-    | SFact head -> Fmt.(hovbox @@ suffix (any ".") @@ Head.Symbol.pp) ppf head
-    | SDecl d -> Decl.pp ppf d
+        (name, ty)
+    | SExport pred ->
+      Fmt.(prefix (any "export ") @@ Located.pp Core.Name.pp) ppf pred
   ;;
 
   let pp = `NoPrec pp

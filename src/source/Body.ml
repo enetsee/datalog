@@ -17,17 +17,6 @@ let disj ?(region = Region.empty) a b =
 ;;
 
 (* -- Compilation --------------------------------------------------------- *)
-module T = SubgoalF.Traversable (MonadCompile)
-
-let set_nature t =
-  let algebra = function
-    | SubgoalF.SAtom { elem; region } ->
-      MonadCompile.map ~f:(fun elem -> atom @@ Located.locate ~region elem)
-      @@ Atom.Term.set_nature elem
-    | s -> MonadCompile.map ~f:embed @@ T.sequence s
-  in
-  cata algebra t
-;;
 
 (** Split disjunctions *)
 let split_disj t =
@@ -91,10 +80,11 @@ let collect_disj t =
   transform_bottom_up algebra t
 ;;
 
-let normalize t = split_disj @@ collect_disj @@ push_neg t
+let dnf t = collect_disj @@ push_neg t
+let normalize t = split_disj @@ dnf t
 
 let unop_to_core region op mxs =
-  MonadCompile.(
+  Result.(
     mxs
     >>= fun xs ->
     match op, xs with
@@ -103,15 +93,15 @@ let unop_to_core region op mxs =
 ;;
 
 let binop_to_core region op xs ys =
-  MonadCompile.(
+  Result.(
     match op with
-    | OpSet.Body.Binary.Conj -> map2 ~f:List.append xs ys
+    | OpSet.Body.Binary.Conj -> combine ~ok:List.append ~err:Fn.const xs ys
     | Disj -> fail Err.(ClauseDisj region))
 ;;
 
 let to_core subg =
   let algebra subg =
-    MonadCompile.(
+    Result.(
       match subg with
       | SubgoalF.SAtom { elem; _ } ->
         map ~f:(fun cl -> [ cl ]) @@ Atom.Term.to_core elem

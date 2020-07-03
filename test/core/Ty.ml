@@ -6,7 +6,7 @@ let ty_transitive_closure_example () =
     Testable.trg
     "Bike shop example"
     Stratified.BikeShop.closure
-    Ty.(transitive_closure Stratified.BikeShop.subtys)
+    Ty.TRG.(from_list Stratified.BikeShop.subtys)
 ;;
 
 let mk_ty_meet trg expect lhs rhs =

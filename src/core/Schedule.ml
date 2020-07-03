@@ -91,6 +91,10 @@ module Vertex = struct
     }
   [@@deriving compare, eq]
 
+  let make ?(bound = Var.Set.empty) ?(debt = Var.Set.empty) available =
+    { available; bound; debt }
+  ;;
+
   include Pretty.Make0 (struct
     type nonrec t = t
 
@@ -158,15 +162,12 @@ type t =
     constraint in the provided map and if there is none return the trivial 
     constraint.
 *)
-let constraint_of lit ~cstrs =
-  match Lit.Raw.pol_of lit with
-  | Polarity.Pos ->
-    Option.value ~default:Constraint.trivial
-    @@ Pred.Map.find cstrs
-    @@ Lit.Raw.pred_of lit
-  | Neg ->
-    let n = Pred.arity_of @@ Lit.Raw.pred_of lit in
-    Constraint.(singleton @@ Atomic.of_list @@ List.init n ~f:(fun i -> i))
+let constraint_of lit =
+  MonadCompile.(
+    let pred = Lit.Raw.pred_of lit in
+    match Lit.Raw.pol_of lit with
+    | Polarity.Pos -> get_pred_constraint @@ Pred.name_of pred
+    | Neg -> return @@ Constraint.fully_bound @@ Pred.arity_of pred)
 ;;
 
 (** The obligation of a literal is a translation from a dataflow constraint to 
@@ -202,14 +203,14 @@ let varset lit =
 (* -- Vertex construction --------------------------------------------------- *)
 
 (** Build the root vertex from the clause and constraint function *)
-let root cl ~cstrs =
-  Vertex.
-    { bound = Var.Set.empty
-    ; debt = Var.Set.empty
-    ; available =
-        List.mapi (Clause.Raw.body_of cl) ~f:(fun idx lit ->
-            idx, lit, obligation_of lit ~cstr:(constraint_of ~cstrs lit))
-    }
+let root cl =
+  MonadCompile.(
+    map ~f:Vertex.make
+    @@ all
+    @@ List.mapi ~f:(fun idx lit ->
+           constraint_of lit
+           >>= fun cstr -> return (idx, lit, obligation_of lit ~cstr))
+    @@ Clause.Raw.body_of cl)
 ;;
 
 (** The next available literals are the previously available literals with 
@@ -273,25 +274,42 @@ let affordable (idx, lit, costs) ~head_vars =
   @@ Obligation.to_list costs
 ;;
 
+(** Wrapper around typing environment effect lookup *)
+let eff_of lit =
+  MonadCompile.get_pred_effects @@ Pred.name_of @@ Lit.Raw.pred_of lit
+;;
+
+let eff_intersect idx eff available =
+  let rec aux xs =
+    MonadCompile.(
+      match xs with
+      | [] -> return false
+      | (idx2, _, _) :: rest when idx2 >= idx -> aux rest
+      | (_, lit, _) :: rest ->
+        eff_of lit
+        >>= fun eff2 ->
+        if not @@ Eff.Set.is_empty @@ Eff.Set.inter eff eff2
+        then return true
+        else aux rest)
+  in
+  aux available
+;;
+
 (** A literal is restricted from being scheduled by its effects if:
     1) It has any effect; *and*
     2) Scheduling the literal would change the relative order with respect to 
        other literals with and intersecting set of effects
 *)
 let restricted_effects Vertex.{ available; _ } (idx, lit, cost) =
-  let eff = Lit.Raw.effects_of lit in
-  if Eff.Set.is_empty eff
-  then Some (lit, cost)
-  else (
-    let restricted =
-      List.exists available ~f:(fun (idx2, lit2, _) ->
-          if idx2 >= idx
-          then false
-          else (
-            let eff2 = Lit.Raw.effects_of lit2 in
-            not @@ Eff.Set.is_empty @@ Eff.Set.inter eff eff2))
-    in
-    if restricted then None else Some (lit, cost))
+  MonadCompile.(
+    eff_of lit
+    >>= fun eff ->
+    if Eff.Set.is_empty eff
+    then return @@ Some (lit, cost)
+    else
+      eff_intersect idx eff available
+      >>= fun intersects ->
+      if intersects then return None else return @@ Some (lit, cost))
 ;;
 
 (** The selection criteria used for constructing the minimal obligation graph
@@ -316,7 +334,10 @@ let select Vertex.({ available; _ } as vtx) ~head_vars =
     | [] -> List.concat_map costly ~f:(affordable ~head_vars)
     | _ -> List.map ~f:(fun (idx, lit, _) -> idx, lit, Var.Set.empty) free
   in
-  List.filter_map ~f:(restricted_effects vtx) cands
+  MonadCompile.(
+    map ~f:(List.filter_map ~f:Fn.id)
+    @@ all
+    @@ List.map ~f:(restricted_effects vtx) cands)
 ;;
 
 (** Given the selected literals, group them by cost and construct edges *)
@@ -337,16 +358,37 @@ let edges selected =
   @@ List.sort ~compare:(fun (_, c1) (_, c2) -> Var.Set.compare c1 c2) selected
 ;;
 
+(** Monadic tree unfold *)
+let unfoldM ~f b =
+  let rec aux ~k b =
+    MonadCompile.(
+      f b
+      >>= fun (a, bs) ->
+      aux_forest bs ~k:(fun xs -> k @@ map ~f:Tree.(branch a) xs))
+  and aux_forest ~k xs =
+    MonadCompile.(
+      match xs with
+      | [] -> k @@ return []
+      | next :: rest ->
+        aux_forest rest ~k:(fun rest' ->
+            aux next ~k:(fun next' -> k @@ map2 ~f:List.cons next' rest')))
+  in
+  aux ~k:Fn.id b
+;;
+
 (** Construct the minimum obligation graph of a clause given a set of predicate
     constriants 
 *)
-let of_clause cl ~cstrs =
-  let head_vars = vars @@ Clause.Raw.head_of cl in
-  let nexts vtx =
-    let es = edges @@ select vtx ~head_vars in
-    (vtx, es), List.map ~f:(mk_vertex vtx) es
-  in
-  { head_vars; graph = Tree.unfold ~f:nexts @@ root ~cstrs cl }
+let of_clause cl =
+  MonadCompile.(
+    let head_vars = vars @@ Clause.Raw.head_of cl in
+    let nexts vtx =
+      select ~head_vars vtx
+      >>= fun selected ->
+      let es = edges selected in
+      return @@ ((vtx, es), List.map ~f:(mk_vertex vtx) es)
+    in
+    root cl >>= unfoldM ~f:nexts >>= fun graph -> return { head_vars; graph })
 ;;
 
 (* == Constraint extraction ================================================= *)
@@ -444,52 +486,49 @@ let orderings t ~bpatt =
 
 (* -- Inter-clausal analysis ------------------------------------------------ *)
 
-let iterate ~deps ~cstrs =
-  let rec aux cnstrs = function
-    | [] -> cnstrs
-    | pred :: rest ->
-      (* retrieve the current constraint and the clauses in which it appears *)
-      let cstr_in =
-        Option.value ~default:Constraint.trivial @@ Pred.Map.find cstrs pred
-      and clauses = Dependency.Raw.clauses_of deps pred in
-      (* determine the constraint for each clause an use `meet` to find the
-         constraint for the predicate, update the global map *)
-      let cstr_out =
-        Constraint.meet_list
-        @@ List.map ~f:Fn.(compose extract @@ of_clause ~cstrs) clauses
-      in
-      (* If this predicate constraint is unchanged we don't need to update
-         dependencies; if it is, retrieve dependencies which are related by
-         a positive literal (since those related by a negative literal are
-         already fully constrained) and add unique entries to the work list
-      *)
-      if Constraint.equal cstr_in cstr_out
-      then aux cstrs rest
-      else (
-        let cstrs' = Pred.Map.update cstrs pred ~f:Fn.(const cstr_out)
-        and ws =
-          if Constraint.equal cstr_in cstr_out
-          then rest
-          else (
-            let delta =
-              List.filter ~f:(fun p -> not @@ Pred.equal pred p)
-              @@ Dependency.Raw.pos_deps_of deps pred
-            in
-            List.dedup_and_sort ~compare:Pred.compare @@ rest @ delta)
-        in
-        aux cstrs' ws)
+let iterate ~deps =
+  let rec aux preds =
+    MonadCompile.(
+      match preds with
+      | [] -> return ()
+      | pred :: rest ->
+        let pred_nm = Pred.name_of pred
+        and clauses = Dependency.Raw.clauses_of deps pred in
+        (* retrieve the current constraint and the clauses in which it appears *)
+        get_pred_constraint pred_nm
+        >>= fun cstr_in ->
+        (* determine the constraint for each clause an use `meet` to find the
+           constraint for the predicate, update the global map *)
+        List.map clauses ~f:(fun cl -> map ~f:extract @@ of_clause cl)
+        |> all
+        >>= fun cstrs ->
+        let cstr_out = Constraint.meet_list cstrs in
+        (* If this predicate constraint is unchanged we don't need to update
+           dependencies; if it is, retrieve dependencies which are related by
+           a positive literal (since those related by a negative literal are
+           already fully constrained) and add unique entries to the work list
+        *)
+        if Constraint.equal cstr_in cstr_out
+        then aux rest
+        else
+          set_pred_constraint pred_nm cstr_out
+          >>= fun _ ->
+          let delta =
+            List.filter ~f:(fun p -> not @@ Pred.equal pred p)
+            @@ Dependency.Raw.pos_deps_of deps pred
+          in
+          let ws = List.dedup_and_sort ~compare:Pred.compare @@ rest @ delta in
+          aux ws)
   in
-  aux cstrs
+  aux
 ;;
 
 (** Determine the moding constraints of all clauses in a program with respect
     to an initial set (defaults to exposed queries) *)
 let solve ?inits prog ~deps =
-  let ws =
-    List.dedup_and_sort ~compare:Pred.compare
-    @@ Option.value ~default:Program.Raw.(queries_of prog) inits
-  in
-  iterate ~deps ~cstrs:Program.Raw.(constraints_of prog) ws
+  iterate ~deps
+  @@ List.dedup_and_sort ~compare:Pred.compare
+  @@ Option.value ~default:Program.Raw.(queries_of prog) inits
 ;;
 
 (* -- Pretty implementation ------------------------------------------------- *)

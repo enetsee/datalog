@@ -17,7 +17,7 @@ module Term : S with type t = Core.Term.t and type repr = Core.Term.t = struct
   let pp_prec = Core.Term.pp_prec
   let to_string = Core.Term.to_string
   let vars_of = Core.Term.vars_of
-  let to_core t = MonadCompile.return t
+  let to_core t = Ok t
 end
 
 module Tmvar :
@@ -25,10 +25,7 @@ module Tmvar :
   type t = Core.Tmvar.t Located.t
   type repr = Core.Term.t
 
-  let to_core Located.{ elem; region } =
-    MonadCompile.return @@ Core.Term.var' ~region elem
-  ;;
-
+  let to_core Located.{ elem; region } = Ok Core.Term.(var' ~region elem)
   let vars_of Located.{ elem; _ } = [ elem ]
 
   include Pretty.Make0 (struct
@@ -49,10 +46,9 @@ struct
   let vars_of = Core.Term.vars_of
 
   let to_core t =
-    MonadCompile.(
-      match t with
-      | Core.Term.TSym (sym, _) -> return sym
-      | TWild region -> fail Err.(FactHasWildcard region)
-      | TVar (_, region) -> fail (Err.FactNotRangeRestricted region))
+    match t with
+    | Core.Term.TSym (sym, _) -> Ok sym
+    | TWild region -> Error Err.(FactHasWildcard region)
+    | TVar (_, region) -> Error (Err.FactNotRangeRestricted region)
   ;;
 end

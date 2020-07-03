@@ -24,15 +24,15 @@ module Stratified = struct
     ;;
 
     (* -- Predicates -------------------------------------------------------- *)
-    let pr_regular = Core.Pred.(pred ~arity:1 @@ Name.from_string "regular")
-    let pr_student = Core.Pred.(pred ~arity:1 @@ Name.from_string "student")
-    let pr_age = Core.Pred.(pred ~arity:2 @@ Name.from_string "age")
-    let pr_employee = Core.Pred.(pred ~arity:1 @@ Name.from_string "employee")
-    let pr_salary = Core.Pred.(pred ~arity:2 @@ Name.from_string "salary")
-    let pr_socins = Core.Pred.(pred ~arity:2 @@ Name.from_string "socins")
-    let pr_mult = Core.Pred.(extralogical ~arity:3 @@ Name.from_string "mult")
-    let pr_eq = Core.Pred.(extralogical ~arity:2 @@ Name.from_string "eq")
-    let pr_query = Core.Pred.(pred ~arity:2 @@ Name.from_string "query")
+    let pr_regular = Core.(Pred.pred ~arity:1 @@ Name.from_string "regular")
+    let pr_student = Core.(Pred.pred ~arity:1 @@ Name.from_string "student")
+    let pr_age = Core.(Pred.pred ~arity:2 @@ Name.from_string "age")
+    let pr_employee = Core.(Pred.pred ~arity:1 @@ Name.from_string "employee")
+    let pr_salary = Core.(Pred.pred ~arity:2 @@ Name.from_string "salary")
+    let pr_socins = Core.(Pred.pred ~arity:2 @@ Name.from_string "socins")
+    let pr_mult = Core.(Pred.pred ~arity:3 @@ Name.from_string "mult")
+    let pr_eq = Core.(Pred.pred ~arity:2 @@ Name.from_string "eq")
+    let pr_query = Core.(Pred.pred ~arity:2 @@ Name.from_string "query")
 
     (* -- Typings ----------------------------------------------------------- *)
 
@@ -219,7 +219,10 @@ module Stratified = struct
 
     let strata = [ stratum1; stratum2; stratum3; stratum4 ]
     let queries = [ pr_query ]
-    let program = Core.Program.Stratified.{ strata; queries }
+
+    let program =
+      Core.Program.Stratified.{ strata; queries; params = []; data = [] }
+    ;;
   end
 
   module BikeShop = struct
@@ -276,15 +279,15 @@ module Stratified = struct
           ]
     ;;
 
-    (* -- Predicates ------------------------------------------------------------ *)
-    let pr_cycle = Core.Pred.(pred ~arity:1 @@ Name.from_string "cycle")
-    let pr_unicycle = Core.Pred.(pred ~arity:4 @@ Name.from_string "unicycle")
-    let pr_bicycle = Core.Pred.(pred ~arity:4 @@ Name.from_string "bicycle")
-    let pr_wheel = Core.Pred.(pred ~arity:3 @@ Name.from_string "wheel")
-    let pr_tire = Core.Pred.(pred ~arity:2 @@ Name.from_string "tire")
-    let pr_hasPart = Core.Pred.(pred ~arity:2 @@ Name.from_string "hasPart")
-    let pr_hasPartTC = Core.Pred.(pred ~arity:2 @@ Name.from_string "hasPart+")
-    let pr_query = Core.Pred.(pred ~arity:2 @@ Name.from_string "query")
+    (* -- Predicates -------------------------------------------------------- *)
+    let pr_cycle = Core.(Pred.pred ~arity:1 @@ Name.from_string "cycle")
+    let pr_unicycle = Core.(Pred.pred ~arity:4 @@ Name.from_string "unicycle")
+    let pr_bicycle = Core.(Pred.pred ~arity:4 @@ Name.from_string "bicycle")
+    let pr_wheel = Core.(Pred.pred ~arity:3 @@ Name.from_string "wheel")
+    let pr_tire = Core.(Pred.pred ~arity:2 @@ Name.from_string "tire")
+    let pr_hasPart = Core.(Pred.pred ~arity:2 @@ Name.from_string "hasPart")
+    let pr_hasPartTC = Core.(Pred.pred ~arity:2 @@ Name.from_string "hasPart+")
+    let pr_query = Core.(Pred.pred ~arity:2 @@ Name.from_string "query")
 
     (* -- Typings ----------------------------------------------------------- *)
 
@@ -608,6 +611,9 @@ module Stratified = struct
     (* -- Program --------------------------------------------------------------- *)
     let strata = [ stratum1; stratum2; stratum3 ]
     let queries = [ pr_query ]
-    let prog = Core.Program.Stratified.{ strata; queries }
+
+    let prog =
+      Core.Program.Stratified.{ strata; queries; data = []; params = [] }
+    ;;
   end
 end

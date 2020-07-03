@@ -113,9 +113,10 @@ let arity_of t =
 
 (* -- Core translation ------------------------------------------------------ *)
 
-(** Translate a body literal to a named relation, applying projection and negation if required,
-      and accumulate the variable bound along with their indices and any term variable equivalence
-      constraints arising from variables bound earlier in the body *)
+(** Translate a body literal to a named relation, applying projection and 
+    negation if required, and accumulate the variable bound along with their 
+    indices and any term variable equivalence constraints arising from variables 
+    bound earlier in the body *)
 let of_lit lit (n, bound, equivs) =
   let pr = Lit.Adorned.pred_of lit
   and vars =
@@ -172,16 +173,7 @@ let of_body body =
   , List.fold_right ~f:(fun equiv accu -> restrict ~equiv accu) ~init:r equivs )
 ;;
 
-(** Example: 
-  
-    query(x,y) :- one(x,z,_), two(z,y), three(x,y).        
-    ===    
-    RProj (RProd(RProd( , RPred 'two') , RPred 'three'))
-
-
-    query(x,y) :- one(y), two(x).
-    RP
-  *)
+(** Translate a datalog clause to the Relational algebra *)
 let of_clause Clause.Adorned.{ head; body; _ } =
   let bound, r = of_body body in
   let head_vars = Lit.Adorned.vars_of head in

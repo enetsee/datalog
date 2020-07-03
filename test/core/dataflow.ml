@@ -1,12 +1,12 @@
 open Core
 
-let pred_a = Pred.(logical ~arity:1 @@ Name.from_string "a")
-let pred_p = Pred.(logical ~arity:1 @@ Name.from_string "p")
-let pred_q = Pred.(logical ~arity:1 @@ Name.from_string "q")
-let pred_r = Pred.(logical ~arity:2 @@ Name.from_string "r")
-let pred_s = Pred.(logical ~arity:1 @@ Name.from_string "s")
-let pred_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
-let pred_qry2 = Pred.(logical ~arity:0 @@ Name.from_string "query2")
+let pred_a = Pred.(pred ~arity:1 @@ Name.from_string "a")
+let pred_p = Pred.(pred ~arity:1 @@ Name.from_string "p")
+let pred_q = Pred.(pred ~arity:1 @@ Name.from_string "q")
+let pred_r = Pred.(pred ~arity:2 @@ Name.from_string "r")
+let pred_s = Pred.(pred ~arity:1 @@ Name.from_string "s")
+let pred_qry = Pred.(pred ~arity:0 @@ Name.from_string "query")
+let pred_qry2 = Pred.(pred ~arity:0 @@ Name.from_string "query2")
 let destQ = Dataflow.Dest.DLit (Lit.Raw.lit pred_q Term.[ var "X" ], 0)
 let destP = Dataflow.Dest.DPred (pred_p, 0)
 let destR = Dataflow.Dest.DLit (Lit.Raw.lit pred_r Term.[ var "X"; var "X" ], 0)
@@ -33,6 +33,8 @@ let prg_const =
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let covering_const_expect =
@@ -72,6 +74,8 @@ let prg_dead_path =
           Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let dead_path () =
@@ -121,6 +125,8 @@ let prg_wild =
       ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ wild () ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let wild () =
@@ -150,6 +156,8 @@ let prg_single_open =
       ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let single_open () =
@@ -185,6 +193,8 @@ let prg_multi_half_open =
       ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let multi_half_open () =
@@ -221,6 +231,8 @@ let prg_alias_head_closed =
             ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let alias_head_closed () =
@@ -257,6 +269,8 @@ let prg_alias_head_half_open =
           Lit.Raw.[ lit pred_r Term.[ var "X"; sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let alias_head_half_open () =
@@ -285,6 +299,8 @@ let prg_alias_body =
             ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let alias_body () =
@@ -329,6 +345,8 @@ let prg_indirection =
             ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let indirection () =
@@ -375,6 +393,8 @@ let prg_rec_closed =
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let rec_closed () =
@@ -422,6 +442,8 @@ let prg_rec_closed_indiff =
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let rec_closed_indiff () =

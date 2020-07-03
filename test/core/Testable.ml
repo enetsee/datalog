@@ -49,6 +49,25 @@ let kb = Core.Knowledge.Base.(Alcotest.testable pp equal)
 let partition = Core.Partition.(Alcotest.testable pp equal)
 let ty = Core.Ty.(Alcotest.testable pp equal)
 let tyset = Core.Ty.Set.(Alcotest.testable (pp_set Core.Ty.pp) equal)
+let cnstr = Core.Constraint.(Alcotest.testable pp equal)
+let schedule = Core.Schedule.(Alcotest.testable pp equal)
+
+let orderings =
+  let pp =
+    Fmt.(
+      vbox
+      @@ list ~sep:cut
+      @@ hbox
+      @@ brackets
+      @@ list ~sep:comma Core.Lit.Raw.pp)
+  (* sort the order of the orderings but not the orderings! *)
+  and eq xxs yys =
+    let xxs' = List.sort ~compare:(List.compare Core.Lit.Raw.compare) xxs
+    and yys' = List.sort ~compare:(List.compare Core.Lit.Raw.compare) yys in
+    List.equal (List.equal Core.Lit.Raw.equal) xxs' yys'
+  in
+  Alcotest.testable pp eq
+;;
 
 let trg : Core.Ty.Set.t Core.Ty.Map.t Alcotest.testable =
   Core.Ty.Map.(

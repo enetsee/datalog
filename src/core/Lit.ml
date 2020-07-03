@@ -8,7 +8,6 @@ module type S = sig
   include Pretty.S0 with type t := t
   include HasVars.S with type t := t
   include HasTerms.S with type t := t
-  include HasEffects.S with type t := t
   include HasRegion.S with type t := t
 
   val pred_of : t -> Pred.t
@@ -19,7 +18,7 @@ module type S = sig
 end
 
 module Raw : sig
-  exception MismatchArity of Pred.Name.t * int * int
+  exception MismatchArity of Name.t * int * int
 
   type t =
     { pol : Polarity.t
@@ -32,7 +31,7 @@ module Raw : sig
 
   val lit : ?pol:Polarity.t -> ?region:Region.t -> Pred.t -> Term.t list -> t
 end = struct
-  exception MismatchArity of Pred.Name.t * int * int
+  exception MismatchArity of Name.t * int * int
 
   module Minimal = struct
     type t =
@@ -71,9 +70,6 @@ end = struct
   let pol_of { pol; _ } = pol
   let pred_of { pred; _ } = pred
   let neg t = { t with pol = Polarity.toggle t.pol }
-
-  (* -- HasEffects implementation ------------------------------------------- *)
-  let effects_of { pred; _ } = Pred.effects_of pred
 
   (* -- HasTerms implementation --------------------------------------------- *)
   let terms_of { terms; _ } = terms
@@ -135,9 +131,6 @@ module Adorned = struct
   let pol_of { pol; _ } = pol
   let pred_of { pred; _ } = pred
   let neg t = { t with pol = Polarity.toggle t.pol }
-
-  (* -- HasEffects implementation ------------------------------------------- *)
-  let effects_of { pred; _ } = Pred.effects_of pred
 
   (* -- HasTerms implementation --------------------------------------------- *)
   let terms_of { terms; _ } = terms

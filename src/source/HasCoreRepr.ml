@@ -3,5 +3,5 @@ module type S = sig
   type t
   type repr
 
-  val to_core : t -> repr MonadCompile.t
+  val to_core : t -> (repr, Err.t) result
 end

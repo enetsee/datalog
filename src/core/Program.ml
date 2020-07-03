@@ -13,7 +13,8 @@ module type S = sig
   val sorted : t -> t
   val clauses_of : t -> Clause.t list
   val queries_of : t -> Pred.t list
-  val constraints_of : t -> Constraint.t Pred.Map.t
+  val params_of : t -> Name.t list
+  val data_of : t -> Pred.t list
   val intensionals : t -> Pred.Set.t
   val extensionals : t -> Pred.Set.t
 end
@@ -25,15 +26,12 @@ module type S_Unstratified = sig
   type t =
     { clauses : Clause.t list
     ; queries : Pred.t list
-    ; constraints : Constraint.t Pred.Map.t
+    ; data : Pred.t list
+    ; params : Name.t list
     }
   [@@deriving compare, eq]
 
-  val program
-    :  ?cstrs:Constraint.t Pred.Map.t
-    -> Clause.t list
-    -> Pred.t list
-    -> t
+  val program : Clause.t list -> Pred.t list -> Pred.t list -> Name.t list -> t
 
   include S with module Lit := Lit and module Clause := Clause and type t := t
 end
@@ -43,20 +41,20 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
   type t =
     { clauses : Clause.t list
     ; queries : Pred.t list
-    ; constraints : Constraint.t Pred.Map.t
+    ; data : Pred.t list
+    ; params : Name.t list
     }
   [@@deriving compare, eq]
 
   (** Make a program  with standard ordering of queries and clauses 
   *)
-  let program ?(cstrs = Pred.Map.empty) clauses queries =
-    { clauses; queries; constraints = cstrs }
-  ;;
+  let program clauses queries data params = { clauses; queries; data; params }
 
-  let sorted { clauses; queries; constraints } =
+  let sorted { clauses; queries; params; data } =
     { clauses = List.sort ~compare:Clause.compare clauses
     ; queries = List.sort ~compare:Pred.compare queries
-    ; constraints
+    ; params
+    ; data
     }
   ;;
 
@@ -68,7 +66,8 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
 
   let clauses_of { clauses; _ } = clauses
   let queries_of { queries; _ } = queries
-  let constraints_of { constraints; _ } = constraints
+  let params_of { params; _ } = params
+  let data_of { data; _ } = data
 
   (** Intensional predicates, i.e. those appearing in the head of a clause *)
   let intensionals { clauses; _ } =
@@ -83,28 +82,34 @@ module Make (Lit : Lit.S) (Clause : Clause.S with module Lit := Lit) :
   include Pretty.Make0 (struct
     type nonrec t = t
 
-    let pp ppf { clauses; queries; constraints } =
+    let pp_clauses =
+      Fmt.(prefix (any "Clauses@;") @@ prefix cut @@ list ~sep:cut @@ Clause.pp)
+    ;;
+
+    let pp_queries =
+      Fmt.(prefix (any "@;Queries@;") @@ prefix cut @@ list ~sep:cut @@ Pred.pp)
+    ;;
+
+    let pp_data =
+      Fmt.(prefix (any "@;Data@;") @@ prefix cut @@ list ~sep:cut @@ Pred.pp)
+    ;;
+
+    let pp_params =
+      Fmt.(
+        prefix (any "@;Parameters@;")
+        @@ prefix cut
+        @@ list ~sep:cut
+        @@ prefix (any "$") Name.pp)
+    ;;
+
+    let pp ppf { clauses; queries; data; params } =
       Fmt.(
         vbox
-        @@ pair
-             ~sep:cut
-             (prefix (any "Clauses@;")
-             @@ prefix cut
-             @@ list ~sep:cut
-             @@ Clause.pp)
-        @@ pair
-             ~sep:cut
-             (prefix (any "@;Queries@;")
-             @@ prefix cut
-             @@ list ~sep:cut
-             @@ Pred.pp)
-             (prefix (any "@;Constraints@;")
-             @@ prefix cut
-             @@ list ~sep:cut
-             @@ hbox
-             @@ pair ~sep:(any " => ") Pred.pp Constraint.pp))
+        @@ pair ~sep:cut pp_clauses
+        @@ pair ~sep:cut pp_queries
+        @@ pair ~sep:cut pp_data pp_params)
         ppf
-        (clauses, (queries, Pred.Map.to_alist constraints))
+        (clauses, (queries, (data, params)))
     ;;
 
     let pp = `NoPrec pp
@@ -125,6 +130,8 @@ module type S_Stratified = sig
   type t =
     { strata : Clause.Adorned.t list list
     ; queries : Pred.t list
+    ; data : Pred.t list
+    ; params : Name.t list
     }
   [@@deriving compare, eq, sexp]
 
@@ -161,26 +168,30 @@ module Stratified : S_Stratified = struct
   type t =
     { strata : Clause.Adorned.t list list
     ; queries : Pred.t list
+    ; data : Pred.t list
+    ; params : Name.t list
     }
   [@@deriving compare, eq, sexp]
 
-  let sorted { strata; queries } =
+  let sorted { strata; queries; data; params } =
     { strata = List.(map ~f:(sort ~compare:Clause.Adorned.compare) strata)
     ; queries = List.sort ~compare:Pred.compare queries
+    ; data = List.sort ~compare:Pred.compare data
+    ; params = List.sort ~compare:Name.compare params
     }
   ;;
 
   let strata_of { strata; _ } = strata
   let queries_of { queries; _ } = queries
   let clauses_of { strata; _ } = List.concat strata
+  let params_of { params; _ } = params
+  let data_of { data; _ } = data
 
   let preds_of t =
     List.dedup_and_sort ~compare:Pred.compare
     @@ List.concat_map ~f:Clause.Adorned.preds_of
     @@ clauses_of t
   ;;
-
-  let constraints_of _ = Pred.Map.empty
 
   (** Intensional predicates, i.e. those appearing in the head of a clause *)
   let intensionals t =

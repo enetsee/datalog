@@ -30,9 +30,10 @@ let elim_dead_clauses prog =
     warns dead >>= fun _ -> return { prog with clauses = alive })
 ;;
 
-let stratify (Program.Adorned.{ queries; _ } as prog) =
+let stratify (Program.Adorned.{ queries; data; params; _ } as prog) =
   match Dependency.Adorned.(stratify @@ from_program prog) with
-  | Ok strata -> MonadCompile.return Program.Stratified.{ strata; queries }
+  | Ok strata ->
+    MonadCompile.return Program.Stratified.{ strata; queries; data; params }
   | Error cycles -> MonadCompile.(fail Err.(NegativeCycles cycles))
 ;;
 

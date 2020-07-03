@@ -4,10 +4,7 @@ open Core_kernel
 let output = Alcotest.(result Testable.adorned_program Testable.err)
 
 module ClientServer = struct
-  let p_check_client =
-    Pred.(logical ~arity:1 @@ Name.from_string "check_client")
-  ;;
-
+  let p_check_client = Pred.(pred ~arity:1 @@ Name.from_string "check_client")
   let lit_check_client = Lit.Raw.(lit p_check_client Term.[ var "Pass" ])
 
   let lit_check_client_sym =
@@ -15,10 +12,7 @@ module ClientServer = struct
       lit p_check_client Term.[ sym @@ Symbol.from_string "PASSWORD123" ])
   ;;
 
-  let p_check_server =
-    Pred.(logical ~arity:1 @@ Name.from_string "check_server")
-  ;;
-
+  let p_check_server = Pred.(pred ~arity:1 @@ Name.from_string "check_server")
   let lit_check_server = Lit.Raw.(lit p_check_server Term.[ var "Hash" ])
 
   let lit_check_server_sym =
@@ -26,21 +20,42 @@ module ClientServer = struct
       lit p_check_server Term.[ sym @@ Symbol.from_string "UEFTU1dPUkQxMjMK" ])
   ;;
 
-  let p_weak = Pred.(logical ~arity:2 @@ Name.from_string "weak")
+  let p_weak = Pred.(pred ~arity:2 @@ Name.from_string "weak")
   let lit_weak = Lit.Raw.(lit p_weak Term.[ var "Pass"; var "Hash" ])
-  let p_hash = Pred.(extralogical ~arity:2 @@ Name.from_string "hash")
+
+  (** Extrapred `hash` predicate *)
+  let p_hash = Pred.(pred ~arity:2 @@ Name.from_string "hash")
+
+  let ti_hash =
+    TypingEnv.
+      { typing = Typing.of_schema Ty.[ Symbol; Symbol ]
+      ; cstr = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
+      ; nature = Nature.Extralogical []
+      }
+  ;;
+
   let lit_hash = Lit.Raw.(lit p_hash Term.[ var "Pass"; var "Hash" ])
-  let cstr_hash = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
-  let p_rainbow = Pred.(extralogical ~arity:2 @@ Name.from_string "rainbow")
+  let p_rainbow = Pred.(pred ~arity:2 @@ Name.from_string "rainbow")
+
+  let ti_rainbow =
+    TypingEnv.
+      { typing = Typing.of_schema Ty.[ Symbol; Symbol ]
+      ; cstr = Constraint.(of_list Atomic.[ of_list [ 1 ] ])
+      ; nature = Nature.Extralogical []
+      }
+  ;;
+
   let lit_rainbow = Lit.Raw.(lit p_rainbow Term.[ var "Pass"; var "Hash" ])
-  let cstr_rainbow = Constraint.(of_list Atomic.[ of_list [ 1 ] ])
-  let p_qry1 = Pred.(logical ~arity:0 @@ Name.from_string "query1")
+  let p_qry1 = Pred.(pred ~arity:0 @@ Name.from_string "query1")
   let lit_qry1 = Lit.Raw.(lit p_qry1 [])
-  let p_qry2 = Pred.(logical ~arity:0 @@ Name.from_string "query2")
+  let p_qry2 = Pred.(pred ~arity:0 @@ Name.from_string "query2")
   let lit_qry2 = Lit.Raw.(lit p_qry2 [])
 
-  let cnstrs_client_server =
-    Pred.Map.of_alist_exn [ p_hash, cstr_hash; p_rainbow, cstr_rainbow ]
+  let tyenv_client_server =
+    TypingEnv.(
+      add_pred ~name:Pred.(name_of p_rainbow) ~info:ti_rainbow
+      @@ add_pred ~name:Pred.(name_of p_hash) ~info:ti_hash
+      @@ empty)
   ;;
 
   let cls_client_server =
@@ -56,8 +71,7 @@ module ClientServer = struct
   let qrys_client_server = [ p_qry1; p_qry2 ]
 
   let prg_client_server =
-    Program.Raw.(
-      program ~cstrs:cnstrs_client_server cls_client_server qrys_client_server)
+    Program.Raw.(program cls_client_server qrys_client_server [] [])
   ;;
 
   let cls_client_server_adorned =
@@ -101,11 +115,7 @@ module ClientServer = struct
 
   let prg_client_server_adorned =
     Program.Adorned.(
-      sorted
-      @@ program
-           ~cstrs:cnstrs_client_server
-           cls_client_server_adorned
-           qrys_client_server)
+      sorted @@ program cls_client_server_adorned qrys_client_server [] [])
   ;;
 
   let client_server () =
@@ -113,7 +123,7 @@ module ClientServer = struct
       "Client/server generalized adornment example"
       (Ok prg_client_server_adorned)
       MonadCompile.(
-        eval
+        eval ~st:State.{ default with typing_env = tyenv_client_server }
         @@ map ~f:Program.Adorned.sorted
         @@ Adorn.adorn_program prg_client_server)
   ;;
@@ -122,27 +132,27 @@ end
 module Negation = struct
   let vx = Term.var "X"
   let mk_lit pr = Lit.Raw.(lit pr [ vx ])
-  let pr_a = Pred.(logical ~arity:1 @@ Name.from_string "a")
+  let pr_a = Pred.(pred ~arity:1 @@ Name.from_string "a")
   let lit_a = mk_lit pr_a
-  let pr_b = Pred.(logical ~arity:1 @@ Name.from_string "b")
+  let pr_b = Pred.(pred ~arity:1 @@ Name.from_string "b")
   let lit_b = mk_lit pr_b
-  let pr_c = Pred.(logical ~arity:1 @@ Name.from_string "c")
+  let pr_c = Pred.(pred ~arity:1 @@ Name.from_string "c")
   let lit_c = mk_lit pr_c
-  let pr_d = Pred.(logical ~arity:1 @@ Name.from_string "d")
+  let pr_d = Pred.(pred ~arity:1 @@ Name.from_string "d")
   let lit_d = mk_lit pr_d
-  let pr_e = Pred.(logical ~arity:1 @@ Name.from_string "e")
+  let pr_e = Pred.(pred ~arity:1 @@ Name.from_string "e")
   let lit_e = mk_lit pr_e
-  let pr_s = Pred.(logical ~arity:1 @@ Name.from_string "s")
+  let pr_s = Pred.(pred ~arity:1 @@ Name.from_string "s")
   let lit_s = mk_lit pr_s
-  let pr_t = Pred.(logical ~arity:1 @@ Name.from_string "t")
+  let pr_t = Pred.(pred ~arity:1 @@ Name.from_string "t")
   let lit_t = mk_lit pr_t
-  let pr_u = Pred.(logical ~arity:1 @@ Name.from_string "u")
+  let pr_u = Pred.(pred ~arity:1 @@ Name.from_string "u")
   let lit_u = mk_lit pr_u
-  let pr_v = Pred.(logical ~arity:1 @@ Name.from_string "v")
+  let pr_v = Pred.(pred ~arity:1 @@ Name.from_string "v")
   let lit_v = mk_lit pr_v
-  let pr_w = Pred.(logical ~arity:1 @@ Name.from_string "w")
+  let pr_w = Pred.(pred ~arity:1 @@ Name.from_string "w")
   let lit_w = mk_lit pr_w
-  let pr_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
+  let pr_qry = Pred.(pred ~arity:0 @@ Name.from_string "query")
   let lit_qry = Lit.Raw.lit pr_qry []
 
   let cls_raw =
@@ -188,8 +198,11 @@ module Negation = struct
       ]
   ;;
 
-  let prg_raw = Program.Raw.(sorted @@ program cls_raw [ pr_qry ])
-  let prg_adorned = Program.Adorned.(sorted @@ program cls_adorned [ pr_qry ])
+  let prg_raw = Program.Raw.(sorted @@ program cls_raw [ pr_qry ] [] [])
+
+  let prg_adorned =
+    Program.Adorned.(sorted @@ program cls_adorned [ pr_qry ] [] [])
+  ;;
 
   let negation () =
     Alcotest.(check output)
@@ -201,18 +214,18 @@ module Negation = struct
 end
 
 module Complement = struct
-  let pr_n = Pred.(logical ~arity:1 @@ Name.from_string "n")
+  let pr_n = Pred.(pred ~arity:1 @@ Name.from_string "n")
   let lit_n1 = Lit.Raw.(lit pr_n Term.[ var "X" ])
   let lit_n2 = Lit.Raw.(lit pr_n Term.[ var "Y" ])
-  let pr_g = Pred.(logical ~arity:2 @@ Name.from_string "g")
+  let pr_g = Pred.(pred ~arity:2 @@ Name.from_string "g")
   let lit_g1 = Lit.Raw.(lit pr_g Term.[ var "X"; var "Y" ])
   let lit_g2 = Lit.Raw.(lit pr_g Term.[ var "X"; var "Z" ])
-  let pr_t = Pred.(logical ~arity:2 @@ Name.from_string "t")
+  let pr_t = Pred.(pred ~arity:2 @@ Name.from_string "t")
   let lit_t_head = Lit.Raw.(lit pr_t Term.[ var "X"; var "Y" ])
   let lit_t_body = Lit.Raw.(lit pr_t Term.[ var "Z"; var "Y" ])
-  let pr_ct = Pred.(logical ~arity:2 @@ Name.from_string "ct")
+  let pr_ct = Pred.(pred ~arity:2 @@ Name.from_string "ct")
   let lit_ct = Lit.Raw.(lit pr_ct Term.[ var "X"; var "Y" ])
-  let pr_qry = Pred.(logical ~arity:0 @@ Name.from_string "qry")
+  let pr_qry = Pred.(pred ~arity:0 @@ Name.from_string "qry")
   let lit_qry = Lit.Raw.(lit pr_qry [])
 
   let cls_raw =
@@ -247,8 +260,8 @@ module Complement = struct
       ]
   ;;
 
-  let prg_raw = Program.Raw.program cls_raw [ pr_ct ]
-  let prg_adrn = Program.Adorned.(sorted @@ program cls_adorned [ pr_ct ])
+  let prg_raw = Program.Raw.program cls_raw [ pr_ct ] [] []
+  let prg_adrn = Program.Adorned.(sorted @@ program cls_adorned [ pr_ct ] [] [])
 
   let complement () =
     Alcotest.(check output)

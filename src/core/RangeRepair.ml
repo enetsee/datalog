@@ -40,7 +40,7 @@ let mk_guard srcs (Violation.{ tmvar; _ } as violation) =
   MonadCompile.(
     fresh_guardsym
     >>= fun name ->
-    let grdPred = Pred.logical ~arity:1 name in
+    let grdPred = Pred.pred ~arity:1 name in
     let grdLit = Lit.Raw.lit grdPred Term.[ var' tmvar ] in
     return
     @@ Option.value_map ~default:(Unfixable violation) ~f:(fun gs ->

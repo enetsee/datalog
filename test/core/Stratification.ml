@@ -8,25 +8,25 @@ let output = Alcotest.result Testable.stratified_program Testable.err
 module Alice = struct
   let vx = Term.var "X"
   let mk_lit pr = Lit.Raw.(lit pr [ vx ])
-  let pr_a = Pred.(logical ~arity:1 @@ Name.from_string "a")
+  let pr_a = Pred.(pred ~arity:1 @@ Name.from_string "a")
   let lit_a = mk_lit pr_a
-  let pr_b = Pred.(logical ~arity:1 @@ Name.from_string "b")
+  let pr_b = Pred.(pred ~arity:1 @@ Name.from_string "b")
   let lit_b = mk_lit pr_b
-  let pr_c = Pred.(logical ~arity:1 @@ Name.from_string "c")
+  let pr_c = Pred.(pred ~arity:1 @@ Name.from_string "c")
   let lit_c = mk_lit pr_c
-  let pr_d = Pred.(logical ~arity:1 @@ Name.from_string "d")
+  let pr_d = Pred.(pred ~arity:1 @@ Name.from_string "d")
   let lit_d = mk_lit pr_d
-  let pr_e = Pred.(logical ~arity:1 @@ Name.from_string "e")
+  let pr_e = Pred.(pred ~arity:1 @@ Name.from_string "e")
   let lit_e = mk_lit pr_e
-  let pr_s = Pred.(logical ~arity:1 @@ Name.from_string "s")
+  let pr_s = Pred.(pred ~arity:1 @@ Name.from_string "s")
   let lit_s = mk_lit pr_s
-  let pr_t = Pred.(logical ~arity:1 @@ Name.from_string "t")
+  let pr_t = Pred.(pred ~arity:1 @@ Name.from_string "t")
   let lit_t = mk_lit pr_t
-  let pr_u = Pred.(logical ~arity:1 @@ Name.from_string "u")
+  let pr_u = Pred.(pred ~arity:1 @@ Name.from_string "u")
   let lit_u = mk_lit pr_u
-  let pr_v = Pred.(logical ~arity:1 @@ Name.from_string "v")
+  let pr_v = Pred.(pred ~arity:1 @@ Name.from_string "v")
   let lit_v = mk_lit pr_v
-  let pr_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
+  let pr_qry = Pred.(pred ~arity:0 @@ Name.from_string "query")
   let lit_qry = Lit.Raw.lit pr_qry []
 
   let cl_s =
@@ -89,9 +89,11 @@ module Alice = struct
     v(X) :- e(x), not s(X), not u(X).
     query() :- v(X).
   *)
-  let prg_good = Program.Adorned.(sorted @@ program cls_good queries)
+  let prg_good = Program.Adorned.(sorted @@ program cls_good queries [] [])
 
-  let prg_good_stratified = Program.Stratified.(sorted { strata; queries })
+  let prg_good_stratified =
+    Program.Stratified.(sorted { strata; queries; data = []; params = [] })
+  ;;
 
   let no_cycles () =
     Alcotest.(check output)
@@ -128,7 +130,7 @@ module Alice = struct
     query() :- t(X).
 
   *)
-  let prg_bad = Program.Adorned.(sorted @@ program cls_bad queries)
+  let prg_bad = Program.Adorned.(sorted @@ program cls_bad queries [] [])
 
   let direct_cycle () =
     Alcotest.(check output)
@@ -138,24 +140,24 @@ module Alice = struct
         eval @@ map ~f:Program.Stratified.sorted @@ Compile.stratify prg_bad)
   ;;
 
-  let pr_edge = Pred.(logical ~arity:2 @@ Name.from_string "edge")
-  let pr_connected = Pred.(logical ~arity:2 @@ Name.from_string "connected")
-  let pr_comp = Pred.(logical ~arity:2 @@ Name.from_string "comp")
+  let pr_edge = Pred.(pred ~arity:2 @@ Name.from_string "edge")
+  let pr_connected = Pred.(pred ~arity:2 @@ Name.from_string "connected")
+  let pr_comp = Pred.(pred ~arity:2 @@ Name.from_string "comp")
 end
 
 module Comp = struct
-  let pr_n = Pred.(logical ~arity:1 @@ Name.from_string "n")
+  let pr_n = Pred.(pred ~arity:1 @@ Name.from_string "n")
   let lit_n1 = Lit.Raw.(lit pr_n Term.[ var "X" ])
   let lit_n2 = Lit.Raw.(lit pr_n Term.[ var "Y" ])
-  let pr_g = Pred.(logical ~arity:2 @@ Name.from_string "g")
+  let pr_g = Pred.(pred ~arity:2 @@ Name.from_string "g")
   let lit_g1 = Lit.Raw.(lit pr_g Term.[ var "X"; var "Y" ])
   let lit_g2 = Lit.Raw.(lit pr_g Term.[ var "X"; var "Z" ])
-  let pr_t = Pred.(logical ~arity:2 @@ Name.from_string "t")
+  let pr_t = Pred.(pred ~arity:2 @@ Name.from_string "t")
   let lit_t_head = Lit.Raw.(lit pr_t Term.[ var "X"; var "Y" ])
   let lit_t_body = Lit.Raw.(lit pr_t Term.[ var "Z"; var "Y" ])
-  let pr_ct = Pred.(logical ~arity:2 @@ Name.from_string "ct")
+  let pr_ct = Pred.(pred ~arity:2 @@ Name.from_string "ct")
   let lit_ct = Lit.Raw.(lit pr_ct Term.[ var "X"; var "Y" ])
-  let pr_qry = Pred.(logical ~arity:0 @@ Name.from_string "qry")
+  let pr_qry = Pred.(pred ~arity:0 @@ Name.from_string "qry")
   let lit_qry = Lit.Raw.(lit pr_qry [])
   let bb = Binding.(from_list [ Bound; Bound ])
   let ff = Binding.(from_list [ Free; Free ])
@@ -187,8 +189,11 @@ module Comp = struct
   let cls_adorned = [ cl_t1; cl_t2; cl_ct ]
   let strata = [ [ cl_t1; cl_t2 ]; [ cl_ct ] ]
   let queries = [ pr_ct ]
-  let prg_adrn = Program.Adorned.(sorted @@ program cls_adorned queries)
-  let prg_strat = Program.Stratified.(sorted { strata; queries })
+  let prg_adrn = Program.Adorned.(sorted @@ program cls_adorned queries [] [])
+
+  let prg_strat =
+    Program.Stratified.(sorted { strata; queries; params = []; data = [] })
+  ;;
 
   let pos_cycle () =
     Alcotest.(check output)

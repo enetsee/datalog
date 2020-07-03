@@ -5,22 +5,22 @@ open Core_kernel
 
 open Core
 
-let pred_p = Pred.(logical ~arity:1 @@ Name.from_string "p")
-let pred_q = Pred.(logical ~arity:0 @@ Name.from_string "q")
-let pred_r = Pred.(logical ~arity:1 @@ Name.from_string "r")
-let pred_s = Pred.(logical ~arity:1 @@ Name.from_string "s")
-let pred_qry = Pred.(logical ~arity:0 @@ Name.from_string "query")
-let pred_qry2 = Pred.(logical ~arity:0 @@ Name.from_string "query2")
+let pred_p = Pred.(pred ~arity:1 @@ Name.from_string "p")
+let pred_q = Pred.(pred ~arity:0 @@ Name.from_string "q")
+let pred_r = Pred.(pred ~arity:1 @@ Name.from_string "r")
+let pred_s = Pred.(pred ~arity:1 @@ Name.from_string "s")
+let pred_qry = Pred.(pred ~arity:0 @@ Name.from_string "query")
+let pred_qry2 = Pred.(pred ~arity:0 @@ Name.from_string "query2")
 let i = ref 0
 let reset () = i := 0
 
 let fresh_pred_sym pfx =
   let sym = pfx ^ string_of_int !i in
   i := !i + 1;
-  Pred.Name.from_string sym
+  Name.from_string sym
 ;;
 
-let mk_guard () = Pred.(logical ~arity:1 @@ fresh_pred_sym "guard")
+let mk_guard () = Pred.(pred ~arity:1 @@ fresh_pred_sym "guard")
 
 let output =
   Alcotest.(
@@ -50,6 +50,8 @@ let prg_fixable_guard =
           Lit.Raw.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let fixable_guard_expected =
@@ -68,6 +70,8 @@ let fixable_guard_expected =
             Lit.Raw.[ lit pred_r Term.[ var "X" ] ]
         ]
       [ pred_qry ]
+      []
+      []
   , Knowledge.Base.empty )
 ;;
 
@@ -98,6 +102,8 @@ let prg_fixable_knowledge =
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let fixable_knowledge_expected =
@@ -113,6 +119,8 @@ let fixable_knowledge_expected =
             Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
         ]
       [ pred_qry ]
+      []
+      []
   , Knowledge.(Base.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
 ;;
 
@@ -138,6 +146,8 @@ let prg_fixable_multi =
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let fixable_multi_expected =
@@ -159,6 +169,8 @@ let fixable_multi_expected =
             Lit.Raw.[ lit pred_r Term.[ var "X" ] ]
         ]
       [ pred_qry ]
+      []
+      []
   , Knowledge.(Base.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
 ;;
 
@@ -189,6 +201,8 @@ let prg_unfixable_unbound =
           Lit.Raw.[ lit pred_p Term.[ var "X" ]; lit pred_r Term.[ var "X" ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let unfixable_unbound_expected =
@@ -235,6 +249,8 @@ let prg_unfixable_multi =
           Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
     [ pred_qry ]
+    []
+    []
 ;;
 
 let unfixable_multi_expected =

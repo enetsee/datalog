@@ -23,6 +23,7 @@ module Atomic = struct
     @@ List.init arity ~f:(fun i -> if mem t i then Mode.Req else Mode.Opt)
   ;;
 
+  let fully_bound n = of_list @@ List.init n ~f:Fn.id
   let pp ppf xs = Fmt.(hbox @@ braces @@ list ~sep:comma int) ppf (elements xs)
 
   include Pretty.Make0 (struct
@@ -47,6 +48,7 @@ include Set.Make (Atomic)
 
 let ill = empty
 let trivial = singleton @@ Atomic.empty
+let fully_bound n = singleton @@ Atomic.fully_bound n
 
 include Pretty.Make0 (struct
   type nonrec t = t
