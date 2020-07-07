@@ -50,8 +50,7 @@ struct
   ;;
 
   (** Map from predicate to all clauses in which it appears as the conclusion *)
-  let predClauses ~predFwd prog =
-    let clauses = Program.clauses_of prog in
+  let predClauses ~predFwd clauses =
     let ungrouped, clidxs =
       List.unzip
       @@ List.mapi clauses ~f:(fun idx (Clause.{ head; _ } as cl) ->
@@ -69,7 +68,7 @@ struct
   ;;
 
   (* Terminal predicates will not be added by `predEdges` so we add them here *)
-  let insertInits ~predFwd ~predBwd ~itnls edges =
+  let insertInits ~predFwd ~predBwd ~intls edges =
     let rec aux unseen accu = function
       | [] ->
         accu
@@ -79,7 +78,7 @@ struct
         let pred = Int.Map.find_exn predBwd p in
         aux Pred.Set.(remove unseen pred) (next :: accu) rest
     in
-    aux itnls [] edges
+    aux intls [] edges
   ;;
 
   (** For each intensional predicate, a list of predicates in which it appears as a literal
@@ -96,12 +95,11 @@ struct
       q => { (Pos,p) }       
       r => { (Neg,p) , (Pos,q) } 
   *)
-  let predEdges ~predFwd ~predBwd prog =
-    let clauses = Program.clauses_of prog in
-    let itnls = Program.intensionals prog in
+  let predEdges ~predFwd ~predBwd clauses =
+    let intls = Pred.Set.of_list @@ List.map ~f:Clause.head_pred_of clauses in
     Int.Map.of_alist_exn
     (* Ensure all intensional predicates are included *)
-    @@ insertInits ~predFwd ~predBwd ~itnls
+    @@ insertInits ~predFwd ~predBwd ~intls
     (* Group by the source predicate *)
     @@ List.map ~f:(fun (p, pps) -> p, List.map ~f:snd pps)
     @@ groupBy ~proj:fst ~cmp:Int.compare
@@ -113,14 +111,13 @@ struct
         List.filter_map
           ~f:(fun lit ->
             let pred, pol = Lit.(pred_of lit, pol_of lit) in
-            if Pred.Set.mem itnls pred
+            if Pred.Set.mem intls pred
             then Some (Pred.Map.find_exn predFwd pred, (dest, pol))
             else None)
           body)
   ;;
 
-  let clausePreds ~predFwd prog =
-    let clauses = Program.clauses_of prog in
+  let clausePreds ~predFwd clauses =
     Int.Map.of_alist_exn
     @@ List.mapi clauses ~f:(fun cl_idx cl ->
            let prds =
@@ -131,13 +128,17 @@ struct
            cl_idx, prds)
   ;;
 
-  let from_program prog =
-    let pidxs = List.mapi ~f:(fun idx p -> p, idx) @@ Program.preds_of prog in
+  let from_clauses clauses =
+    let pidxs =
+      List.mapi ~f:(fun idx p -> p, idx)
+      @@ List.dedup_and_sort ~compare:Pred.compare
+      @@ List.concat_map ~f:Clause.preds_of clauses
+    in
     let predFwd = Pred.Map.of_alist_exn pidxs
     and predBwd = Int.Map.of_alist_exn @@ List.map ~f:Tuple2.swap pidxs in
-    let predEdges = predEdges ~predFwd ~predBwd prog
-    and clausePreds = clausePreds ~predFwd prog
-    and predClauses, clauseFwd, clauseBwd = predClauses ~predFwd prog in
+    let predEdges = predEdges ~predFwd ~predBwd clauses
+    and clausePreds = clausePreds ~predFwd clauses
+    and predClauses, clauseFwd, clauseBwd = predClauses ~predFwd clauses in
     { clauseFwd
     ; clauseBwd
     ; clausePreds
@@ -147,6 +148,8 @@ struct
     ; predEdges
     }
   ;;
+
+  let from_program prog = from_clauses @@ Program.clauses_of prog
 
   (* -- Query --------------------------------------------------------------- *)
 
@@ -206,7 +209,7 @@ struct
   (** The `dead` clauses are those which are not accessible from any exposed
       query. This exposes how clause indexes are created.
   *)
-  let dead_clauses { predFwd; predClauses; clausePreds; clauseBwd; _ } prog =
+  let dead_idxs { predFwd; predClauses; clausePreds; clauseBwd; _ } prog =
     let rec aux dead_cls seen_prd = function
       | [] -> dead_cls
       | prd_idx :: rest ->
@@ -230,6 +233,21 @@ struct
     aux cl_ids Int.Set.empty
     @@ List.filter_map ~f:(Pred.Map.find predFwd)
     @@ Program.queries_of prog
+  ;;
+
+  let dead_clauses ?deps prog =
+    let deps =
+      match deps with
+      | Some deps -> deps
+      | _ -> from_program prog
+    in
+    let dead_idxs = dead_idxs deps prog in
+    List.partition_map ~f:(fun (idx, cl) ->
+        if Int.Set.mem dead_idxs idx
+        then `Snd (Clause.region_of cl)
+        else `Fst cl)
+    @@ List.mapi ~f:Tuple2.create
+    @@ Program.clauses_of prog
   ;;
 
   (* -- Stratification ------------------------------------------------------ *)

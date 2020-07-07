@@ -144,7 +144,17 @@ let incr =
   modify (fun st -> { st with fresh_src = ctr + 1 }) >>= fun _ -> return ctr
 ;;
 
-(* -- typing helpers -------------------------------------------------------- *)
+(* -- Reader : subtype helpers ---------------------------------------------- *)
+
+let trg = map ~f:(fun Env.{ trg; _ } -> trg) ask
+
+let subtypes_of ty =
+  trg
+  >>= fun lut ->
+  return @@ Option.value ~default:Ty.Set.empty @@ Ty.Map.find lut ty
+;;
+
+(* -- State: typing helpers ------------------------------------------------- *)
 let get_typing_env = gets (fun State.{ typing_env; _ } -> typing_env)
 let set_typing_env typing_env = modify (fun st -> { st with typing_env })
 

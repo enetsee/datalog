@@ -1,50 +1,64 @@
 open Core_kernel
 
-let wildcards_in_head prog =
-  let errs =
-    List.concat_map ~f:(fun cl ->
-        List.filter_map ~f:(function
-            | Term.TWild region -> Some region
-            | _ -> None)
-        @@ Lit.Raw.terms_of
-        @@ Clause.Raw.head_of cl)
-    @@ Program.Raw.clauses_of prog
-  in
-  match errs with
-  | [] -> MonadCompile.return prog
-  | _ -> MonadCompile.(fail Err.(WildcardsInHead errs))
-;;
+module type MonadCore = sig
+  include Adorn.MonadAdorn
+  include RangeRepair.MonadRepair with type 'a t := 'a t
+  include Typing.MonadTyping with type 'a t := 'a t
 
-let elim_dead_clauses prog =
-  MonadCompile.(
-    let deps = Dependency.Raw.from_program prog in
-    let dead_idxs = Dependency.Raw.dead_clauses deps prog in
-    let alive, dead =
-      List.partition_map ~f:(fun (idx, cl) ->
-          if Int.Set.mem dead_idxs idx
-          then `Snd (Warn.UnusedClause (Clause.Raw.region_of cl))
-          else `Fst cl)
-      @@ List.mapi ~f:Tuple2.create
+  val get_typing_env : TypingEnv.t t
+  val err_neg_cycles : (Pred.t * Pred.t) list -> _ t
+  val err_wildcards_in_head : Reporting.Region.t list -> _ t
+  val err_empty_relations : Pred.t list -> _ t
+  val warn_unused_clauses : Reporting.Region.t list -> unit t
+end
+
+module Make (M : MonadCore) = struct
+  include RangeRepair.Make (M)
+  include Adorn.Make (M)
+  include Typing.Make (M)
+
+  let check_wildcards_in_head prog =
+    let errs =
+      List.concat_map ~f:(fun cl ->
+          List.filter_map ~f:(function
+              | Term.TWild region -> Some region
+              | _ -> None)
+          @@ Lit.Raw.terms_of
+          @@ Clause.Raw.head_of cl)
       @@ Program.Raw.clauses_of prog
     in
-    warns dead >>= fun _ -> return { prog with clauses = alive })
-;;
+    match errs with
+    | [] -> M.return prog
+    | _ -> M.err_wildcards_in_head errs
+  ;;
 
-let stratify (Program.Adorned.{ queries; data; params; _ } as prog) =
-  match Dependency.Adorned.(stratify @@ from_program prog) with
-  | Ok strata ->
-    MonadCompile.return Program.Stratified.{ strata; queries; data; params }
-  | Error cycles -> MonadCompile.(fail Err.(NegativeCycles cycles))
-;;
+  let elim_dead_clauses prog =
+    M.(
+      match Dependency.Raw.dead_clauses prog with
+      | alive, [] -> return Program.Raw.{ prog with clauses = alive }
+      | alive, dead ->
+        warn_unused_clauses dead
+        >>= fun _ -> return Program.Raw.{ prog with clauses = alive })
+  ;;
 
-let to_stratified (prog, kb) =
-  MonadCompile.(
-    prog
-    |> wildcards_in_head
-    >>= elim_dead_clauses
-    >>= RangeRepair.apply
-    >>= fun (prog, kb') ->
-    Adorn.adorn_program prog
-    >>= stratify
-    |> map ~f:(fun prog -> prog, Knowledge.Base.union kb kb'))
-;;
+  let stratify (Program.Adorned.{ queries; data; params; _ } as prog) =
+    match Dependency.Adorned.(stratify @@ from_program prog) with
+    | Ok strata -> M.return Program.Stratified.{ strata; queries; data; params }
+    | Error cycles -> M.err_neg_cycles cycles
+  ;;
+
+  let to_stratified (prog, kb_in) =
+    M.(
+      prog
+      |> check_wildcards_in_head
+      >>= elim_dead_clauses
+      >>= fix_program
+      >>= fun (prog, kb_repair) ->
+      let kb = Knowledge.Base.union kb_in kb_repair in
+      adorn_program prog
+      >>= stratify
+      >>= fun prog ->
+      typing_of prog
+      >>= fun _ -> get_typing_env >>= fun env -> return (prog, kb, env))
+  ;;
+end

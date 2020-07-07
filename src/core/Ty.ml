@@ -79,30 +79,51 @@ end
 let top = Top
 let bottom = Bot
 
-let meet t1 t2 ~trg =
-  match t1, t2 with
-  | _ when equal t1 t2 -> t1
-  | Top, t | t, Top -> t
-  | Bot, _ | _, Bot -> Bot
-  | Number, Int | Int, Number -> Int
-  | Number, Real | Real, Number -> Real
-  | _ ->
-    Option.(
-      value
-        ~default:Bot
-        (TRG.subtypes_of trg ~ty:t1
+module type MonadTy = sig
+  include Monad.S
+  include Applicative.S with type 'a t := 'a t
+
+  val subtypes_of : Minimal.t -> Set.t t
+end
+
+module Make (M : MonadTy) = struct
+  let meet t1 t2 =
+    M.(
+      match t1, t2 with
+      | _ when equal t1 t2 -> return t1
+      | Top, t | t, Top -> return t
+      | Bot, _ | _, Bot -> return Bot
+      | Number, Int | Int, Number -> return Int
+      | Number, Real | Real, Number -> return Real
+      | _ ->
+        subtypes_of t1
         >>= fun s1 ->
         if Set.mem s1 t2
-        then Some t2
+        then return t2
         else
-          TRG.subtypes_of trg ~ty:t2
+          subtypes_of t2
           >>= fun s2 ->
           if Set.mem s2 t1
-          then Some t1
-          else List.hd @@ Set.(elements @@ inter s1 s2)))
-;;
+          then return t1
+          else (
+            match List.hd Set.(elements @@ inter s1 s2) with
+            | Some t -> return t
+            | _ -> return Bot))
+  ;;
 
-let leq t1 t2 ~trg = equal t1 @@ meet ~trg t1 t2
+  let meets ts =
+    match ts with
+    | [] -> M.return None
+    | x :: xs ->
+      M.map ~f:Option.some
+      @@ List.fold_left
+           xs
+           ~init:M.(return x)
+           ~f:M.(fun mty ty -> mty >>= meet ty)
+  ;;
+
+  let leq t1 t2 = M.map ~f:(equal t1) @@ meet t1 t2
+end
 
 module Defn = struct
   type t = Subty of Minimal.t

@@ -84,6 +84,25 @@ module F = struct
 
     let pp = `WithPrec pp
   end)
+
+  module Traversable = struct
+    module Make (M : sig
+      include Monad.S
+      include Applicative.S with type 'a t := 'a t
+    end) =
+    struct
+      let traverse t ~f =
+        match t with
+        | RPred (pr, ty_idxs) -> M.return @@ RPred (pr, ty_idxs)
+        | RUnion (a, b) -> M.map2 ~f:union (f a) (f b)
+        | RInter (a, b) -> M.map2 ~f:inter (f a) (f b)
+        | RProd (a, b) -> M.map2 ~f:product (f a) (f b)
+        | RComp a -> M.map ~f:comp @@ f a
+        | RProj (flds, a) -> M.map ~f:(project ~flds) @@ f a
+        | RRestr (equiv, a) -> M.map ~f:(restrict ~equiv) @@ f a
+      ;;
+    end
+  end
 end
 
 include Fix.Make (F)

@@ -146,250 +146,39 @@ module Edge = struct
   end)
 end
 
-(** A schedule graph encodes the ordering of body literals *)
-type t =
-  { head_vars : (int * Var.t) list
-  ; graph : (Vertex.t * Edge.t list) Tree.t
-  }
-[@@deriving compare, eq]
-
-(* -- Intra-clausal analysis ------------------------------------------------ *)
-
-(* == Graph construction ==================================================== *)
-
-(** Helper to get the constraint of a literal. If a literal has negative 
-    polarity than all variables are required, otherwise try and find the 
-    constraint in the provided map and if there is none return the trivial 
-    constraint.
-*)
-let constraint_of lit =
-  MonadCompile.(
-    let pred = Lit.Raw.pred_of lit in
-    match Lit.Raw.pol_of lit with
-    | Polarity.Pos -> get_pred_constraint @@ Pred.name_of pred
-    | Neg -> return @@ Constraint.fully_bound @@ Pred.arity_of pred)
-;;
-
-(** The obligation of a literal is a translation from a dataflow constraint to 
-    the literals variables *)
-let obligation_of lit ~cstr =
-  let terms = Lit.Raw.terms_of lit in
-  Obligation.of_list
-  @@ List.map ~f:(fun acstr ->
-         Var.Set.of_list
-         @@ List.filter_mapi terms ~f:(fun idx ->
-              function
-              | _ when not @@ Constraint.Atomic.mem acstr idx -> None
-              | Term.TVar (v, _) -> Some (Var.Named v)
-              | TWild _ -> Some (Var.Wild idx)
-              | _ -> None))
-  @@ Constraint.elements cstr
-;;
-
-(** Non-existential variables of a literal and their indices *)
-let vars lit =
-  List.filter_mapi ~f:(fun idx ->
-    function
-    | Term.TVar (v, _) -> Some (idx, Var.Named v)
-    | _ -> None)
-  @@ Lit.Raw.terms_of lit
-;;
-
-(** Unique non-existential variables *)
-let varset lit =
-  Var.Set.of_list @@ List.map ~f:(fun v -> Var.Named v) @@ Lit.Raw.vars_of lit
-;;
-
-(* -- Vertex construction --------------------------------------------------- *)
-
-(** Build the root vertex from the clause and constraint function *)
-let root cl =
-  MonadCompile.(
-    map ~f:Vertex.make
-    @@ all
-    @@ List.mapi ~f:(fun idx lit ->
-           constraint_of lit
-           >>= fun cstr -> return (idx, lit, obligation_of lit ~cstr))
-    @@ Clause.Raw.body_of cl)
-;;
-
-(** The next available literals are the previously available literals with 
-    scheduled literals removed 
-*)
-let nextAvailable Vertex.{ available; _ } Edge.{ scheduled; _ } =
-  List.filter available ~f:(fun (_, lit, _) ->
-      not @@ Lit.Raw.Set.mem scheduled lit)
-;;
-
-(** The next set of bound variables are  the current set of bound variables 
-    and the union of the (non-wildcard) variables of the scheduled literals 
-*)
-let nextBound Vertex.{ bound; _ } Edge.{ scheduled; _ } =
-  Var.Set.union_list
-  @@ List.cons bound
-  @@ List.map ~f:varset
-  @@ Lit.Raw.Set.elements scheduled
-;;
-
-(** The cost at the next vertex is the cost of the previous vertex union
-    the cost of the edge 
-*)
-let nextCost Vertex.{ debt; _ } Edge.{ cost; _ } = Var.Set.union debt cost
-
-let mk_vertex vtx edge =
-  Vertex.
-    { available = nextAvailable vtx edge
-    ; bound = nextBound vtx edge
-    ; debt = nextCost vtx edge
+module Minimal = struct
+  (** A schedule graph encodes the ordering of body literals *)
+  type t =
+    { head_vars : (int * Var.t) list
+    ; graph : (Vertex.t * Edge.t list) Tree.t
     }
-;;
+  [@@deriving compare, eq]
 
-(* -- Selection procedure --------------------------------------------------- *)
+  (* -- Pretty implementation ------------------------------------------------- *)
 
-(** The cost of scheduling a literal relative to what is already bound.
-    Note that wildcards are included in the cost of a literal but never in 
-    the set of bound variables. Consequently wildcards will never be eliminated
-    by scheduling other literals
-*)
-let cost_of Vertex.{ bound; _ } (_, _, obligation) =
-  Obligation.min_of
-  @@ `ListIn
-       (List.map ~f:(fun cost -> Var.Set.diff cost bound)
-       @@ Obligation.elements obligation)
-;;
+  let pp_lbl ppf (vtx, edges) =
+    Fmt.(hbox @@ pair ~sep:sp Vertex.pp (braces @@ list ~sep:comma Edge.pp))
+      ppf
+      (vtx, edges)
+  ;;
 
-(** A literal is affordable if it has a cost (i.e. an element of its obligation
-    less the already bound variables) which is a subset of the variable
-    appearing in the head of the clause. 
+  let pp_head_vars ppf vs =
+    Fmt.(hbox @@ braces @@ list ~sep:comma @@ pair ~sep:(any "@") int Var.pp)
+      ppf
+      vs
+  ;;
 
-    This ensures that we only schedule literals with an obligation that has
-    already been paid _or_ could be paid by requiring a variable to be bound
-    in the head of the clause.
-   
-*)
-let affordable (idx, lit, costs) ~head_vars =
-  let hv = Var.Set.of_list @@ List.map ~f:snd head_vars in
-  List.filter_map ~f:(fun cost ->
-      if Var.Set.is_subset cost ~of_:hv then Some (idx, lit, cost) else None)
-  @@ Obligation.to_list costs
-;;
+  let pp ppf { head_vars; graph } =
+    Fmt.(vbox @@ pair ~sep:cut pp_head_vars (Tree.pp pp_lbl))
+      ppf
+      (head_vars, graph)
+  ;;
 
-(** Wrapper around typing environment effect lookup *)
-let eff_of lit =
-  MonadCompile.get_pred_effects @@ Pred.name_of @@ Lit.Raw.pred_of lit
-;;
+  let pp = `NoPrec pp
+end
 
-let eff_intersect idx eff available =
-  let rec aux xs =
-    MonadCompile.(
-      match xs with
-      | [] -> return false
-      | (idx2, _, _) :: rest when idx2 >= idx -> aux rest
-      | (_, lit, _) :: rest ->
-        eff_of lit
-        >>= fun eff2 ->
-        if not @@ Eff.Set.is_empty @@ Eff.Set.inter eff eff2
-        then return true
-        else aux rest)
-  in
-  aux available
-;;
-
-(** A literal is restricted from being scheduled by its effects if:
-    1) It has any effect; *and*
-    2) Scheduling the literal would change the relative order with respect to 
-       other literals with and intersecting set of effects
-*)
-let restricted_effects Vertex.{ available; _ } (idx, lit, cost) =
-  MonadCompile.(
-    eff_of lit
-    >>= fun eff ->
-    if Eff.Set.is_empty eff
-    then return @@ Some (lit, cost)
-    else
-      eff_intersect idx eff available
-      >>= fun intersects ->
-      if intersects then return None else return @@ Some (lit, cost))
-;;
-
-(** The selection criteria used for constructing the minimal obligation graph
-
-  1a) If there are any free literals i.e. those we can schedule without 
-      increasing the debt, use them as candidate
-  1b) If there are no free literals, select the costly literals which _can_ be 
-      scheduled; this will eliminate any literal containing a wildcard or any 
-      variable not appearing in the head of the clause and not already bound
-
-  2) With the candidate literals from step 1, remove those which are effectful
-     and occur _after_ other interacting literals in the original ordering.
-*)
-let select Vertex.({ available; _ } as vtx) ~head_vars =
-  let free, costly =
-    List.partition_tf ~f:(fun (_, _, cost) -> Obligation.is_trivial cost)
-    @@ List.map available ~f:(fun (idx, lit, oblig) ->
-           idx, lit, cost_of vtx (idx, lit, oblig))
-  in
-  let cands =
-    match free with
-    | [] -> List.concat_map costly ~f:(affordable ~head_vars)
-    | _ -> List.map ~f:(fun (idx, lit, _) -> idx, lit, Var.Set.empty) free
-  in
-  MonadCompile.(
-    map ~f:(List.filter_map ~f:Fn.id)
-    @@ all
-    @@ List.map ~f:(restricted_effects vtx) cands)
-;;
-
-(** Given the selected literals, group them by cost and construct edges *)
-let edges selected =
-  let mk_edge lits cost = Edge.{ scheduled = Lit.Raw.Set.of_list lits; cost } in
-  let rec aux accu lits cur_cost = function
-    | [] ->
-      Option.value_map cur_cost ~default:accu ~f:(fun cost ->
-          mk_edge lits cost :: accu)
-    | (lit, cost) :: rest ->
-      (match cur_cost with
-      | Some cost' when Var.Set.equal cost cost' ->
-        aux accu (lit :: lits) cur_cost rest
-      | Some cost' -> aux (mk_edge lits cost' :: accu) [ lit ] (Some cost) rest
-      | _ -> aux accu [ lit ] (Some cost) rest)
-  in
-  aux [] [] None
-  @@ List.sort ~compare:(fun (_, c1) (_, c2) -> Var.Set.compare c1 c2) selected
-;;
-
-(** Monadic tree unfold *)
-let unfoldM ~f b =
-  let rec aux ~k b =
-    MonadCompile.(
-      f b
-      >>= fun (a, bs) ->
-      aux_forest bs ~k:(fun xs -> k @@ map ~f:Tree.(branch a) xs))
-  and aux_forest ~k xs =
-    MonadCompile.(
-      match xs with
-      | [] -> k @@ return []
-      | next :: rest ->
-        aux_forest rest ~k:(fun rest' ->
-            aux next ~k:(fun next' -> k @@ map2 ~f:List.cons next' rest')))
-  in
-  aux ~k:Fn.id b
-;;
-
-(** Construct the minimum obligation graph of a clause given a set of predicate
-    constriants 
-*)
-let of_clause cl =
-  MonadCompile.(
-    let head_vars = vars @@ Clause.Raw.head_of cl in
-    let nexts vtx =
-      select ~head_vars vtx
-      >>= fun selected ->
-      let es = edges selected in
-      return @@ ((vtx, es), List.map ~f:(mk_vertex vtx) es)
-    in
-    root cl >>= unfoldM ~f:nexts >>= fun graph -> return { head_vars; graph })
-;;
+include Minimal
+include Pretty.Make0 (Minimal)
 
 (* == Constraint extraction ================================================= *)
 
@@ -407,11 +196,11 @@ let constraint_of_debt debt ~head_vars =
 ;;
 
 (** Extract the possible mode patterns for the variables in the head of the 
-    clause.
-    
-    Note that we only cosider the debt at _terminal_ vertices i.e. those for 
-    which all literals have been scheduled 
-*)
+      clause.
+      
+      Note that we only cosider the debt at _terminal_ vertices i.e. those for 
+      which all literals have been scheduled 
+  *)
 let extract { head_vars; graph } =
   Constraint.join_list
   @@ List.filter_map ~f:(fun (Vertex.{ available; debt; _ }, _) ->
@@ -454,8 +243,8 @@ let bound_by { head_vars; _ } ~bpatt =
 ;;
 
 (** Flatten the tree representation of the schedule graph collecting 
-    on terminal paths which are consistent with the binding pattern
-*)
+      on terminal paths which are consistent with the binding pattern
+  *)
 let consistent_paths ({ graph; _ } as t) ~bpatt =
   (* Check consistency by subset rather than via `Binding.consistent`
      to avoid repeatedly converting `debt` to atomic constraints *)
@@ -484,75 +273,302 @@ let orderings t ~bpatt =
     @@ consistent_paths t ~bpatt)
 ;;
 
-(* -- Inter-clausal analysis ------------------------------------------------ *)
+module type MonadSchedule = sig
+  include Monad.S
+  include Applicative.S with type 'a t := 'a t
 
-let iterate ~deps =
-  let rec aux preds =
-    MonadCompile.(
-      match preds with
-      | [] -> return ()
-      | pred :: rest ->
-        let pred_nm = Pred.name_of pred
-        and clauses = Dependency.Raw.clauses_of deps pred in
-        (* retrieve the current constraint and the clauses in which it appears *)
-        get_pred_constraint pred_nm
-        >>= fun cstr_in ->
-        (* determine the constraint for each clause an use `meet` to find the
-           constraint for the predicate, update the global map *)
-        List.map clauses ~f:(fun cl -> map ~f:extract @@ of_clause cl)
-        |> all
-        >>= fun cstrs ->
-        let cstr_out = Constraint.meet_list cstrs in
-        (* If this predicate constraint is unchanged we don't need to update
-           dependencies; if it is, retrieve dependencies which are related by
-           a positive literal (since those related by a negative literal are
-           already fully constrained) and add unique entries to the work list
-        *)
-        if Constraint.equal cstr_in cstr_out
-        then aux rest
-        else
-          set_pred_constraint pred_nm cstr_out
-          >>= fun _ ->
-          let delta =
-            List.filter ~f:(fun p -> not @@ Pred.equal pred p)
-            @@ Dependency.Raw.pos_deps_of deps pred
-          in
-          let ws = List.dedup_and_sort ~compare:Pred.compare @@ rest @ delta in
-          aux ws)
-  in
-  aux
-;;
+  val get_pred_constraint : Name.t -> Constraint.t t
+  val set_pred_constraint : Name.t -> Constraint.t -> unit t
+  val get_pred_effects : Name.t -> Eff.Set.t t
+end
 
-(** Determine the moding constraints of all clauses in a program with respect
-    to an initial set (defaults to exposed queries) *)
-let solve ?inits prog ~deps =
-  iterate ~deps
-  @@ List.dedup_and_sort ~compare:Pred.compare
-  @@ Option.value ~default:Program.Raw.(queries_of prog) inits
-;;
+module Make (M : MonadSchedule) = struct
+  (* -- Intra-clausal analysis ------------------------------------------------ *)
+  (* == Graph construction ==================================================== *)
 
-(* -- Pretty implementation ------------------------------------------------- *)
-
-include Pretty.Make0 (struct
-  type nonrec t = t
-
-  let pp_lbl ppf (vtx, edges) =
-    Fmt.(hbox @@ pair ~sep:sp Vertex.pp (braces @@ list ~sep:comma Edge.pp))
-      ppf
-      (vtx, edges)
+  (** Helper to get the constraint of a literal. If a literal has negative 
+      polarity than all variables are required, otherwise try and find the 
+      constraint in the provided map and if there is none return the trivial 
+      constraint.
+  *)
+  let constraint_of lit =
+    M.(
+      let pred = Lit.Raw.pred_of lit in
+      match Lit.Raw.pol_of lit with
+      | Polarity.Pos -> get_pred_constraint @@ Pred.name_of pred
+      | Neg -> return @@ Constraint.fully_bound @@ Pred.arity_of pred)
   ;;
 
-  let pp_head_vars ppf vs =
-    Fmt.(hbox @@ braces @@ list ~sep:comma @@ pair ~sep:(any "@") int Var.pp)
-      ppf
-      vs
+  (** The obligation of a literal is a translation from a dataflow constraint to 
+      the literals variables *)
+  let obligation_of lit ~cstr =
+    let terms = Lit.Raw.terms_of lit in
+    Obligation.of_list
+    @@ List.map ~f:(fun acstr ->
+           Var.Set.of_list
+           @@ List.filter_mapi terms ~f:(fun idx ->
+                function
+                | _ when not @@ Constraint.Atomic.mem acstr idx -> None
+                | Term.TVar (v, _) -> Some (Var.Named v)
+                | TWild _ -> Some (Var.Wild idx)
+                | _ -> None))
+    @@ Constraint.elements cstr
   ;;
 
-  let pp ppf { head_vars; graph } =
-    Fmt.(vbox @@ pair ~sep:cut pp_head_vars (Tree.pp pp_lbl))
-      ppf
-      (head_vars, graph)
+  (** Non-existential variables of a literal and their indices *)
+  let vars lit =
+    List.filter_mapi ~f:(fun idx ->
+      function
+      | Term.TVar (v, _) -> Some (idx, Var.Named v)
+      | _ -> None)
+    @@ Lit.Raw.terms_of lit
   ;;
 
-  let pp = `NoPrec pp
-end)
+  (** Unique non-existential variables *)
+  let varset lit =
+    Var.Set.of_list @@ List.map ~f:(fun v -> Var.Named v) @@ Lit.Raw.vars_of lit
+  ;;
+
+  (* -- Vertex construction --------------------------------------------------- *)
+
+  (** Build the root vertex from the clause and constraint function *)
+  let root cl =
+    M.(
+      map ~f:Vertex.make
+      @@ all
+      @@ List.mapi ~f:(fun idx lit ->
+             constraint_of lit
+             >>= fun cstr -> return (idx, lit, obligation_of lit ~cstr))
+      @@ Clause.Raw.body_of cl)
+  ;;
+
+  (** The next available literals are the previously available literals with 
+      scheduled literals removed 
+  *)
+  let nextAvailable Vertex.{ available; _ } Edge.{ scheduled; _ } =
+    List.filter available ~f:(fun (_, lit, _) ->
+        not @@ Lit.Raw.Set.mem scheduled lit)
+  ;;
+
+  (** The next set of bound variables are  the current set of bound variables 
+      and the union of the (non-wildcard) variables of the scheduled literals 
+  *)
+  let nextBound Vertex.{ bound; _ } Edge.{ scheduled; _ } =
+    Var.Set.union_list
+    @@ List.cons bound
+    @@ List.map ~f:varset
+    @@ Lit.Raw.Set.elements scheduled
+  ;;
+
+  (** The cost at the next vertex is the cost of the previous vertex union
+      the cost of the edge 
+  *)
+  let nextCost Vertex.{ debt; _ } Edge.{ cost; _ } = Var.Set.union debt cost
+
+  let mk_vertex vtx edge =
+    Vertex.
+      { available = nextAvailable vtx edge
+      ; bound = nextBound vtx edge
+      ; debt = nextCost vtx edge
+      }
+  ;;
+
+  (* -- Selection procedure --------------------------------------------------- *)
+
+  (** The cost of scheduling a literal relative to what is already bound.
+      Note that wildcards are included in the cost of a literal but never in 
+      the set of bound variables. Consequently wildcards will never be eliminated
+      by scheduling other literals
+  *)
+  let cost_of Vertex.{ bound; _ } (_, _, obligation) =
+    Obligation.min_of
+    @@ `ListIn
+         (List.map ~f:(fun cost -> Var.Set.diff cost bound)
+         @@ Obligation.elements obligation)
+  ;;
+
+  (** A literal is affordable if it has a cost (i.e. an element of its obligation
+      less the already bound variables) which is a subset of the variable
+      appearing in the head of the clause. 
+
+      This ensures that we only schedule literals with an obligation that has
+      already been paid _or_ could be paid by requiring a variable to be bound
+      in the head of the clause.
+    
+  *)
+  let is_affordable (idx, lit, costs) ~head_vars =
+    let hv = Var.Set.of_list @@ List.map ~f:snd head_vars in
+    List.filter_map ~f:(fun cost ->
+        if Var.Set.is_subset cost ~of_:hv then Some (idx, lit, cost) else None)
+    @@ Obligation.to_list costs
+  ;;
+
+  (** Wrapper around typing environment effect lookup *)
+  let eff_of lit = M.get_pred_effects @@ Pred.name_of @@ Lit.Raw.pred_of lit
+
+  let eff_intersect idx eff available =
+    let rec aux xs =
+      M.(
+        match xs with
+        | [] -> return false
+        | (idx2, _, _) :: rest when idx2 >= idx -> aux rest
+        | (_, lit, _) :: rest ->
+          eff_of lit
+          >>= fun eff2 ->
+          if not @@ Eff.Set.is_empty @@ Eff.Set.inter eff eff2
+          then return true
+          else aux rest)
+    in
+    aux available
+  ;;
+
+  (** A literal is restricted from being scheduled by its effects if:
+      1) It has any effect; *and*
+      2) Scheduling the literal would change the relative order with respect to 
+        other literals with and intersecting set of effects
+  *)
+  let restricted_effects Vertex.{ available; _ } (idx, lit, cost) =
+    M.(
+      eff_of lit
+      >>= fun eff ->
+      if Eff.Set.is_empty eff
+      then return @@ Some (lit, cost)
+      else
+        eff_intersect idx eff available
+        >>= fun intersects ->
+        if intersects then return None else return @@ Some (lit, cost))
+  ;;
+
+  (** The selection criteria used for constructing the minimal obligation graph
+
+    1a) If there are any free literals i.e. those we can schedule without 
+        increasing the debt, use them as candidate
+    1b) If there are no free literals, select the costly literals which _can_ be 
+        scheduled; this will eliminate any literal containing a wildcard or any 
+        variable not appearing in the head of the clause and not already bound
+
+    2) With the candidate literals from step 1, remove those which are effectful
+      and occur _after_ other interacting literals in the original ordering.
+  *)
+  let select Vertex.({ available; _ } as vtx) ~head_vars =
+    let free, costly =
+      List.partition_tf ~f:(fun (_, _, cost) -> Obligation.is_trivial cost)
+      @@ List.map available ~f:(fun (idx, lit, oblig) ->
+             idx, lit, cost_of vtx (idx, lit, oblig))
+    in
+    let cands =
+      match free with
+      | [] -> List.concat_map costly ~f:(is_affordable ~head_vars)
+      | _ -> List.map ~f:(fun (idx, lit, _) -> idx, lit, Var.Set.empty) free
+    in
+    M.(
+      map ~f:(List.filter_map ~f:Fn.id)
+      @@ all
+      @@ List.map ~f:(restricted_effects vtx) cands)
+  ;;
+
+  (** Given the selected literals, group them by cost and construct edges *)
+  let edges selected =
+    let mk_edge lits cost =
+      Edge.{ scheduled = Lit.Raw.Set.of_list lits; cost }
+    in
+    let rec aux accu lits cur_cost = function
+      | [] ->
+        Option.value_map cur_cost ~default:accu ~f:(fun cost ->
+            mk_edge lits cost :: accu)
+      | (lit, cost) :: rest ->
+        (match cur_cost with
+        | Some cost' when Var.Set.equal cost cost' ->
+          aux accu (lit :: lits) cur_cost rest
+        | Some cost' ->
+          aux (mk_edge lits cost' :: accu) [ lit ] (Some cost) rest
+        | _ -> aux accu [ lit ] (Some cost) rest)
+    in
+    aux [] [] None
+    @@ List.sort
+         ~compare:(fun (_, c1) (_, c2) -> Var.Set.compare c1 c2)
+         selected
+  ;;
+
+  (** Monadic tree unfold *)
+  let unfoldM ~f b =
+    let rec aux ~k b =
+      M.(
+        f b
+        >>= fun (a, bs) ->
+        aux_forest bs ~k:(fun xs -> k @@ map ~f:Tree.(branch a) xs))
+    and aux_forest ~k xs =
+      M.(
+        match xs with
+        | [] -> k @@ return []
+        | next :: rest ->
+          aux_forest rest ~k:(fun rest' ->
+              aux next ~k:(fun next' -> k @@ map2 ~f:List.cons next' rest')))
+    in
+    aux ~k:Fn.id b
+  ;;
+
+  (** Construct the minimum obligation graph of a clause given a set of predicate
+      constriants 
+  *)
+  let of_clause cl =
+    M.(
+      let head_vars = vars @@ Clause.Raw.head_of cl in
+      let nexts vtx =
+        select ~head_vars vtx
+        >>= fun selected ->
+        let es = edges selected in
+        return @@ ((vtx, es), List.map ~f:(mk_vertex vtx) es)
+      in
+      root cl >>= unfoldM ~f:nexts >>= fun graph -> return { head_vars; graph })
+  ;;
+
+  (* -- Inter-clausal analysis ------------------------------------------------ *)
+
+  let iterate ~deps =
+    let rec aux preds =
+      M.(
+        match preds with
+        | [] -> return ()
+        | pred :: rest ->
+          let pred_nm = Pred.name_of pred
+          and clauses = Dependency.Raw.clauses_of deps pred in
+          (* retrieve the current constraint and the clauses in which it appears *)
+          get_pred_constraint pred_nm
+          >>= fun cstr_in ->
+          (* determine the constraint for each clause an use `meet` to find the
+             constraint for the predicate, update the global map *)
+          List.map clauses ~f:(fun cl -> map ~f:extract @@ of_clause cl)
+          |> all
+          >>= fun cstrs ->
+          let cstr_out = Constraint.meet_list cstrs in
+          (* If this predicate constraint is unchanged we don't need to update
+             dependencies; if it is, retrieve dependencies which are related by
+             a positive literal (since those related by a negative literal are
+             already fully constrained) and add unique entries to the work list
+          *)
+          if Constraint.equal cstr_in cstr_out
+          then aux rest
+          else
+            set_pred_constraint pred_nm cstr_out
+            >>= fun _ ->
+            let delta =
+              List.filter ~f:(fun p -> not @@ Pred.equal pred p)
+              @@ Dependency.Raw.pos_deps_of deps pred
+            in
+            let ws =
+              List.dedup_and_sort ~compare:Pred.compare @@ rest @ delta
+            in
+            aux ws)
+    in
+    aux
+  ;;
+
+  (** Determine the moding constraints of all clauses in a program with respect
+      to an initial set (defaults to exposed queries) *)
+  let solve ?inits prog ~deps =
+    iterate ~deps
+    @@ List.dedup_and_sort ~compare:Pred.compare
+    @@ Option.value ~default:Program.Raw.(queries_of prog) inits
+  ;;
+end
