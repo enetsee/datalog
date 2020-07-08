@@ -243,9 +243,7 @@ struct
     in
     let dead_idxs = dead_idxs deps prog in
     List.partition_map ~f:(fun (idx, cl) ->
-        if Int.Set.mem dead_idxs idx
-        then `Snd (Clause.region_of cl)
-        else `Fst cl)
+        if Int.Set.mem dead_idxs idx then `Snd cl else `Fst cl)
     @@ List.mapi ~f:Tuple2.create
     @@ Program.clauses_of prog
   ;;

@@ -7,6 +7,13 @@ module type Testable = sig
   val pp : t Fmt.t
 end
 
+module MkList (T : Testable) : Testable = struct
+  type t = T.t list
+
+  let equal = List.equal T.equal
+  let pp = Fmt.(hovbox @@ brackets @@ list ~sep:comma T.pp)
+end
+
 let pp_set pp ppf t =
   Fmt.(braces @@ hovbox @@ list ~sep:comma pp) ppf @@ Set.elements t
 ;;
@@ -38,6 +45,43 @@ let map
     @@ Map.to_alist m
   and equal m1 m2 = Map.equal Val.equal m1 m2 in
   Alcotest.testable pp equal
+;;
+
+let raw_clause = Core.Clause.Raw.(Alcotest.testable pp equal)
+let adorned_clause = Core.Clause.Adorned.(Alcotest.testable pp equal)
+
+let strata =
+  let pp = Fmt.(vbox @@ list ~sep:cut @@ list ~sep:cut Core.Clause.Adorned.pp)
+  and eq xs ys =
+    let xs' = List.map ~f:(List.sort ~compare:Core.Clause.Adorned.compare) xs
+    and ys' = List.map ~f:(List.sort ~compare:Core.Clause.Adorned.compare) ys in
+    List.equal (List.equal Core.Clause.Adorned.equal) xs' ys'
+  in
+  Alcotest.testable pp eq
+;;
+
+let cycles =
+  let pp =
+    Fmt.(
+      hbox
+      @@ list ~sep:comma
+      @@ parens
+      @@ pair ~sep:comma Core.Pred.pp Core.Pred.pp)
+  and eq xs ys =
+    let xs' =
+      List.sort
+        ~compare:
+          Tuple2.(compare ~cmp1:Core.Pred.compare ~cmp2:Core.Pred.compare)
+        xs
+    and ys' =
+      List.sort
+        ~compare:
+          Tuple2.(compare ~cmp1:Core.Pred.compare ~cmp2:Core.Pred.compare)
+        ys
+    in
+    List.equal Tuple2.(equal ~eq1:Core.Pred.equal ~eq2:Core.Pred.equal) xs' ys'
+  in
+  Alcotest.testable pp eq
 ;;
 
 let raw_program = Core.Program.Raw.(Alcotest.testable pp equal)
@@ -78,3 +122,4 @@ let trg : Core.Ty.Set.t Core.Ty.Map.t Alcotest.testable =
 let ttc = Core.TTC.(Alcotest.testable pp equal)
 let typing = Core.Typing.(Alcotest.testable pp equal)
 let relation = Core.Relation.(Alcotest.testable pp equal)
+let typing_env = Core.TypingEnv.(Alcotest.testable pp equal)

@@ -1,3 +1,4 @@
+open Core_kernel
 open Core
 
 let pred_a = Pred.(pred ~arity:1 @@ Name.from_string "a")
@@ -11,6 +12,38 @@ let pred_s = Pred.(pred ~arity:1 @@ Name.from_string "s")
 let pred_w = Pred.(pred ~arity:1 @@ Name.from_string "w")
 let pred_qry = Pred.(pred ~arity:0 @@ Name.from_string "query")
 
+let cl_s =
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_s Term.[ var "X" ])
+    Lit.Raw.[ lit pred_a Term.[ var "X" ] ]
+;;
+
+let cl_p =
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_p Term.[ var "X" ])
+    Lit.Raw.[ lit pred_s Term.[ var "X" ] ]
+;;
+
+let cl_q =
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_p Term.[ var "X" ])
+    Lit.Raw.[ lit pred_s Term.[ var "X" ] ]
+;;
+
+let cl_qry =
+  Clause.Raw.clause
+    Lit.Raw.(lit pred_qry [])
+    Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 2 ] ]
+;;
+
+let pairs =
+  let cl_list_equal = List.equal Clause.Raw.equal
+  and cl_list_pp = Fmt.(hovbox @@ brackets @@ list ~sep:comma Clause.Raw.pp) in
+  let equal = Tuple2.equal ~eq1:cl_list_equal ~eq2:cl_list_equal
+  and pp = Fmt.(hovbox @@ pair ~sep:comma cl_list_pp cl_list_pp) in
+  Alcotest.testable pp equal
+;;
+
 (** -- Program with single dead clause `q` -------------------------------------
 
 s(X) :- a(X).
@@ -21,61 +54,25 @@ query() :- p(2).
 ----------------------------------------------------------------------------- *)
 
 let prg_dead_clause_single =
-  Program.Raw.program
-    Clause.Raw.
-      [ clause
-          Lit.Raw.(lit pred_s Term.[ var "X" ])
-          Lit.Raw.[ lit pred_a Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_p Term.[ var "X" ])
-          Lit.Raw.[ lit pred_s Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_q Term.[ var "X" ])
-          Lit.Raw.[ lit pred_s Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_qry [])
-          Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 2 ] ]
-      ]
-    [ pred_qry ]
-    []
-    []
-;;
-
-let prg_dead_clause_single_expected =
-  Program.Raw.program
-    Clause.Raw.
-      [ clause
-          Lit.Raw.(lit pred_s Term.[ var "X" ])
-          Lit.Raw.[ lit pred_a Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_p Term.[ var "X" ])
-          Lit.Raw.[ lit pred_s Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_qry [])
-          Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 2 ] ]
-      ]
-    [ pred_qry ]
-    []
-    []
+  Program.Raw.program [ cl_s; cl_p; cl_q; cl_qry ] [ pred_qry ] [] []
 ;;
 
 let dead_clause_single () =
-  Alcotest.(check @@ Testable.(result raw_program err))
+  Alcotest.(check pairs)
     "single covering constant symbol"
-    (Ok prg_dead_clause_single_expected)
-    Compile.(MonadCompile.eval @@ elim_dead_clauses prg_dead_clause_single)
+    ([ cl_p; cl_s; cl_qry ], [ cl_q ])
+    Dependency.Raw.(dead_clauses prg_dead_clause_single)
 ;;
 
 (** -- Program with no exposed queries -------------------------------------- *)
 
 let prg_no_query = Program.Raw.{ prg_dead_clause_single with queries = [] }
-let prg_empty = Program.Raw.program [] [] [] []
 
 let no_query () =
-  Alcotest.(check @@ Testable.(result raw_program err))
+  Alcotest.(check pairs)
     "no exposed queries"
-    (Ok prg_empty)
-    Compile.(MonadCompile.eval @@ elim_dead_clauses prg_no_query)
+    ([], [ cl_p; cl_q; cl_s; cl_qry ])
+    Dependency.Raw.(dead_clauses prg_no_query)
 ;;
 
 (** -- Deeply nested ----------------------------------------------------------
@@ -91,41 +88,39 @@ query() :- w(X), s(X).
 
 *)
 
-let prg_deeply_nested =
-  Program.Raw.program
-    Clause.Raw.
-      [ clause
-          Lit.Raw.(lit pred_b Term.[ var "X" ])
-          Lit.Raw.[ lit pred_a Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_c Term.[ var "X" ])
-          Lit.Raw.[ lit pred_b Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_d Term.[ var "X" ])
-          Lit.Raw.[ lit pred_c Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_p Term.[ var "X" ])
-          Lit.Raw.[ lit pred_d Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_q Term.[ var "X" ])
-          Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_s Term.[ var "X" ])
-          Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_qry [])
-          Lit.Raw.[ lit pred_w Term.[ var "X" ]; lit pred_s Term.[ var "X" ] ]
-      ]
-    [ pred_qry ]
-    []
-    []
+let cls =
+  Clause.Raw.
+    [ clause
+        Lit.Raw.(lit pred_b Term.[ var "X" ])
+        Lit.Raw.[ lit pred_a Term.[ var "X" ] ]
+    ; clause
+        Lit.Raw.(lit pred_c Term.[ var "X" ])
+        Lit.Raw.[ lit pred_b Term.[ var "X" ] ]
+    ; clause
+        Lit.Raw.(lit pred_d Term.[ var "X" ])
+        Lit.Raw.[ lit pred_c Term.[ var "X" ] ]
+    ; clause
+        Lit.Raw.(lit pred_p Term.[ var "X" ])
+        Lit.Raw.[ lit pred_d Term.[ var "X" ] ]
+    ; clause
+        Lit.Raw.(lit pred_q Term.[ var "X" ])
+        Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
+    ; clause
+        Lit.Raw.(lit pred_s Term.[ var "X" ])
+        Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
+    ; clause
+        Lit.Raw.(lit pred_qry [])
+        Lit.Raw.[ lit pred_w Term.[ var "X" ]; lit pred_s Term.[ var "X" ] ]
+    ]
 ;;
 
+let prg_deeply_nested = Program.Raw.program cls [ pred_qry ] [] []
+
 let deeply_nested () =
-  Alcotest.(check @@ Testable.(result raw_program err))
+  Alcotest.(check pairs)
     "deeply nested, no dead clauses"
-    (Ok prg_deeply_nested)
-    (MonadCompile.eval @@ Compile.elim_dead_clauses prg_deeply_nested)
+    (cls, [])
+    Dependency.Raw.(dead_clauses prg_deeply_nested)
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)

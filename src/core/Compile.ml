@@ -37,7 +37,7 @@ module Make (M : MonadCore) = struct
       match Dependency.Raw.dead_clauses prog with
       | alive, [] -> return Program.Raw.{ prog with clauses = alive }
       | alive, dead ->
-        warn_unused_clauses dead
+        warn_unused_clauses List.(map ~f:Clause.Raw.region_of dead)
         >>= fun _ -> return Program.Raw.{ prog with clauses = alive })
   ;;
 

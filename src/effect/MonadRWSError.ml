@@ -18,6 +18,8 @@ module type S1 = sig
     -> env:Env.t
     -> st:State.t
     -> ('a, Err.t) result * Topic.t * State.t
+
+  val eval : 'a t -> env:Env.t -> st:State.t -> ('a, Err.t) result
 end
 
 module Make
@@ -38,6 +40,11 @@ module Make
       }
 
     let run { apply } ~env ~st = apply env st ~k:(fun r w s -> r, w, s)
+
+    let eval t ~env ~st =
+      let res, _, _ = run ~env ~st t in
+      res
+    ;;
 
     let map { apply = g } ~f =
       { apply = (fun env st ~k -> g env st ~k:(fun a -> k @@ Result.map ~f a)) }
@@ -87,6 +94,7 @@ module Make
     ;;
 
     let reader f = { apply = (fun env st ~k -> k (Ok (f env)) Topic.mempty st) }
+    let ask = reader Fn.id
     let local { apply = g } ~f = { apply = (fun env st ~k -> g (f env) st ~k) }
 
     let state f =
@@ -102,6 +110,5 @@ module Make
 
   include Effects
   include MonadWriter.MakeTopic (Topic) (Effects)
-  include MonadReader.MakeEnv (Env) (Effects)
   include MonadState.MakeState (State) (Effects)
 end

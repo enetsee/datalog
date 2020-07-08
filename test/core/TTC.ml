@@ -2,6 +2,21 @@ open Core_kernel
 open Core
 open Programs
 
+module Env = struct
+  type t = Ty.TRG.t
+end
+
+module M = struct
+  include Effect.MonadReader.Make (Env)
+
+  let subtypes_of ty =
+    map ask ~f:(fun trg ->
+        Option.value ~default:Ty.Set.empty @@ Ty.TRG.subtypes_of trg ~ty)
+  ;;
+end
+
+module TTCM = TTC.Make (M)
+
 (* -- Examples TTCs --------------------------------------------------------- *)
 let ttc_top2 = TTC.top 2
 
@@ -45,7 +60,9 @@ let mk_ttc_meet trg expect lhs rhs =
       @@ pair ~sep:(any "@;/\\@;") TTC.pp TTC.pp)
       (expect, (lhs, rhs))
   in
-  let f () = Alcotest.check Testable.ttc msg expect TTC.(meet ~trg lhs rhs) in
+  let f () =
+    Alcotest.check Testable.ttc msg expect M.(run ~env:trg @@ TTCM.meet lhs rhs)
+  in
   Alcotest.test_case msg `Quick f
 ;;
 
@@ -80,21 +97,21 @@ let mk_ttc_project expect flds rhs =
   Alcotest.test_case msg `Quick f
 ;;
 
-let ttc_meet_helper () =
+let ttc_meet_within () =
   Alcotest.(check @@ list Testable.ty)
     "Meet helper"
     Ty.[ bottom; bottom ]
-    (TTC.meet_helper
-       Stratified.BikeShop.[ ty_bicycle; ty_wheel ]
-       ~trg:Stratified.BikeShop.closure
-       ~equiv:Partition.(singleton @@ Int.Set.of_list [ 0; 1 ]))
+    (M.run ~env:Stratified.BikeShop.closure
+    @@ TTCM.meet_within
+         Partition.(singleton @@ Int.Set.of_list [ 0; 1 ])
+         Stratified.BikeShop.[ ty_bicycle; ty_wheel ])
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)
 
 let test_cases =
   Alcotest.
-    [ test_case "meet helper" `Quick ttc_meet_helper
+    [ test_case "meet within equivalence classes" `Quick ttc_meet_within
     ; mk_ttc_meet Stratified.BikeShop.closure ttc_b ttc_top2 ttc_b
     ; mk_ttc_meet Stratified.BikeShop.closure ttc_a ttc_top2 ttc_a
     ; mk_ttc_meet Stratified.BikeShop.closure ttc_b ttc_a ttc_b

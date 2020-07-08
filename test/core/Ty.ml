@@ -1,6 +1,21 @@
 open Core
 open Programs
 
+module Env = struct
+  type t = Ty.TRG.t
+end
+
+module M = struct
+  include Effect.MonadReader.Make (Env)
+
+  let subtypes_of ty =
+    map ask ~f:(fun trg ->
+        Option.value ~default:Ty.Set.empty @@ Ty.TRG.subtypes_of trg ~ty)
+  ;;
+end
+
+module TyM = Ty.Make (M)
+
 let ty_transitive_closure_example () =
   Alcotest.check
     Testable.trg
@@ -18,7 +33,9 @@ let mk_ty_meet trg expect lhs rhs =
       @@ pair ~sep:(any "@;/\\@;") Ty.pp Ty.pp)
       (expect, (lhs, rhs))
   in
-  let f () = Alcotest.check Testable.ty msg expect Ty.(meet ~trg lhs rhs) in
+  let f () =
+    Alcotest.check Testable.ty msg expect M.(run (TyM.meet lhs rhs) ~env:trg)
+  in
   Alcotest.test_case msg `Quick f
 ;;
 
