@@ -47,6 +47,7 @@ let map
   Alcotest.testable pp equal
 ;;
 
+let binding = Core.Binding.(Alcotest.testable pp equal)
 let raw_clause = Core.Clause.Raw.(Alcotest.testable pp equal)
 let adorned_clause = Core.Clause.Adorned.(Alcotest.testable pp equal)
 

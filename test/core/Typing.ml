@@ -1,6 +1,5 @@
 open Core_kernel
 open Core
-open Programs
 
 (* -- MonadTyping ----------------------------------------------------------- *)
 
@@ -133,10 +132,11 @@ let mk_restrict trg expect equiv rhs =
   Alcotest.test_case msg `Quick f
 ;;
 
-let mk_stratum trg tyenv msg expect clauses =
+let mk_step trg tyenv msg expect clauses =
   let f () =
     Alcotest.(check @@ result Testable.typing unit)
-      msg
+      (Fmt.(to_to_string @@ vbox @@ pair ~sep:cut string Typing.pp)
+         (msg, expect))
       (Ok expect)
       M.(
         eval ~env:trg ~st:tyenv
@@ -146,45 +146,73 @@ let mk_stratum trg tyenv msg expect clauses =
   Alcotest.test_case msg `Quick f
 ;;
 
-let mk_program trg tyenv msg expect prog =
+let mk_stratum trg tyenv msg expect stratum =
   let f () =
-    let _, _, st = M.(run ~env:trg ~st:tyenv @@ TypingM.typing_of prog) in
-    Alcotest.(check Testable.typing_env) msg expect st
+    let _, _, st =
+      M.(run ~env:trg ~st:tyenv @@ TypingM.typing_of_stratum stratum)
+    in
+    Alcotest.(check Testable.typing_env)
+      (Fmt.(to_to_string @@ vbox @@ pair ~sep:cut string TypingEnv.pp)
+         (msg, expect))
+      expect
+      st
   in
   Alcotest.test_case msg `Quick f
 ;;
 
-module BikeShop = struct
-  open Stratified.BikeShop
+let mk_program trg tyenv msg expect prog =
+  let f () =
+    let _, _, st = M.(run ~env:trg ~st:tyenv @@ TypingM.typing_of prog) in
+    Alcotest.(check Testable.typing_env)
+      (Fmt.(to_to_string @@ vbox @@ pair ~sep:cut string TypingEnv.pp)
+         (msg, expect))
+      expect
+      st
+  in
+  Alcotest.test_case msg `Quick f
+;;
 
-  let test_cases =
-    [ mk_product typing_hasPart_2 typing_hasPart typing_hasPart
-    ; mk_restrict closure typing_hasPart_2_eq_1_2 (1, 2) typing_hasPart_2
-    ; mk_project
+let test_cases =
+  [ Programs.BikeShop.(
+      mk_product typing_hasPart_2 typing_hasPart typing_hasPart)
+  ; Programs.BikeShop.(
+      mk_restrict closure typing_hasPart_2_eq_1_2 (1, 2) typing_hasPart_2)
+  ; Programs.BikeShop.(
+      mk_project
         typing_hasPart_2_eq_1_2_proj_0_4
         [ 0; 3 ]
-        typing_hasPart_2_eq_1_2
-    ; mk_stratum closure tyenv0 "Typing of stratum 1" typing_hasPart stratum1
-    ; mk_stratum closure tyenv1 "Typing of stratum 2" typing_hasPartTC stratum2
-    ; mk_stratum closure tyenv2 "Typing of stratum 3" typing_query stratum3
-    ; mk_program closure tyenv0 "Typing of bike shop program" tyenv3 prog
-    ]
-  ;;
-end
-
-module SocialInsurance = struct
-  open Stratified.SocialInsurance
-
-  let test_cases =
-    [ mk_stratum trg tyenv0 "Typing of stratum 1" typing_employee stratum1
-    ; mk_stratum trg tyenv1 "Typing of stratum 2" typing_salary stratum2
-    ; mk_stratum trg tyenv2 "Typing of stratum 3" typing_socins stratum3
-    ; mk_stratum trg tyenv3 "Typing of stratum 4" typing_query stratum4
-    ; mk_program trg tyenv0 "Typing of social insurance program" tyenv4 prog
-    ]
-  ;;
-end
-
-(* -- All cases ------------------------------------------------------------- *)
-
-let test_cases = BikeShop.test_cases @ SocialInsurance.test_cases
+        typing_hasPart_2_eq_1_2)
+  ; Programs.BikeShop.(
+      mk_step
+        closure
+        tyenv0
+        "Typing of stratum 1, single step"
+        typing_hasPart
+        stratum1)
+  ; Programs.BikeShop.(
+      mk_stratum closure tyenv0 "Typing of stratum 1" tyenv1 stratum1)
+  ; Programs.BikeShop.(
+      mk_stratum closure tyenv1 "Typing of stratum 2" tyenv2 stratum2)
+  ; Programs.BikeShop.(
+      mk_step
+        closure
+        tyenv2
+        "Typing of stratum 3, single step"
+        typing_query
+        stratum3)
+  ; Programs.BikeShop.(
+      mk_stratum closure tyenv2 "Typing of stratum 3" tyenv3 stratum3)
+  ; Programs.BikeShop.(
+      mk_program closure tyenv0 "Typing of bike shop program" tyenv3 prog)
+  ; Programs.SocialInsurance.(
+      mk_step trg tyenv0 "Typing of stratum 1" typing_employee stratum1)
+  ; Programs.SocialInsurance.(
+      mk_step trg tyenv1 "Typing of stratum 2" typing_salary stratum2)
+  ; Programs.SocialInsurance.(
+      mk_step trg tyenv2 "Typing of stratum 3" typing_socins stratum3)
+  ; Programs.SocialInsurance.(
+      mk_step trg tyenv3 "Typing of stratum 4" typing_query stratum4)
+  ; Programs.SocialInsurance.(
+      mk_program trg tyenv0 "Typing of social insurance program" tyenv4 prog)
+  ]
+;;

@@ -26,7 +26,7 @@ let cl_p =
 
 let cl_q =
   Clause.Raw.clause
-    Lit.Raw.(lit pred_p Term.[ var "X" ])
+    Lit.Raw.(lit pred_q Term.[ var "X" ])
     Lit.Raw.[ lit pred_s Term.[ var "X" ] ]
 ;;
 
@@ -60,7 +60,7 @@ let prg_dead_clause_single =
 let dead_clause_single () =
   Alcotest.(check pairs)
     "single covering constant symbol"
-    ([ cl_p; cl_s; cl_qry ], [ cl_q ])
+    ([ cl_s; cl_p; cl_qry ], [ cl_q ])
     Dependency.Raw.(dead_clauses prg_dead_clause_single)
 ;;
 
@@ -71,7 +71,7 @@ let prg_no_query = Program.Raw.{ prg_dead_clause_single with queries = [] }
 let no_query () =
   Alcotest.(check pairs)
     "no exposed queries"
-    ([], [ cl_p; cl_q; cl_s; cl_qry ])
+    ([], [ cl_s; cl_p; cl_q; cl_qry ])
     Dependency.Raw.(dead_clauses prg_no_query)
 ;;
 

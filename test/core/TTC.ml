@@ -1,6 +1,5 @@
 open Core_kernel
 open Core
-open Programs
 
 module Env = struct
   type t = Ty.TRG.t
@@ -25,11 +24,8 @@ let ttc_bot2_eq =
 ;;
 
 let ttc_a = TTC.ttc [ Symbol; Symbol ]
-let ttc_b = TTC.ttc Stratified.BikeShop.[ ty_bicycle; ty_wheel ]
-
-let ttc_a_b =
-  TTC.ttc Stratified.BikeShop.[ Symbol; Symbol; ty_bicycle; ty_wheel ]
-;;
+let ttc_b = TTC.ttc Programs.BikeShop.[ ty_bicycle; ty_wheel ]
+let ttc_a_b = TTC.ttc Programs.BikeShop.[ Symbol; Symbol; ty_bicycle; ty_wheel ]
 
 let ttc_a_eq =
   TTC.ttc
@@ -39,13 +35,13 @@ let ttc_a_eq =
 
 let ttc_b_eq =
   TTC.ttc
-    Stratified.BikeShop.[ ty_bicycle; ty_wheel ]
+    Programs.BikeShop.[ ty_bicycle; ty_wheel ]
     ~equiv:Partition.(singleton @@ Int.Set.of_list [ 0; 1 ])
 ;;
 
 let ttc_a_b_eq =
   TTC.ttc
-    Stratified.BikeShop.[ Symbol; Symbol; ty_bicycle; ty_wheel ]
+    Programs.BikeShop.[ Symbol; Symbol; ty_bicycle; ty_wheel ]
     ~equiv:Partition.(of_list Int.Set.[ of_list [ 0; 1 ]; of_list [ 2; 3 ] ])
 ;;
 
@@ -101,10 +97,10 @@ let ttc_meet_within () =
   Alcotest.(check @@ list Testable.ty)
     "Meet helper"
     Ty.[ bottom; bottom ]
-    (M.run ~env:Stratified.BikeShop.closure
+    (M.run ~env:Programs.BikeShop.closure
     @@ TTCM.meet_within
          Partition.(singleton @@ Int.Set.of_list [ 0; 1 ])
-         Stratified.BikeShop.[ ty_bicycle; ty_wheel ])
+         Programs.BikeShop.[ ty_bicycle; ty_wheel ])
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)
@@ -112,11 +108,11 @@ let ttc_meet_within () =
 let test_cases =
   Alcotest.
     [ test_case "meet within equivalence classes" `Quick ttc_meet_within
-    ; mk_ttc_meet Stratified.BikeShop.closure ttc_b ttc_top2 ttc_b
-    ; mk_ttc_meet Stratified.BikeShop.closure ttc_a ttc_top2 ttc_a
-    ; mk_ttc_meet Stratified.BikeShop.closure ttc_b ttc_a ttc_b
-    ; mk_ttc_meet Stratified.BikeShop.closure ttc_bot2_eq ttc_a_eq ttc_b
-    ; mk_ttc_meet Stratified.BikeShop.closure ttc_bot2_eq ttc_a_eq ttc_b_eq
+    ; mk_ttc_meet Programs.BikeShop.closure ttc_b ttc_top2 ttc_b
+    ; mk_ttc_meet Programs.BikeShop.closure ttc_a ttc_top2 ttc_a
+    ; mk_ttc_meet Programs.BikeShop.closure ttc_b ttc_a ttc_b
+    ; mk_ttc_meet Programs.BikeShop.closure ttc_bot2_eq ttc_a_eq ttc_b
+    ; mk_ttc_meet Programs.BikeShop.closure ttc_bot2_eq ttc_a_eq ttc_b_eq
     ; mk_ttc_product ttc_a_b ttc_a ttc_b
     ; mk_ttc_product ttc_a_b_eq ttc_a_eq ttc_b_eq
     ; mk_ttc_project ttc_a [ 0; 1 ] ttc_a_b

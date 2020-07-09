@@ -5,6 +5,32 @@ open Core_kernel
 
 open Core
 
+module Err = struct
+  type t = Violation.t list
+end
+
+module Fail = struct
+  include Effect.MonadFail.Make (Err)
+
+  let equal eq_a = Result.equal eq_a (List.equal Violation.equal)
+  let pp pp_a = Fmt.(result ~ok:pp_a ~error:(list ~sep:comma Violation.pp))
+end
+
+module M = struct
+  include Effect.StateT.Make_with_state (Int) (Fail)
+
+  let fresh_guardsym =
+    get
+    >>= fun i ->
+    put (i + 1)
+    >>= fun _ -> return @@ Name.from_string ("guard" ^ string_of_int i)
+  ;;
+
+  let err_range_violations vs = lift @@ Fail.fail vs
+end
+
+module RangeM = RangeRepair.Make (M)
+
 let pred_p = Pred.(pred ~arity:1 @@ Name.from_string "p")
 let pred_q = Pred.(pred ~arity:0 @@ Name.from_string "q")
 let pred_r = Pred.(pred ~arity:1 @@ Name.from_string "r")
@@ -23,8 +49,20 @@ let fresh_pred_sym pfx =
 let mk_guard () = Pred.(pred ~arity:1 @@ fresh_pred_sym "guard")
 
 let output =
-  Alcotest.(
-    Testable.(result (tuple2 (module Program.Raw) (module Knowledge.Base)) err))
+  let pp_a = Fmt.(pair Program.Raw.pp Knowledge.Base.pp)
+  and eq_a = Tuple2.equal ~eq1:Program.Raw.equal ~eq2:Knowledge.Base.equal in
+  Fail.(Alcotest.testable (pp pp_a) (equal eq_a))
+;;
+
+let mk_repair msg expect prg_in =
+  let f () =
+    Alcotest.check
+      output
+      msg
+      expect
+      M.(eval ~init:0 @@ RangeM.fix_program prg_in)
+  in
+  Alcotest.test_case msg `Quick f
 ;;
 
 (** -- Fixable with guard ------------------------------------------------------
@@ -75,11 +113,8 @@ let fixable_guard_expected =
   , Knowledge.Base.empty )
 ;;
 
-let fixable_guard () =
-  Alcotest.(check output)
-    "Fixable with guard"
-    (Ok fixable_guard_expected)
-    (MonadCompile.eval RangeRepair.(apply prg_fixable_guard))
+let fixable_guard =
+  mk_repair "Fixable with guard" (Ok fixable_guard_expected) prg_fixable_guard
 ;;
 
 (** -- Fixable with knowledge --------------------------------------------------
@@ -124,11 +159,11 @@ let fixable_knowledge_expected =
   , Knowledge.(Base.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
 ;;
 
-let fixable_knowledge () =
-  Alcotest.(check output)
+let fixable_knowledge =
+  mk_repair
     "Fixable with knowledge"
     (Ok fixable_knowledge_expected)
-    (MonadCompile.eval RangeRepair.(apply prg_fixable_knowledge))
+    prg_fixable_knowledge
 ;;
 
 (** -- Fixable, multiple paths -------------------------------------------------
@@ -174,11 +209,11 @@ let fixable_multi_expected =
   , Knowledge.(Base.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
 ;;
 
-let fixable_multi () =
-  Alcotest.(check output)
+let fixable_multi =
+  mk_repair
     "Fixable on multiple paths"
     (Ok fixable_multi_expected)
-    (MonadCompile.eval RangeRepair.(apply prg_fixable_multi))
+    prg_fixable_multi
 ;;
 
 (** -- Unfixable  --------------------------------------------------------------
@@ -207,18 +242,17 @@ let prg_unfixable_unbound =
 
 let unfixable_unbound_expected =
   reset ();
-  MonadCompile.Err.RangeViolations
-    [ Violation.violation
-        Dataflow.Dest.(DPred (pred_p, 0))
-        Tmvar.(from_string "X")
-    ]
+  [ Violation.violation
+      Dataflow.Dest.(DPred (pred_p, 0))
+      Tmvar.(from_string "X")
+  ]
 ;;
 
-let unfixable_unbound () =
-  Alcotest.(check output)
+let unfixable_unbound =
+  mk_repair
     "Unfixable, unbound variable"
     (Error unfixable_unbound_expected)
-    (MonadCompile.eval RangeRepair.(apply prg_unfixable_unbound))
+    prg_unfixable_unbound
 ;;
 
 (** -- Unfixable, multiple paths, one fixable, one unfixable -------------------
@@ -255,30 +289,24 @@ let prg_unfixable_multi =
 
 let unfixable_multi_expected =
   reset ();
-  MonadCompile.Err.RangeViolations
-    Violation.
-      [ violation Dataflow.Dest.(DPred (pred_p, 0)) Tmvar.(from_string "X") ]
+  Violation.
+    [ violation Dataflow.Dest.(DPred (pred_p, 0)) Tmvar.(from_string "X") ]
 ;;
 
-let unfixable_multi () =
-  Alcotest.(check output)
+let unfixable_multi =
+  mk_repair
     "Unfixable on one path, fixable on other."
     (Error unfixable_multi_expected)
-    (MonadCompile.eval RangeRepair.(apply prg_unfixable_multi));
-  reset ()
+    prg_unfixable_multi
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)
 
 let test_cases =
-  Alcotest.
-    [ test_case "Fixable with guard" `Quick fixable_guard
-    ; test_case "Fixable with knowledge" `Quick fixable_knowledge
-    ; test_case "Fixable on multiple paths" `Quick fixable_multi
-    ; test_case "Unfixable, unbound variable" `Quick unfixable_unbound
-    ; test_case
-        "Unfixable on one path, fixable on other."
-        `Quick
-        unfixable_multi
-    ]
+  [ fixable_guard
+  ; fixable_knowledge
+  ; fixable_multi
+  ; unfixable_unbound
+  ; unfixable_multi
+  ]
 ;;

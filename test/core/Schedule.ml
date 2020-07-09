@@ -1,24 +1,54 @@
 open Core_kernel
 open Core
 
+module M = struct
+  include Effect.State.Make (TypingEnv)
+
+  let get_pred_constraint name =
+    get
+    >>= fun tyenv ->
+    return
+    @@ Option.value ~default:Constraint.trivial
+    @@ TypingEnv.find_pred_constraint ~name tyenv
+  ;;
+
+  let set_pred_constraint name cstr =
+    get
+    >>= fun tyenv ->
+    put @@ TypingEnv.update_pred_constraint_exn tyenv ~name ~cstr
+  ;;
+
+  let get_pred_effects name =
+    get
+    >>= fun tyenv ->
+    return
+    @@ Option.value ~default:Eff.Set.empty
+    @@ TypingEnv.find_pred_effects ~name tyenv
+  ;;
+end
+
+module ScheduleM = Schedule.Make (M)
+
 let mk_constraint test_name expect_cstr clause typing_env =
-  Alcotest.(check @@ result Testable.cnstr Testable.err)
+  Alcotest.check
+    Testable.cnstr
     test_name
-    (Ok expect_cstr)
-    MonadCompile.(
-      eval ~st:State.{ default with typing_env }
+    expect_cstr
+    M.(
+      eval ~init:typing_env
       @@ map ~f:Schedule.extract
-      @@ Schedule.of_clause clause)
+      @@ ScheduleM.of_clause clause)
 ;;
 
 let mk_ordering test_name expect_ord clause typing_env bpatt =
-  Alcotest.(check @@ result Testable.orderings Testable.err)
+  Alcotest.check
+    Testable.orderings
     test_name
-    (Ok expect_ord)
-    MonadCompile.(
-      eval ~st:State.{ default with typing_env }
+    expect_ord
+    M.(
+      eval ~init:typing_env
       @@ map ~f:Schedule.(orderings ~bpatt)
-      @@ Schedule.of_clause clause)
+      @@ ScheduleM.of_clause clause)
 ;;
 
 let name_f = Name.from_string "f"
