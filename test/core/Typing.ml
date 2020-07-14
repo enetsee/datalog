@@ -203,7 +203,12 @@ let test_cases =
   ; Programs.BikeShop.(
       mk_stratum closure tyenv2 "Typing of stratum 3" tyenv3 stratum3)
   ; Programs.BikeShop.(
-      mk_program closure tyenv0 "Typing of bike shop program" tyenv3 prog)
+      mk_program
+        closure
+        tyenv0
+        "Typing of bike shop program"
+        tyenv3
+        prog_stratified)
   ; Programs.SocialInsurance.(
       mk_step trg tyenv0 "Typing of stratum 1" typing_employee stratum1)
   ; Programs.SocialInsurance.(
@@ -213,6 +218,11 @@ let test_cases =
   ; Programs.SocialInsurance.(
       mk_step trg tyenv3 "Typing of stratum 4" typing_query stratum4)
   ; Programs.SocialInsurance.(
-      mk_program trg tyenv0 "Typing of social insurance program" tyenv4 prog)
+      mk_program
+        trg
+        tyenv0
+        "Typing of social insurance program"
+        tyenv4
+        prog_stratified)
   ]
 ;;

@@ -6,9 +6,9 @@ module Minimal = struct
   type t =
     { pred : Pred.t
     ; terms : Symbol.t list
-    ; region : Region.t [@compare.ignore]
+    ; region : Region.t [@compare.ignore] [@equal.ignore]
     }
-  [@@deriving compare, sexp]
+  [@@deriving eq, compare, sexp]
 
   let knowledge ?(region = Region.empty) pred terms = { pred; terms; region }
 

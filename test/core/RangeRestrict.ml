@@ -54,13 +54,13 @@ let output =
   Fail.(Alcotest.testable (pp pp_a) (equal eq_a))
 ;;
 
-let mk_repair msg expect prg_in =
+let mk_repair msg expect prg_in queries =
   let f () =
     Alcotest.check
       output
       msg
       expect
-      M.(eval ~init:0 @@ RangeM.fix_program prg_in)
+      M.(eval ~init:0 @@ RangeM.fix_program prg_in queries)
   in
   Alcotest.test_case msg `Quick f
 ;;
@@ -87,9 +87,6 @@ let prg_fixable_guard =
           Lit.Raw.(lit pred_qry [])
           Lit.Raw.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let fixable_guard_expected =
@@ -107,14 +104,15 @@ let fixable_guard_expected =
             Lit.Raw.(lit pred_grd Term.[ var "X" ])
             Lit.Raw.[ lit pred_r Term.[ var "X" ] ]
         ]
-      [ pred_qry ]
-      []
-      []
   , Knowledge.Base.empty )
 ;;
 
 let fixable_guard =
-  mk_repair "Fixable with guard" (Ok fixable_guard_expected) prg_fixable_guard
+  mk_repair
+    "Fixable with guard"
+    (Ok fixable_guard_expected)
+    prg_fixable_guard
+    [ pred_qry ]
 ;;
 
 (** -- Fixable with knowledge --------------------------------------------------
@@ -136,9 +134,6 @@ let prg_fixable_knowledge =
           Lit.Raw.(lit pred_qry [])
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let fixable_knowledge_expected =
@@ -153,9 +148,6 @@ let fixable_knowledge_expected =
             Lit.Raw.(lit pred_qry [])
             Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
         ]
-      [ pred_qry ]
-      []
-      []
   , Knowledge.(Base.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
 ;;
 
@@ -164,6 +156,7 @@ let fixable_knowledge =
     "Fixable with knowledge"
     (Ok fixable_knowledge_expected)
     prg_fixable_knowledge
+    [ pred_qry ]
 ;;
 
 (** -- Fixable, multiple paths -------------------------------------------------
@@ -180,9 +173,6 @@ let prg_fixable_multi =
           Lit.Raw.(lit pred_qry2 [])
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let fixable_multi_expected =
@@ -203,9 +193,6 @@ let fixable_multi_expected =
             Lit.Raw.(lit pred_grd Term.[ var "X" ])
             Lit.Raw.[ lit pred_r Term.[ var "X" ] ]
         ]
-      [ pred_qry ]
-      []
-      []
   , Knowledge.(Base.singleton @@ knowledge pred_grd [ Symbol.from_int 1 ]) )
 ;;
 
@@ -214,6 +201,7 @@ let fixable_multi =
     "Fixable on multiple paths"
     (Ok fixable_multi_expected)
     prg_fixable_multi
+    [ pred_qry ]
 ;;
 
 (** -- Unfixable  --------------------------------------------------------------
@@ -235,9 +223,6 @@ let prg_unfixable_unbound =
           Lit.Raw.(lit pred_qry [])
           Lit.Raw.[ lit pred_p Term.[ var "X" ]; lit pred_r Term.[ var "X" ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let unfixable_unbound_expected =
@@ -253,6 +238,7 @@ let unfixable_unbound =
     "Unfixable, unbound variable"
     (Error unfixable_unbound_expected)
     prg_unfixable_unbound
+    [ pred_qry ]
 ;;
 
 (** -- Unfixable, multiple paths, one fixable, one unfixable -------------------
@@ -282,9 +268,6 @@ let prg_unfixable_multi =
           Lit.Raw.(lit pred_s Term.[ var "Y" ])
           Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let unfixable_multi_expected =
@@ -298,6 +281,7 @@ let unfixable_multi =
     "Unfixable on one path, fixable on other."
     (Error unfixable_multi_expected)
     prg_unfixable_multi
+    [ pred_qry ]
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)

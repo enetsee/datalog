@@ -32,9 +32,6 @@ let prg_const =
           Lit.Raw.(lit pred_qry [])
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let covering_const_expect =
@@ -45,7 +42,7 @@ let constant () =
   Alcotest.(check @@ option @@ list testable_src)
     "single covering constant symbol"
     covering_const_expect
-    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_const)
+    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_const [ pred_qry ])
 ;;
 
 (** -- Covering constant with additional dead path -----------------------------
@@ -73,16 +70,14 @@ let prg_dead_path =
           Lit.Raw.(lit pred_s Term.[ var "X" ])
           Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let dead_path () =
   Alcotest.(check @@ option @@ list testable_src)
     "single covering constant with dead path"
     covering_const_expect
-    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_dead_path)
+    Dataflow.(
+      coveringPositives ~dest:destQ @@ from_prog prg_dead_path [ pred_qry ])
 ;;
 
 (** -- Covering constant but predicate `p` also exposed as a query -------------
@@ -96,15 +91,13 @@ p(X) :- q(X).
 query() :- p(1).
  
 ----------------------------------------------------------------------------- *)
-let prg_const_exposed =
-  Program.Raw.{ prg_const with queries = pred_p :: prg_const.queries }
-;;
 
 let const_exposed () =
   Alcotest.(check @@ option @@ list testable_src)
     "single covering constant with dead path"
     None
-    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_const_exposed)
+    Dataflow.(
+      coveringPositives ~dest:destQ @@ from_prog prg_const [ pred_p; pred_qry ])
 ;;
 
 (** -- Covering wildcard -------------------------------------------------------
@@ -124,16 +117,13 @@ let prg_wild =
           Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
       ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ wild () ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let wild () =
   Alcotest.(check @@ option @@ list testable_src)
     "single covering constant wildcard"
     (Some Dataflow.[ Src.SConst Const.CWild ])
-    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_wild)
+    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_wild [ pred_qry ])
 ;;
 
 (** -- Single open path --------------------------------------------------------
@@ -155,16 +145,14 @@ let prg_single_open =
           Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
       ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let single_open () =
   Alcotest.(check @@ option @@ list testable_src)
     "Single path, no covering constants"
     None
-    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_single_open)
+    Dataflow.(
+      coveringPositives ~dest:destQ @@ from_prog prg_single_open [ pred_qry ])
 ;;
 
 (** -- Two paths, one open -----------------------------------------------------
@@ -192,16 +180,15 @@ let prg_multi_half_open =
           Lit.Raw.[ lit pred_a Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
       ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let multi_half_open () =
   Alcotest.(check @@ option @@ list testable_src)
     "Two paths, one open"
     None
-    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_multi_half_open)
+    Dataflow.(
+      coveringPositives ~dest:destQ
+      @@ from_prog prg_multi_half_open [ pred_qry ])
 ;;
 
 (** -- Variable aliased in head , both covered ---------------------------------
@@ -230,9 +217,6 @@ let prg_alias_head_closed =
             ; lit pred_r Term.[ var "X"; sym @@ Symbol.from_int 1 ]
             ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let alias_head_closed () =
@@ -243,7 +227,9 @@ let alias_head_closed () =
          [ Src.SLit (Lit.Raw.lit pred_a Term.[ var "X" ], 0)
          ; Src.SConst (Const.CSym (Symbol.from_int 1))
          ])
-    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_alias_head_closed)
+    Dataflow.(
+      coveringPositives ~dest:destQ
+      @@ from_prog prg_alias_head_closed [ pred_qry ])
 ;;
 
 (** -- Variable aliased in head , one covered, one open ------------------------
@@ -268,9 +254,6 @@ let prg_alias_head_half_open =
           Lit.Raw.(lit pred_qry [])
           Lit.Raw.[ lit pred_r Term.[ var "X"; sym @@ Symbol.from_int 1 ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let alias_head_half_open () =
@@ -278,7 +261,8 @@ let alias_head_half_open () =
     "Variable aliased in head , one covered, one open"
     None
     Dataflow.(
-      coveringPositives ~dest:destQ @@ from_prog prg_alias_head_half_open)
+      coveringPositives ~dest:destQ
+      @@ from_prog prg_alias_head_half_open [ pred_qry ])
 ;;
 
 (** -- Variable aliased in body , covered by preceeding literal ----------------
@@ -298,16 +282,14 @@ let prg_alias_body =
             ; lit pred_r Term.[ var "X"; var "X" ]
             ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let alias_body () =
   Alcotest.(check @@ option @@ list testable_src)
     "Variable aliased in body , covered by preceeding literal"
     (Some Dataflow.[ Src.SLit (Lit.Raw.lit pred_a Term.[ var "X" ], 0) ])
-    Dataflow.(coveringPositives ~dest:destR @@ from_prog prg_alias_body)
+    Dataflow.(
+      coveringPositives ~dest:destR @@ from_prog prg_alias_body [ pred_qry ])
 ;;
 
 (** -- Multiple paths, one directly covered, one indirectly covered ------------
@@ -344,9 +326,6 @@ let prg_indirection =
             ; lit pred_s Term.[ sym @@ Symbol.from_int 2 ]
             ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let indirection () =
@@ -357,7 +336,8 @@ let indirection () =
          [ Src.SConst (Const.CSym (Symbol.from_int 2))
          ; Src.SConst (Const.CSym (Symbol.from_int 1))
          ])
-    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_indirection)
+    Dataflow.(
+      coveringPositives ~dest:destQ @@ from_prog prg_indirection [ pred_qry ])
 ;;
 
 (** -- Multiple paths, recursive def, one directly covered, one indirectly via
@@ -392,9 +372,6 @@ let prg_rec_closed =
           Lit.Raw.(lit pred_qry [])
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let rec_closed () =
@@ -405,7 +382,8 @@ let rec_closed () =
          [ Src.SConst (Const.CSym (Symbol.from_int 1))
          ; Src.SLit (Lit.Raw.lit pred_a Term.[ var "Y" ], 0)
          ])
-    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_rec_closed)
+    Dataflow.(
+      coveringPositives ~dest:destQ @@ from_prog prg_rec_closed [ pred_qry ])
 ;;
 
 (** -- Multiple paths, recursive def, one directly covered, one indirectly but
@@ -441,16 +419,15 @@ let prg_rec_closed_indiff =
           Lit.Raw.(lit pred_qry [])
           Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 1 ] ]
       ]
-    [ pred_qry ]
-    []
-    []
 ;;
 
 let rec_closed_indiff () =
   Alcotest.(check @@ option @@ list testable_src)
     "Multiple paths, recursive def, one directly covered, one indirectly"
     (Some Dataflow.[ Src.SConst (Const.CSym (Symbol.from_int 1)) ])
-    Dataflow.(coveringPositives ~dest:destQ @@ from_prog prg_rec_closed_indiff)
+    Dataflow.(
+      coveringPositives ~dest:destQ
+      @@ from_prog prg_rec_closed_indiff [ pred_qry ])
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)

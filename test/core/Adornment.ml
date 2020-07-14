@@ -40,7 +40,7 @@ module AdornM = Adorn.Make (M)
 
 let output = Alcotest.(result Testable.adorned_program Testable.binding)
 
-let mk_ok msg expect tyenv prg_raw =
+let mk_ok msg expect tyenv prg_raw qry =
   let f () =
     Alcotest.(check output)
       msg
@@ -48,7 +48,7 @@ let mk_ok msg expect tyenv prg_raw =
       M.(
         eval ~init:tyenv
         @@ map ~f:Program.Adorned.sorted
-        @@ AdornM.adorn_program prg_raw)
+        @@ AdornM.adorn_program prg_raw qry)
   in
   Alcotest.test_case msg `Quick f
 ;;
@@ -57,27 +57,30 @@ let client_server =
   Programs.ClientServer.(
     mk_ok
       "Client/server generalized adornment example"
-      prg_client_server_adorned
+      prog_adorned
       tyenv_client_server
-      prg_client_server)
+      prog_raw
+      queries)
 ;;
 
 let negation =
   Programs.Negation.(
     mk_ok
       "Negation generalized adornment example"
-      prg_adorned
+      prog_adorned
       Core.TypingEnv.empty
-      prg_raw)
+      prog_raw
+      queries)
 ;;
 
 let complement =
   Programs.Negation.(
     mk_ok
       "Complement of transitive closure"
-      prg_adorned
+      prog_adorned
       Core.TypingEnv.empty
-      prg_raw)
+      prog_raw
+      queries)
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)

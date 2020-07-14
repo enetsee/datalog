@@ -53,26 +53,22 @@ query() :- p(2).
 
 ----------------------------------------------------------------------------- *)
 
-let prg_dead_clause_single =
-  Program.Raw.program [ cl_s; cl_p; cl_q; cl_qry ] [ pred_qry ] [] []
-;;
+let prg_dead_clause_single = Program.Raw.program [ cl_s; cl_p; cl_q; cl_qry ]
 
 let dead_clause_single () =
   Alcotest.(check pairs)
     "single covering constant symbol"
     ([ cl_s; cl_p; cl_qry ], [ cl_q ])
-    Dependency.Raw.(dead_clauses prg_dead_clause_single)
+    Dependency.Raw.(dead_clauses prg_dead_clause_single [ pred_qry ])
 ;;
 
 (** -- Program with no exposed queries -------------------------------------- *)
-
-let prg_no_query = Program.Raw.{ prg_dead_clause_single with queries = [] }
 
 let no_query () =
   Alcotest.(check pairs)
     "no exposed queries"
     ([], [ cl_s; cl_p; cl_q; cl_qry ])
-    Dependency.Raw.(dead_clauses prg_no_query)
+    Dependency.Raw.(dead_clauses prg_dead_clause_single [])
 ;;
 
 (** -- Deeply nested ----------------------------------------------------------
@@ -114,13 +110,13 @@ let cls =
     ]
 ;;
 
-let prg_deeply_nested = Program.Raw.program cls [ pred_qry ] [] []
+let prg_deeply_nested = Program.Raw.program cls
 
 let deeply_nested () =
   Alcotest.(check pairs)
     "deeply nested, no dead clauses"
     (cls, [])
-    Dependency.Raw.(dead_clauses prg_deeply_nested)
+    Dependency.Raw.(dead_clauses prg_deeply_nested [ pred_qry ])
 ;;
 
 (* -- All cases ------------------------------------------------------------- *)

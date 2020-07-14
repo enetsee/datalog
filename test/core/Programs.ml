@@ -89,11 +89,9 @@ module Alice = struct
     v(X) :- e(x), not s(X), not u(X).
     query() :- v(X).
   *)
-  let prg_good = Core.Program.Adorned.(sorted @@ program cls_good queries [] [])
+  let prg_good_adorned = Core.Program.Adorned.(sorted @@ program cls_good)
 
-  let prg_good_stratified =
-    Core.Program.Stratified.(sorted { strata; queries; data = []; params = [] })
-  ;;
+  let prg_good_stratified = Core.Program.Stratified.(sorted { strata })
 
   let cls_bad =
     Core.(
@@ -123,7 +121,7 @@ module Alice = struct
     query() :- t(X).
 
   *)
-  let prg_bad = Core.Program.Adorned.(sorted @@ program cls_bad queries [] [])
+  let prog_bad_adorned = Core.Program.Adorned.(sorted @@ program cls_bad)
 
   let cycles = [ pr_t, pr_s; pr_s, pr_t ]
 end
@@ -513,7 +511,7 @@ module BikeShop = struct
   (* -- Program --------------------------------------------------------------- *)
   let strata = [ stratum1; stratum2; stratum3 ]
   let queries = [ pr_query ]
-  let prog = Core.Program.Stratified.{ strata; queries; data = []; params = [] }
+  let prog_stratified = Core.Program.Stratified.{ strata }
 end
 
 module ClientServer = struct
@@ -596,11 +594,8 @@ module ClientServer = struct
         ])
   ;;
 
-  let qrys_client_server = [ p_qry1; p_qry2 ]
-
-  let prg_client_server =
-    Core.Program.Raw.(program cls_client_server qrys_client_server [] [])
-  ;;
+  let queries = [ p_qry1; p_qry2 ]
+  let prog_raw = Core.Program.Raw.(program cls_client_server)
 
   let cls_client_server_adorned =
     Core.(
@@ -646,9 +641,8 @@ module ClientServer = struct
         ])
   ;;
 
-  let prg_client_server_adorned =
-    Core.Program.Adorned.(
-      sorted @@ program cls_client_server_adorned qrys_client_server [] [])
+  let prog_adorned =
+    Core.Program.Adorned.(sorted @@ program cls_client_server_adorned)
   ;;
 end
 
@@ -699,11 +693,8 @@ module Comp = struct
   let cls_adorned = [ cl_t1; cl_t2; cl_ct ]
   let strata = [ [ cl_t1; cl_t2 ]; [ cl_ct ] ]
   let queries = [ pr_ct ]
-  let prg = Core.Program.Adorned.(sorted @@ program cls_adorned queries [] [])
-
-  let prg_strat =
-    Core.Program.Stratified.(sorted { strata; queries; params = []; data = [] })
-  ;;
+  let prog_adorned = Core.Program.Adorned.(sorted @@ program cls_adorned)
+  let prog_stratified = Core.Program.Stratified.(sorted { strata })
 end
 
 module Complement = struct
@@ -755,11 +746,9 @@ module Complement = struct
         ])
   ;;
 
-  let prg_raw = Core.Program.Raw.program cls_raw [ pr_ct ] [] []
-
-  let prg_adrn =
-    Core.Program.Adorned.(sorted @@ program cls_adorned [ pr_ct ] [] [])
-  ;;
+  let queries = [ pr_ct ]
+  let prog_raw = Core.Program.Raw.program cls_raw
+  let prog_adorned = Core.Program.Adorned.(sorted @@ program cls_adorned)
 end
 
 module Negation = struct
@@ -833,11 +822,9 @@ module Negation = struct
         ])
   ;;
 
-  let prg_raw = Core.Program.Raw.(sorted @@ program cls_raw [ pr_qry ] [] [])
-
-  let prg_adorned =
-    Core.Program.Adorned.(sorted @@ program cls_adorned [ pr_qry ] [] [])
-  ;;
+  let queries = [ pr_qry ]
+  let prog_raw = Core.Program.Raw.(sorted @@ program cls_raw)
+  let prog_adorned = Core.Program.Adorned.(sorted @@ program cls_adorned)
 end
 
 module SocialInsurance = struct
@@ -1115,5 +1102,5 @@ module SocialInsurance = struct
 
   let strata = [ stratum1; stratum2; stratum3; stratum4 ]
   let queries = [ pr_query ]
-  let prog = Core.Program.Stratified.{ strata; queries; params = []; data = [] }
+  let prog_stratified = Core.Program.Stratified.{ strata }
 end

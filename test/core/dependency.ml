@@ -56,8 +56,9 @@ module Neg = struct
            o- -ve - u()
   
   *)
-  let prg = Program.Raw.(sorted @@ program cls [ pr_qry ] [] [])
+  let prg = Program.Raw.(sorted @@ program cls)
 
+  let queries = [ pr_qry ]
   let deps = Dependency.Raw.from_program prg
 
   let pos_deps_query () =
@@ -149,8 +150,9 @@ module Comp = struct
                      |       |
                      o- +ve -o
   *)
-  let prg = Program.Raw.program cls [ pr_ct ] [] []
+  let prg = Program.Raw.program cls
 
+  let queries = [ pr_ct ]
   let deps = Dependency.Raw.from_program prg
 
   let neg_deps_ct () =

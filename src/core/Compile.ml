@@ -1,11 +1,13 @@
 open Core_kernel
 
 module type MonadCore = sig
-  include Adorn.MonadAdorn
+  include Effect.MonadReader.S1
+  include Adorn.MonadAdorn with type 'a t := 'a t
   include RangeRepair.MonadRepair with type 'a t := 'a t
   include Typing.MonadTyping with type 'a t := 'a t
 
   val get_typing_env : TypingEnv.t t
+  val set_typing_env : TypingEnv.t -> unit t
   val err_neg_cycles : (Pred.t * Pred.t) list -> _ t
   val err_wildcards_in_head : Reporting.Region.t list -> _ t
   val err_empty_relations : Pred.t list -> _ t
@@ -32,33 +34,53 @@ module Make (M : MonadCore) = struct
     | _ -> M.err_wildcards_in_head errs
   ;;
 
-  let elim_dead_clauses prog =
+  (** Eliminate unused clauses and issue warnings *)
+  let elim_dead_clauses prog queries =
     M.(
-      match Dependency.Raw.dead_clauses prog with
-      | alive, [] -> return Program.Raw.{ prog with clauses = alive }
+      match Dependency.Raw.dead_clauses prog queries with
+      | alive, [] -> return @@ Program.Raw.program alive
       | alive, dead ->
-        warn_unused_clauses List.(map ~f:Clause.Raw.region_of dead)
-        >>= fun _ -> return Program.Raw.{ prog with clauses = alive })
+        map ~f:Fn.(const @@ Program.Raw.program alive)
+        @@ warn_unused_clauses
+        @@ List.map ~f:Clause.Raw.region_of dead)
   ;;
 
-  let stratify (Program.Adorned.{ queries; data; params; _ } as prog) =
+  let stratify prog =
     match Dependency.Adorned.(stratify @@ from_program prog) with
-    | Ok strata -> M.return Program.Stratified.{ strata; queries; data; params }
+    | Ok strata -> M.return @@ Program.Stratified.{ strata }
     | Error cycles -> M.err_neg_cycles cycles
   ;;
 
-  let to_stratified (prog, kb_in) =
+  let initialize_typing prog =
     M.(
-      prog
-      |> check_wildcards_in_head
-      >>= elim_dead_clauses
-      >>= fix_program
-      >>= fun (prog, kb_repair) ->
-      let kb = Knowledge.Base.union kb_in kb_repair in
-      adorn_program prog
-      >>= stratify
-      >>= fun prog ->
-      typing_of prog
-      >>= fun _ -> get_typing_env >>= fun env -> return (prog, kb, env))
+      get_typing_env
+      >>= fun tyenv ->
+      let preds =
+        List.map ~f:(fun pr -> Pred.name_of pr, TypingEnv.empty_info)
+        @@ Program.Raw.preds_of prog
+      in
+      set_typing_env @@ TypingEnv.add_preds tyenv ~preds
+      >>= fun _ -> return prog)
   ;;
+
+  let to_stratified _ = failwith ""
+
+  (* Module.{clauses;knowledge;params;tydefs;data;exports} = *)
+  (* M.(
+     let prog = Program.Raw.program
+     initialize_typing (prog,schema,params)
+     >>= check_wildcards_in_head
+     >>= elim_dead_clauses
+     >>= fix_program
+     >>= fun (prog, kb_repair) ->
+     let kb = Knowledge.Base.union kb_in kb_repair in
+     adorn_program prog
+     >>= stratify
+     >>= fun prog ->
+     typing_of prog
+     >>= fun _ ->
+     get_typing_env
+     >>= fun env ->
+     return (prog, kb, env)
+     ) *)
 end

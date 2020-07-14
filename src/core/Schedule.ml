@@ -525,7 +525,9 @@ module Make (M : MonadSchedule) = struct
 
   (* -- Inter-clausal analysis ------------------------------------------------ *)
 
-  let iterate ~deps =
+  (** Determine the moding constraints of all clauses in a program with respect
+      to an initial set (defaults to exposed queries) *)
+  let solve ~deps queries =
     let rec aux preds =
       M.(
         match preds with
@@ -561,14 +563,6 @@ module Make (M : MonadSchedule) = struct
             in
             aux ws)
     in
-    aux
-  ;;
-
-  (** Determine the moding constraints of all clauses in a program with respect
-      to an initial set (defaults to exposed queries) *)
-  let solve ?inits prog ~deps =
-    iterate ~deps
-    @@ List.dedup_and_sort ~compare:Pred.compare
-    @@ Option.value ~default:Program.Raw.(queries_of prog) inits
+    aux queries
   ;;
 end

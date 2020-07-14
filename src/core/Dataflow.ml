@@ -142,17 +142,17 @@ let queryEdges (Pred.{ arity; _ } as pred) =
   List.init arity ~f:(fun idx -> Node.(NNull, NPred (pred, idx)))
 ;;
 
-let progEdges (Program.Raw.{ clauses; queries; _ } as prog) =
+let progEdges (Program.Raw.{ clauses } as prog) queries =
   let intensionals = Program.Raw.intensionals prog in
   List.concat_map ~f:queryEdges queries
   @ List.concat_map ~f:(clauseEdges ~intensionals) clauses
 ;;
 
-let from_prog prog =
+let from_prog prog queries =
   let pedges =
     List.dedup_and_sort
       ~compare:(Tuple2.compare ~cmp1:Node.compare ~cmp2:Node.compare)
-    @@ progEdges prog
+    @@ progEdges prog queries
   in
   let idx_nodes =
     List.mapi ~f:(fun idx n -> idx, n)

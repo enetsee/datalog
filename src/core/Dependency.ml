@@ -209,7 +209,7 @@ struct
   (** The `dead` clauses are those which are not accessible from any exposed
       query. This exposes how clause indexes are created.
   *)
-  let dead_idxs { predFwd; predClauses; clausePreds; clauseBwd; _ } prog =
+  let dead_idxs { predFwd; predClauses; clausePreds; clauseBwd; _ } queries =
     let rec aux dead_cls seen_prd = function
       | [] -> dead_cls
       | prd_idx :: rest ->
@@ -231,17 +231,16 @@ struct
     in
     let cl_ids = Int.Set.of_list @@ Int.Map.keys clauseBwd in
     aux cl_ids Int.Set.empty
-    @@ List.filter_map ~f:(Pred.Map.find predFwd)
-    @@ Program.queries_of prog
+    @@ List.filter_map ~f:(Pred.Map.find predFwd) queries
   ;;
 
-  let dead_clauses ?deps prog =
+  let dead_clauses ?deps prog queries =
     let deps =
       match deps with
       | Some deps -> deps
       | _ -> from_program prog
     in
-    let dead_idxs = dead_idxs deps prog in
+    let dead_idxs = dead_idxs deps queries in
     List.partition_map ~f:(fun (idx, cl) ->
         if Int.Set.mem dead_idxs idx then `Snd cl else `Fst cl)
     @@ List.mapi ~f:Tuple2.create
