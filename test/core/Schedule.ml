@@ -239,7 +239,7 @@ f(X) :- i(X), h{+}(_).
 let cl_wildcard_req =
   Clause.Raw.clause
     Lit.Raw.(lit pred_f Term.[ var "X" ])
-    Lit.Raw.[ lit_j_fig2; lit pred_h Term.[ wild () ] ]
+    Lit.Raw.[ lit_j_fig2; lit pred_h Term.[ wild None ] ]
 ;;
 
 let tyenv_wildcard_req = TypingEnv.(add_pred ~name:name_h ~info:info_h empty)

@@ -25,7 +25,7 @@ module Make (M : MonadCore) = struct
     let errs =
       List.concat_map ~f:(fun cl ->
           List.filter_map ~f:(function
-              | Term.TWild region -> Some region
+              | Term.TWild(_,region) -> Some region
               | _ -> None)
           @@ Lit.Raw.terms_of
           @@ Clause.Raw.head_of cl)

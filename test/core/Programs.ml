@@ -420,47 +420,47 @@ module BikeShop = struct
 
   let lit_unicycle_12 =
     Core.Lit.Adorned.from_raw ~bpatt:ffff
-    @@ Core.Lit.Raw.lit pr_unicycle Core.Term.[ vx; vy; wild (); wild () ]
+    @@ Core.Lit.Raw.lit pr_unicycle Core.Term.[ vx; vy; wild None; wild None ]
   ;;
 
   let lit_unicycle_13 =
     Core.Lit.Adorned.from_raw ~bpatt:ffff
-    @@ Core.Lit.Raw.lit pr_unicycle Core.Term.[ vx; wild (); vy; wild () ]
+    @@ Core.Lit.Raw.lit pr_unicycle Core.Term.[ vx; wild None; vy; wild None ]
   ;;
 
   let lit_unicycle_14 =
     Core.Lit.Adorned.from_raw ~bpatt:ffff
-    @@ Core.Lit.Raw.lit pr_unicycle Core.Term.[ vx; wild (); wild (); vy ]
+    @@ Core.Lit.Raw.lit pr_unicycle Core.Term.[ vx; wild None; wild None; vy ]
   ;;
 
   let lit_bicycle_12 =
     Core.Lit.Adorned.from_raw ~bpatt:ffff
-    @@ Core.Lit.Raw.lit pr_bicycle Core.Term.[ vx; vy; wild (); wild () ]
+    @@ Core.Lit.Raw.lit pr_bicycle Core.Term.[ vx; vy; wild None; wild None ]
   ;;
 
   let lit_bicycle_13 =
     Core.Lit.Adorned.from_raw ~bpatt:ffff
-    @@ Core.Lit.Raw.lit pr_bicycle Core.Term.[ vx; wild (); vy; wild () ]
+    @@ Core.Lit.Raw.lit pr_bicycle Core.Term.[ vx; wild None; vy; wild None ]
   ;;
 
   let lit_bicycle_14 =
     Core.Lit.Adorned.from_raw ~bpatt:ffff
-    @@ Core.Lit.Raw.lit pr_bicycle Core.Term.[ vx; wild (); wild (); vy ]
+    @@ Core.Lit.Raw.lit pr_bicycle Core.Term.[ vx; wild None; wild None; vy ]
   ;;
 
   let lit_wheel_12 =
     Core.Lit.Adorned.from_raw ~bpatt:fff
-    @@ Core.Lit.Raw.lit pr_wheel Core.Term.[ vx; vy; wild () ]
+    @@ Core.Lit.Raw.lit pr_wheel Core.Term.[ vx; vy; wild None ]
   ;;
 
   let lit_wheel_13 =
     Core.Lit.Adorned.from_raw ~bpatt:fff
-    @@ Core.Lit.Raw.lit pr_wheel Core.Term.[ vx; wild (); vy ]
+    @@ Core.Lit.Raw.lit pr_wheel Core.Term.[ vx; wild None; vy ]
   ;;
 
   let lit_wheel_1 =
     Core.Lit.Adorned.from_raw ~bpatt:fff
-    @@ Core.Lit.Raw.lit pr_wheel Core.Term.[ vx; wild (); wild () ]
+    @@ Core.Lit.Raw.lit pr_wheel Core.Term.[ vx; wild None; wild None ]
   ;;
 
   let lit_tire =
@@ -533,7 +533,7 @@ module ClientServer = struct
   let lit_check_client_sym =
     Core.(
       Lit.Raw.(
-        lit p_check_client Term.[ sym @@ Symbol.from_string "PASSWORD123" ]))
+        lit p_check_client Term.[ sym @@ Symbol.text "PASSWORD123" ]))
   ;;
 
   let p_check_server =
@@ -545,7 +545,7 @@ module ClientServer = struct
   let lit_check_server_sym =
     Core.(
       Lit.Raw.(
-        lit p_check_server Term.[ sym @@ Symbol.from_string "UEFTU1dPUkQxMjMK" ]))
+        lit p_check_server Term.[ sym @@ Symbol.text "UEFTU1dPUkQxMjMK" ]))
   ;;
 
   let p_weak = Core.(Pred.(pred ~arity:2 @@ Name.from_string "weak"))
@@ -1000,9 +1000,9 @@ module SocialInsurance = struct
       ( var "x"
       , var "y"
       , var "z"
-      , sym @@ Core.Symbol.from_float 20.0
-      , sym @@ Core.Symbol.from_float 0.1
-      , sym @@ Core.Symbol.from_float 50.0 ))
+      , real 20.0
+      , real 0.1
+      , real 50.0 ))
   ;;
 
   let f = Core.Binding.from_list [ Free ]

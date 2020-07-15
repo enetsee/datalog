@@ -33,7 +33,7 @@ let cl_q =
 let cl_qry =
   Clause.Raw.clause
     Lit.Raw.(lit pred_qry [])
-    Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.from_int 2 ] ]
+    Lit.Raw.[ lit pred_p Term.[ sym @@ Symbol.int 2 ] ]
 ;;
 
 let pairs =

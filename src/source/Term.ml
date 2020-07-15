@@ -35,10 +35,10 @@ module Tmvar :
   end)
 end
 
-module Symbol : S with type t = Core.Term.t and type repr = Core.Symbol.t =
+module Symbol : S with type t = Core.Term.t and type repr = Core.Knowledge.KTerm.t =
 struct
   type t = Core.Term.t
-  type repr = Core.Symbol.t
+  type repr = Core.Knowledge.KTerm.t
 
   let pp = Core.Term.pp
   let pp_prec = Core.Term.pp_prec
@@ -47,8 +47,9 @@ struct
 
   let to_core t =
     match t with
-    | Core.Term.TSym (sym, _) -> Ok sym
-    | TWild region -> Error Err.(FactHasWildcard region)
+    | Core.Term.TSym (sym, _) -> Ok (Core.Knowledge.KTerm.KSymbol sym)
+    | TParam (nm, _) -> Ok (Core.Knowledge.KTerm.KParam nm)
+    | TWild(_,region) -> Error Err.(FactHasWildcard region)
     | TVar (_, region) -> Error (Err.FactNotRangeRestricted region)
   ;;
 end

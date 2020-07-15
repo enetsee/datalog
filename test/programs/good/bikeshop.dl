@@ -1,0 +1,31 @@
+type @cycle extends symbol
+type @unicycle extends @cycle
+type @bicycle extends @cycle
+
+type @wheel extends symbol
+type @pedals extends symbol
+type @tire extends symbol
+type @spokes extends symbol
+type @tube extends symbol
+
+data cycle(id : @cycle)
+data unicycle(id: @unicycle, s: @saddle, w: @wheel, p: @pedals)
+data bicycle(id:@bicycle, front: @wheel, back: @wheel, p: @pedals)
+data wheel(id:@wheel, t: @tire, s: @spokes)
+data tire(id:@tire, t: @tube)
+
+hasPart(?x,?y) :-
+    unicycle(?x,?y,_,_) ; unicycle(?x,_,?y,_) ; unicycle(?x,_,_,?y) ; 
+    bicycle(?x,?y,_,_) ; bicycle(?x,_,?y,_) ; bicycle(?x,_,_,?y) ; 
+    wheel(?x,?y,_) ; wheel(?x,_,?y);
+    tire(?x,?y).
+
+hasPartTC(?x,?y) :-
+    hasPart(?x,?y);
+    hasPartTC(?x,?z) , hasPart(?z,?y).
+
+query(?x,?y) :- wheel(?x,_,_) , hasPartTC(?x,?y).
+
+export hasPart 
+export hasPartTC
+export query

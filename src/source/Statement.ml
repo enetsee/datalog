@@ -48,12 +48,16 @@ let param ?region name ty =
   SParam { name; ty; region }
 ;;
 
-let data name attrs =
+let data ?region name attrs =
   let region =
-    match List.last attrs with
-    | Some (_, ty) ->
-      Region.merge Located.(region_of name) Located.(region_of ty)
-    | _ -> Located.(region_of name)
+    match region with 
+    | Some region -> region 
+    | _ ->      (
+      match List.last attrs with
+      | Some (_, ty) ->
+        Region.merge Located.(region_of name) Located.(region_of ty)
+      | _ -> Located.(region_of name)
+    )
   in
   SData { name; attrs; region }
 ;;
@@ -131,7 +135,7 @@ include Pretty.Make0 (struct
     | STy { name; defn; _ } ->
       Fmt.(
         hbox
-        @@ pair ~sep:(any " <: ") (any "type @" ++ Located.pp Core.Name.pp)
+        @@ pair ~sep:(any "@;extends@;") (any "type @" ++ Located.pp Core.Name.pp)
         @@ Located.pp Core.Ty.pp)
         ppf
         (name, defn)

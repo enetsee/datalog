@@ -53,7 +53,7 @@ let adorn_body_lit raw_lit ~bound =
       ~init:([], bound)
       ~f:(fun (ads, bs) tm ->
         match tm with
-        | Term.TSym _ -> Binding.Bound :: ads, bs
+        | Term.TSym _ | TParam _ -> Binding.Bound :: ads, bs
         | TVar (v, _) when Tmvar.Set.mem bs v -> Bound :: ads, bs
         | TVar (v, _) -> Free :: ads, Tmvar.Set.add bs v
         | TWild _ -> Free :: ads, bs)

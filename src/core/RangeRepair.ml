@@ -24,7 +24,7 @@ module Guard = struct
     let pred = Lit.Raw.pred_of lit in
     let terms =
       List.init pred.arity ~f:(fun i ->
-          if i = idx then Term.var' var else Term.wild ())
+          if i = idx then Term.var' var else Term.wild None)
     in
     [ Lit.Raw.lit pred terms ]
   ;;
@@ -35,8 +35,12 @@ module Guard = struct
       | Src.SLit (lit, idx) ->
         Some (GClause Clause.Raw.(clause grdLit @@ mk_body lit v idx))
       | SConst (Const.CSym sym) ->
-        Some (GFact (Knowledge.knowledge grdPred [ sym ]))
-      | SConst Const.CWild -> None)
+        Some (GFact (Knowledge.(knowledge grdPred [ KSymbol sym ])))
+
+      | SConst (Const.CParam nm) ->
+        Some (GFact (Knowledge.(knowledge grdPred [ KParam nm ])))
+
+      | SConst Const.(CWild  _) -> None)
   ;;
 end
 

@@ -63,7 +63,7 @@ let loop lexbuf result =
   I.loop_handle succeed (fail lexbuf) supplier result
 ;;
 
-let parse string =
+let parse_string string =
   let lexbuf = Lexing.from_string string in
   loop lexbuf @@ Parser.Incremental.program lexbuf.lex_curr_p
 ;;

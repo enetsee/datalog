@@ -10,6 +10,7 @@ module Minimal = struct
     | Real
     | Int
     | Date
+    | Span
     | Named of Name.t
     | Bot
   [@@deriving eq, compare, sexp]
@@ -18,12 +19,13 @@ module Minimal = struct
     | Top -> Fmt.string ppf "top"
     | Bot -> Fmt.string ppf "bottom"
     | Symbol -> Fmt.string ppf "symbol"
-    | Named name -> Name.pp ppf name
+    | Named name -> Fmt.(any "@" ++ Name.pp) ppf name
     | Number -> Fmt.string ppf "number"
     | Int -> Fmt.string ppf "int"
     | Real -> Fmt.string ppf "real"
     | Bool -> Fmt.string ppf "bool"
     | Date -> Fmt.string ppf "date"
+    | Span -> Fmt.string ppf "span"
   ;;
 
   let pp = `NoPrec pp

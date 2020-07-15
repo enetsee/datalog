@@ -35,6 +35,7 @@ module Minimal = struct
   let pp_data =
     Fmt.(
       list ~sep:cut
+      @@ hovbox
       @@ pair (prefix (any "data ") Name.pp)
       @@ parens
       @@ list ~sep:comma
@@ -44,6 +45,7 @@ module Minimal = struct
   let pp_tydefs =
     Fmt.(
       list ~sep:cut
+      @@ hbox
       @@ pair ~sep:(any "@;extends@;") (prefix (any "type @") Name.pp) Ty.pp)
   ;;
 

@@ -1,0 +1,383 @@
+program: DATA NAME LPAREN NAME COLON TYBOOL COMMA WILDCARD
+##
+## Ends in an error in state: 29.
+##
+## separated_nonempty_list(COMMA,data_attribute) -> data_attribute COMMA . separated_nonempty_list(COMMA,data_attribute) [ RPAREN ]
+##
+## The known suffix of the stack is as follows:
+## data_attribute COMMA
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: DATA NAME LPAREN NAME COLON TYBOOL WILDCARD
+##
+## Ends in an error in state: 28.
+##
+## separated_nonempty_list(COMMA,data_attribute) -> data_attribute . [ RPAREN ]
+## separated_nonempty_list(COMMA,data_attribute) -> data_attribute . COMMA separated_nonempty_list(COMMA,data_attribute) [ RPAREN ]
+##
+## The known suffix of the stack is as follows:
+## data_attribute
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: DATA NAME LPAREN NAME COLON WILDCARD
+##
+## Ends in an error in state: 24.
+##
+## data_attribute -> NAME COLON . ty [ RPAREN COMMA ]
+##
+## The known suffix of the stack is as follows:
+## NAME COLON
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: DATA NAME LPAREN NAME WILDCARD
+##
+## Ends in an error in state: 23.
+##
+## data_attribute -> NAME . COLON ty [ RPAREN COMMA ]
+##
+## The known suffix of the stack is as follows:
+## NAME
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: DATA NAME LPAREN WILDCARD
+##
+## Ends in an error in state: 22.
+##
+## data_decl -> DATA NAME LPAREN . separated_nonempty_list(COMMA,data_attribute) RPAREN [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## DATA NAME LPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: DATA NAME WILDCARD
+##
+## Ends in an error in state: 21.
+##
+## data_decl -> DATA NAME . LPAREN separated_nonempty_list(COMMA,data_attribute) RPAREN [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## DATA NAME
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: DATA WILDCARD
+##
+## Ends in an error in state: 20.
+##
+## data_decl -> DATA . NAME LPAREN separated_nonempty_list(COMMA,data_attribute) RPAREN [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## DATA
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: EXPORT NAME WILDCARD
+##
+## Ends in an error in state: 32.
+##
+## list(statement) -> statement . list(statement) [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## statement
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: EXPORT WILDCARD
+##
+## Ends in an error in state: 18.
+##
+## export_decl -> EXPORT . NAME [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## EXPORT
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN RPAREN IMPL BANG WILDCARD
+##
+## Ends in an error in state: 55.
+##
+## body -> unop . body [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## unop
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN RPAREN IMPL LPAREN NAME LPAREN RPAREN WILDCARD
+##
+## Ends in an error in state: 62.
+##
+## body -> body . COMMA body [ SEMICOLON RPAREN COMMA ]
+## body -> body . SEMICOLON body [ SEMICOLON RPAREN COMMA ]
+## body -> LPAREN body . RPAREN [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## LPAREN body
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN RPAREN IMPL LPAREN WILDCARD
+##
+## Ends in an error in state: 53.
+##
+## body -> LPAREN . body RPAREN [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## LPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN RPAREN IMPL NAME LPAREN RPAREN COMMA WILDCARD
+##
+## Ends in an error in state: 65.
+##
+## body -> body COMMA . body [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## body COMMA
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN RPAREN IMPL NAME LPAREN RPAREN SEMICOLON NAME LPAREN RPAREN WILDCARD
+##
+## Ends in an error in state: 64.
+##
+## body -> body . COMMA body [ SEMICOLON RPAREN DOT COMMA ]
+## body -> body . SEMICOLON body [ SEMICOLON RPAREN DOT COMMA ]
+## body -> body SEMICOLON body . [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## body SEMICOLON body
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN RPAREN IMPL NAME LPAREN RPAREN SEMICOLON WILDCARD
+##
+## Ends in an error in state: 63.
+##
+## body -> body SEMICOLON . body [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## body SEMICOLON
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN RPAREN IMPL NAME LPAREN RPAREN WILDCARD
+##
+## Ends in an error in state: 68.
+##
+## body -> body . COMMA body [ SEMICOLON DOT COMMA ]
+## body -> body . SEMICOLON body [ SEMICOLON DOT COMMA ]
+## clause -> head_term IMPL body . DOT [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## head_term IMPL body
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN RPAREN IMPL NAME LPAREN TYSYMBOL
+##
+## Ends in an error in state: 57.
+##
+## atom_term -> pred_name LPAREN . loption(separated_nonempty_list(COMMA,term)) RPAREN [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## pred_name LPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN RPAREN IMPL NAME WILDCARD
+##
+## Ends in an error in state: 56.
+##
+## atom_term -> pred_name . LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN [ SEMICOLON RPAREN DOT COMMA ]
+##
+## The known suffix of the stack is as follows:
+## pred_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN RPAREN IMPL WILDCARD
+##
+## Ends in an error in state: 52.
+##
+## clause -> head_term IMPL . body DOT [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## head_term IMPL
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN RPAREN WILDCARD
+##
+## Ends in an error in state: 48.
+##
+## atom_symbol -> pred_name LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN . [ DOT ]
+## atom_term -> pred_name LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN . [ IMPL ]
+##
+## The known suffix of the stack is as follows:
+## pred_name LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN TYSYMBOL
+##
+## Ends in an error in state: 34.
+##
+## atom_symbol -> pred_name LPAREN . loption(separated_nonempty_list(COMMA,term)) RPAREN [ DOT ]
+## atom_term -> pred_name LPAREN . loption(separated_nonempty_list(COMMA,term)) RPAREN [ IMPL ]
+##
+## The known suffix of the stack is as follows:
+## pred_name LPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN WILDCARD COMMA TYSYMBOL
+##
+## Ends in an error in state: 43.
+##
+## separated_nonempty_list(COMMA,term) -> term COMMA . separated_nonempty_list(COMMA,term) [ RPAREN ]
+##
+## The known suffix of the stack is as follows:
+## term COMMA
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME LPAREN WILDCARD WILDCARD
+##
+## Ends in an error in state: 42.
+##
+## separated_nonempty_list(COMMA,term) -> term . [ RPAREN ]
+## separated_nonempty_list(COMMA,term) -> term . COMMA separated_nonempty_list(COMMA,term) [ RPAREN ]
+##
+## The known suffix of the stack is as follows:
+## term
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: NAME WILDCARD
+##
+## Ends in an error in state: 33.
+##
+## atom_symbol -> pred_name . LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN [ DOT ]
+## atom_term -> pred_name . LPAREN loption(separated_nonempty_list(COMMA,term)) RPAREN [ IMPL ]
+##
+## The known suffix of the stack is as follows:
+## pred_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: PARAM PARAMNAME COLON WILDCARD
+##
+## Ends in an error in state: 15.
+##
+## param_decl -> PARAM PARAMNAME COLON . ty [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## PARAM PARAMNAME COLON
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: PARAM PARAMNAME WILDCARD
+##
+## Ends in an error in state: 14.
+##
+## param_decl -> PARAM PARAMNAME . COLON ty [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## PARAM PARAMNAME
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: PARAM WILDCARD
+##
+## Ends in an error in state: 13.
+##
+## param_decl -> PARAM . PARAMNAME COLON ty [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## PARAM
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: TYPE TYNAME EXTENDS WILDCARD
+##
+## Ends in an error in state: 4.
+##
+## ty_defn -> TYPE ty_name EXTENDS . ty [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## TYPE ty_name EXTENDS
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: TYPE TYNAME WILDCARD
+##
+## Ends in an error in state: 3.
+##
+## ty_defn -> TYPE ty_name . EXTENDS ty [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## TYPE ty_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: TYPE WILDCARD
+##
+## Ends in an error in state: 1.
+##
+## ty_defn -> TYPE . ty_name EXTENDS ty [ TYPE PARAM NAME EXPORT EOF DATA ]
+##
+## The known suffix of the stack is as follows:
+## TYPE
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+program: WILDCARD
+##
+## Ends in an error in state: 0.
+##
+## program' -> . program [ # ]
+##
+## The known suffix of the stack is as follows:
+##
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
