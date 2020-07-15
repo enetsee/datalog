@@ -101,8 +101,8 @@ module Make (M : MonadRepair) = struct
         , Knowledge.Base.union_list fcts ))
   ;;
 
-  let fix_program prog queries =
-    let fg = Dataflow.from_prog prog queries in
+  let fix_program prog ~exports =
+    let fg = Dataflow.from_prog prog exports in
     M.(
       map ~f:(fun rps ->
           let cls, gclss, kbs = List.unzip3 rps in

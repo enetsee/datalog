@@ -1,14 +1,16 @@
 open Core_kernel
+open Reporting
 
 module type MonadCore = sig
-  include Effect.MonadReader.S1
-  include Adorn.MonadAdorn with type 'a t := 'a t
+  include Adorn.MonadAdorn
   include RangeRepair.MonadRepair with type 'a t := 'a t
   include Typing.MonadTyping with type 'a t := 'a t
 
+  val with_tydefs : Ty.TRG.t -> 'a t -> 'a t
   val get_typing_env : TypingEnv.t t
   val set_typing_env : TypingEnv.t -> unit t
   val err_neg_cycles : (Pred.t * Pred.t) list -> _ t
+  val err_unresolved_export : Name.t -> Region.t -> _ t
   val err_wildcards_in_head : Reporting.Region.t list -> _ t
   val err_empty_relations : Pred.t list -> _ t
   val warn_unused_clauses : Reporting.Region.t list -> unit t
@@ -35,9 +37,9 @@ module Make (M : MonadCore) = struct
   ;;
 
   (** Eliminate unused clauses and issue warnings *)
-  let elim_dead_clauses prog queries =
+  let elim_dead_clauses prog ~exports =
     M.(
-      match Dependency.Raw.dead_clauses prog queries with
+      match Dependency.Raw.dead_clauses prog exports with
       | alive, [] -> return @@ Program.Raw.program alive
       | alive, dead ->
         map ~f:Fn.(const @@ Program.Raw.program alive)
@@ -63,24 +65,37 @@ module Make (M : MonadCore) = struct
       >>= fun _ -> return prog)
   ;;
 
-  let to_stratified _ = failwith ""
+  (** TODO: move this to `Source` *)
+  let resolve_exports program exports =
+    let lut =
+      Name.Map.of_alist_exn
+      @@ List.map ~f:(fun pred -> Pred.name_of pred, pred)
+      @@ Program.Raw.preds_of program
+    in
+    M.(
+      all
+      @@ List.map exports ~f:(fun nmloc ->
+             let nm = Located.elem_of nmloc in
+             match Name.Map.find lut nm with
+             | Some pred -> return pred
+             | _ -> err_unresolved_export nm @@ Located.region_of nmloc))
+  ;;
 
-  (* Module.{clauses;knowledge;params;tydefs;data;exports} = *)
-  (* M.(
-     let prog = Program.Raw.program
-     initialize_typing (prog,schema,params)
-     >>= check_wildcards_in_head
-     >>= elim_dead_clauses
-     >>= fix_program
-     >>= fun (prog, kb_repair) ->
-     let kb = Knowledge.Base.union kb_in kb_repair in
-     adorn_program prog
-     >>= stratify
-     >>= fun prog ->
-     typing_of prog
-     >>= fun _ ->
-     get_typing_env
-     >>= fun env ->
-     return (prog, kb, env)
-     ) *)
+  let to_stratified Module.{ program; exports; knowledge = kb_in; tydefs; _ } =
+    M.(
+      resolve_exports program exports
+      >>= fun exports ->
+      initialize_typing program
+      >>= check_wildcards_in_head
+      >>= elim_dead_clauses ~exports
+      >>= fix_program ~exports
+      >>= fun (repaired, kb_repair) ->
+      let kb = Knowledge.Base.union kb_in kb_repair in
+      adorn_program repaired ~exports
+      >>= stratify
+      >>= fun stratified ->
+      let trg = Ty.TRG.from_list tydefs in
+      with_tydefs trg @@ typing_of stratified
+      >>= fun _ -> get_typing_env >>= fun env -> return (stratified, kb, env))
+  ;;
 end

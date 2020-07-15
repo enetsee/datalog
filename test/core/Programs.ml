@@ -128,27 +128,36 @@ end
 
 module BikeShop = struct
   (* -- Types used & subtyping relationships ------------------------------ *)
-  let ty_cycle = Core.Ty.(named "cycle")
-  let ty_bicycle = Core.Ty.(named "bicycle")
-  let ty_unicycle = Core.Ty.(named "unicycle")
-  let ty_pedals = Core.Ty.(named "pedals")
-  let ty_saddle = Core.Ty.(named "saddle")
-  let ty_wheel = Core.Ty.(named "wheel")
-  let ty_spokes = Core.Ty.(named "spokes")
-  let ty_tire = Core.Ty.(named "tire")
-  let ty_tube = Core.Ty.(named "tube")
+  let nm_ty_cycle = Core.Name.from_string "cycle"
+  let nm_ty_bicycle = Core.Name.from_string "bicycle"
+  let nm_ty_unicycle = Core.Name.from_string "unicycle"
+  let nm_ty_pedals = Core.Name.from_string "pedals"
+  let nm_ty_saddle = Core.Name.from_string "saddle"
+  let nm_ty_wheel = Core.Name.from_string "wheel"
+  let nm_ty_spokes = Core.Name.from_string "spokes"
+  let nm_ty_tire = Core.Name.from_string "tire"
+  let nm_ty_tube = Core.Name.from_string "tube"
+  let ty_cycle = Core.Ty.named' nm_ty_cycle
+  let ty_bicycle = Core.Ty.named' nm_ty_bicycle
+  let ty_unicycle = Core.Ty.named' nm_ty_unicycle
+  let ty_pedals = Core.Ty.named' nm_ty_pedals
+  let ty_saddle = Core.Ty.named' nm_ty_saddle
+  let ty_wheel = Core.Ty.named' nm_ty_wheel
+  let ty_spokes = Core.Ty.named' nm_ty_spokes
+  let ty_tire = Core.Ty.named' nm_ty_tire
+  let ty_tube = Core.Ty.named' nm_ty_tube
 
   let subtys =
     Core.Ty.
-      [ ty_cycle, Core.Ty.Symbol
-      ; ty_bicycle, ty_cycle
-      ; ty_unicycle, ty_cycle
-      ; ty_pedals, Symbol
-      ; ty_saddle, Symbol
-      ; ty_wheel, Symbol
-      ; ty_spokes, Symbol
-      ; ty_tire, Symbol
-      ; ty_tube, Symbol
+      [ nm_ty_cycle, Core.Ty.Symbol
+      ; nm_ty_bicycle, ty_cycle
+      ; nm_ty_unicycle, ty_cycle
+      ; nm_ty_pedals, Symbol
+      ; nm_ty_saddle, Symbol
+      ; nm_ty_wheel, Symbol
+      ; nm_ty_spokes, Symbol
+      ; nm_ty_tire, Symbol
+      ; nm_ty_tube, Symbol
       ]
   ;;
 

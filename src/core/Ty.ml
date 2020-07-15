@@ -72,7 +72,11 @@ module TRG = struct
            | _ -> failwith "impossible")
     @@ List.group ~break:(fun (ty1, _) (ty2, _) -> not @@ equal ty1 ty2)
     @@ List.dedup_and_sort ~compare:(Tuple2.compare ~cmp1:compare ~cmp2:compare)
-    @@ List.concat_map ~f:(fun (subty, ty) -> [ subty, subty; ty, subty ]) xs
+    @@ List.concat_map
+         ~f:(fun (nm, ty) ->
+           let subty = Named nm in
+           [ subty, subty; ty, subty ])
+         xs
   ;;
 end
 

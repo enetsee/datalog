@@ -54,13 +54,13 @@ let output =
   Fail.(Alcotest.testable (pp pp_a) (equal eq_a))
 ;;
 
-let mk_repair msg expect prg_in queries =
+let mk_repair msg expect prg_in exports =
   let f () =
     Alcotest.check
       output
       msg
       expect
-      M.(eval ~init:0 @@ RangeM.fix_program prg_in queries)
+      M.(eval ~init:0 @@ RangeM.fix_program prg_in ~exports)
   in
   Alcotest.test_case msg `Quick f
 ;;

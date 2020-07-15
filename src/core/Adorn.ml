@@ -136,12 +136,12 @@ module Make (M : MonadAdorn) = struct
     aux [] WorkItem.Set.empty worklist
   ;;
 
-  let adorn_program prog queries =
+  let adorn_program prog ~exports =
     M.(
       let deps = Dependency.Raw.from_program prog in
-      SM.solve ~deps queries
+      SM.solve ~deps exports
       >>= fun _ ->
-      List.map queries ~f:(fun pred -> pred, Binding.mk_free pred)
+      List.map exports ~f:(fun pred -> pred, Binding.mk_free pred)
       |> adorn_program_helper ~deps
       |> map ~f:Program.Adorned.program)
   ;;

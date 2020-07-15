@@ -16,7 +16,7 @@ type t =
       }
   | SData of
       { name : Core.Name.t Located.t
-      ; attrs : (string * Core.Ty.t Located.t) list
+      ; attrs : (Core.Name.t Located.t * Core.Ty.t Located.t) list
       ; region : Region.t
       }
   | SParam of
@@ -81,9 +81,9 @@ type repr =
   | RCls of Core.Clause.Raw.t
   | RKnw of Core.Knowledge.t
   | RTy of Core.Name.t * Core.Ty.t
-  | RData of Core.Name.t * Core.Typing.t
+  | RData of Core.Name.t * (Core.Name.t * Core.Ty.t) list
   | RParam of Core.Name.t * Core.Ty.t
-  | RExport of Core.Name.t
+  | RExport of Core.Name.t Located.t
 
 let to_core = function
   | SClause { head; body; region } ->
@@ -98,13 +98,12 @@ let to_core = function
   | SData { name; attrs; _ } ->
     let name = Located.elem_of name
     and typing =
-      Core.Typing.of_schema
-      @@ List.map attrs ~f:(fun (_, ty) -> Located.elem_of ty)
+      List.map attrs ~f:(fun (nm, ty) -> Located.(elem_of nm, elem_of ty))
     in
     Result.return (RData (name, typing))
   | SParam { name; ty; _ } ->
     Result.return @@ RParam (Located.(elem_of name), Located.elem_of ty)
-  | SExport pred -> Result.return @@ RExport Located.(elem_of pred)
+  | SExport nm -> Result.return @@ RExport nm
 ;;
 
 (* -- Pretty implementation ----------------------------------------------- *)
@@ -113,7 +112,9 @@ include Pretty.Make0 (struct
   type nonrec t = t
 
   let pp_attr ppf (v, ty) =
-    Fmt.(hbox @@ pair ~sep:(any " : ") string (Located.pp Core.Ty.pp))
+    Fmt.(
+      hbox
+      @@ pair ~sep:(any " : ") (Located.pp Core.Name.pp) (Located.pp Core.Ty.pp))
       ppf
       (v, ty)
   ;;

@@ -40,7 +40,7 @@ module AdornM = Adorn.Make (M)
 
 let output = Alcotest.(result Testable.adorned_program Testable.binding)
 
-let mk_ok msg expect tyenv prg_raw qry =
+let mk_ok msg expect tyenv prg_raw exports =
   let f () =
     Alcotest.(check output)
       msg
@@ -48,7 +48,7 @@ let mk_ok msg expect tyenv prg_raw qry =
       M.(
         eval ~init:tyenv
         @@ map ~f:Program.Adorned.sorted
-        @@ AdornM.adorn_program prg_raw qry)
+        @@ AdornM.adorn_program prg_raw ~exports)
   in
   Alcotest.test_case msg `Quick f
 ;;
