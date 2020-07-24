@@ -12,14 +12,7 @@ module type S1 = sig
   val ask : Env.t t
 end
 
-(* module Make (X : Minimal1) :
-  S1 with module Env := X.Env and type 'a t := 'a X.t = struct
-  include X
-
-  let ask = reader Fn.id
-end *)
-
-module Make (Env : Tycon.S0) : S1 with module Env := Env = struct
+module Make_with_env (Env : Tycon.S0) : S1 with module Env := Env = struct
   module Minimal = struct
     type 'a t = { apply : 'o. ('a -> 'o) -> Env.t -> 'o }
 

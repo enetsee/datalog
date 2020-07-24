@@ -3,5 +3,7 @@ module type S = sig
   type t
   type repr
 
-  val to_core : t -> (repr, Err.t) result
+  module Make (M : SourceM.S) : sig
+    val to_core : t -> repr M.t
+  end
 end

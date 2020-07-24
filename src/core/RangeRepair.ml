@@ -35,16 +35,14 @@ module Guard = struct
       | Src.SLit (lit, idx) ->
         Some (GClause Clause.Raw.(clause grdLit @@ mk_body lit v idx))
       | SConst (Const.CSym sym) ->
-        Some (GFact (Knowledge.(knowledge grdPred [ KSymbol sym ])))
-
+        Some (GFact Knowledge.(knowledge grdPred [ KSymbol sym ]))
       | SConst (Const.CParam nm) ->
-        Some (GFact (Knowledge.(knowledge grdPred [ KParam nm ])))
-
-      | SConst Const.(CWild  _) -> None)
+        Some (GFact Knowledge.(knowledge grdPred [ KParam nm ]))
+      | SConst Const.(CWild _) -> None)
   ;;
 end
 
-module type MonadRepair = sig
+module type RepairM = sig
   include Monad.S
   include Applicative.S with type 'a t := 'a t
 
@@ -52,7 +50,7 @@ module type MonadRepair = sig
   val err_range_violations : Violation.t list -> _ t
 end
 
-module Make (M : MonadRepair) = struct
+module Make (M : RepairM) = struct
   let mk_guard srcs (Violation.{ tmvar; _ } as violation) =
     M.(
       fresh_guardsym

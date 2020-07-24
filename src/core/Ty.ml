@@ -85,14 +85,14 @@ end
 let top = Top
 let bottom = Bot
 
-module type MonadTy = sig
+module type TyM = sig
   include Monad.S
   include Applicative.S with type 'a t := 'a t
 
   val subtypes_of : Minimal.t -> Set.t t
 end
 
-module Make (M : MonadTy) = struct
+module Make (M : TyM) = struct
   let meet t1 t2 =
     M.(
       match t1, t2 with

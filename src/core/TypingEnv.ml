@@ -126,11 +126,11 @@ let update_pred_constraint_exn { bindings } ~name ~cstr =
   }
 ;;
 
-let find_ { bindings } ~name = Name.Map.find bindings name
+let find_name { bindings } ~name = Name.Map.find bindings name
 
 let find_param t ~name =
   Option.(
-    find_ t ~name
+    find_name t ~name
     >>= function
     | BParam ty -> Some ty
     | _ -> None)
@@ -138,7 +138,7 @@ let find_param t ~name =
 
 let find_data t ~name =
   Option.(
-    find_ t ~name
+    find_name t ~name
     >>= function
     | BData ttc -> Some ttc
     | _ -> None)
@@ -146,7 +146,7 @@ let find_data t ~name =
 
 let find_pred t ~name =
   Option.(
-    find_ t ~name
+    find_name t ~name
     >>= function
     | BPred info -> Some info
     | _ -> None)
@@ -154,7 +154,7 @@ let find_pred t ~name =
 
 let find_pred_constraint t ~name =
   Option.(
-    find_ t ~name
+    find_name t ~name
     >>= function
     | BPred { cstr; _ } -> Some cstr
     | _ -> None)
@@ -168,7 +168,7 @@ let find_pred_constraint_exn t ~name =
 
 let find_pred_typing t ~name =
   Option.(
-    find_ t ~name
+    find_name t ~name
     >>= function
     | BPred { typing; _ } -> Some typing
     | _ -> None)
@@ -176,7 +176,7 @@ let find_pred_typing t ~name =
 
 let find_pred_nature t ~name =
   Option.(
-    find_ t ~name
+    find_name t ~name
     >>= function
     | BPred { nature; _ } -> Some nature
     | _ -> None)

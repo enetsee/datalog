@@ -13,8 +13,8 @@ module Const = struct
 
     let pp ppf = function
       | CSym sym -> Symbol.pp ppf sym
-      | CParam nm ->  Fmt.(any "#" ++ Name.pp) ppf nm
-      | CWild (Some nm) ->  Fmt.(any "_" ++ Name.pp) ppf nm
+      | CParam nm -> Fmt.(any "#" ++ Name.pp) ppf nm
+      | CWild (Some nm) -> Fmt.(any "_" ++ Name.pp) ppf nm
       | CWild _ -> Fmt.char ppf '_'
     ;;
 
@@ -101,27 +101,25 @@ let clauseBody
        ~init:(([], bindings), 0)
        ~f:(fun ((edges, bindings), idx) term ->
          match term with
-         | Term.TWild (nm_opt,_) ->
+         | Term.TWild (nm_opt, _) ->
            if Pred.Set.mem intensionals pred
            then
-             ( (Node.(NConst (CWild nm_opt), NPred (pred, idx)) :: edges, bindings)
+             ( ( Node.(NConst (CWild nm_opt), NPred (pred, idx)) :: edges
+               , bindings )
              , idx + 1 )
            else (edges, bindings), idx + 1
-
          | TSym (sym, _) ->
            if Pred.Set.mem intensionals pred
            then
              ( (Node.(NConst (CSym sym), NPred (pred, idx)) :: edges, bindings)
              , idx + 1 )
            else (edges, bindings), idx + 1
-
-        | TParam (nm, _) ->
+         | TParam (nm, _) ->
            if Pred.Set.mem intensionals pred
            then
              ( (Node.(NConst (CParam nm), NPred (pred, idx)) :: edges, bindings)
              , idx + 1 )
            else (edges, bindings), idx + 1
-
          | TVar (var, _) ->
            let litnode = Node.NLit (lit, idx)
            and srcs = getBinders ~var bindings in

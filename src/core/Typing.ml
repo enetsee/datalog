@@ -38,15 +38,17 @@ end
 include Minimal
 include Pretty.Make0 (Minimal)
 
-module type MonadTyping = sig
-  include Ty.MonadTy
+module type TypingM = sig
+  include Ty.TyM
+  include Relation.RelationM with type 'a t := 'a t
 
   val get_typing_of : Name.t -> Minimal.t t
   val set_typing_of : Name.t -> Minimal.t -> unit t
 end
 
-module Make (M : MonadTyping) = struct
+module Make (M : TypingM) = struct
   module TTCM = TTC.Make (M)
+  module RelM = Relation.Make (M)
 
   (**  T1 /\\ T2 = { t1 /\\ t2 | t1 in T1, t2 in T2, not degenerate t1 /\\ t2 } *)
   let meet t1 t2 =
@@ -120,42 +122,55 @@ module Make (M : MonadTyping) = struct
   ;;
 
   let typing_of_stratum stratum =
-    let deps = Dependency.Adorned.from_clauses stratum in
-    let init =
-      List.map ~f:(fun (pred, cls) -> pred, Relation.of_clauses cls)
-      @@ groupBy ~proj:Clause.Adorned.head_pred_of ~cmp:Pred.compare stratum
-    in
-    let rel_lut = Pred.Map.of_alist_exn init
-    and dep_lut =
-      Pred.Map.of_alist_exn
-      @@ List.map
-           ~f:(fun (pred, _) -> pred, Dependency.Adorned.deps_of deps pred)
-           init
-    in
-    let next pred =
-      List.map ~f:Pred.Map.(fun pr -> pr, find_exn rel_lut pr)
-      @@ Pred.Map.find_exn dep_lut pred
-    in
-    let rec aux ws =
-      M.(
-        match ws with
-        | [] -> return ()
-        | (pred, rel) :: rest ->
-          let nm = Pred.name_of pred in
-          get_typing_of nm
-          >>= fun typing_in ->
-          interpret rel
-          >>= fun typing_out ->
-          if equal typing_in typing_out
-          then aux rest
-          else
-            set_typing_of nm typing_out
-            >>= fun _ -> aux (rest @ ((pred, rel) :: next pred)))
-    in
-    aux init
+    M.(
+      let deps = Dependency.Adorned.from_clauses stratum in
+      groupBy ~proj:Clause.Adorned.head_pred_of ~cmp:Pred.compare stratum
+      |> List.map ~f:(fun (pred, cls) ->
+             map ~f:(fun rel -> pred, rel) @@ RelM.of_clauses cls)
+      |> all
+      >>= fun init ->
+      let rel_lut = Pred.Map.of_alist_exn init
+      and dep_lut =
+        Pred.Map.of_alist_exn
+        @@ List.map
+             ~f:(fun (pred, _) -> pred, Dependency.Adorned.deps_of deps pred)
+             init
+      in
+      let next pred =
+        List.map ~f:Pred.Map.(fun pr -> pr, find_exn rel_lut pr)
+        @@ Pred.Map.find_exn dep_lut pred
+      in
+      let rec aux ws =
+        M.(
+          match ws with
+          | [] -> return ()
+          | (pred, rel) :: rest ->
+            let nm = Pred.name_of pred in
+            get_typing_of nm
+            >>= fun typing_in ->
+            interpret rel
+            >>= fun typing_out ->
+            if equal typing_in typing_out
+            then aux rest
+            else
+              set_typing_of nm typing_out
+              >>= fun _ -> aux (rest @ ((pred, rel) :: next pred)))
+      in
+      aux init)
   ;;
 
-  let typing_of Program.Stratified.{ strata; _ } =
+  let typing_of_knowledge_base kb =
+    M.(
+      RelM.of_knowledge_base kb
+      >>= fun rels ->
+      List.map
+        ~f:(fun (pr, rel) -> map ~f:(fun ty -> pr, ty) @@ interpret rel)
+        rels
+      |> all
+      >>= fun _ -> return ())
+  ;;
+
+  let typing_of_program Program.Stratified.{ strata; _ } =
     M.map ~f:ignore @@ M.all @@ List.map ~f:typing_of_stratum strata
   ;;
 end

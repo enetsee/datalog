@@ -17,7 +17,10 @@ module Term : S with type t = Core.Term.t and type repr = Core.Term.t = struct
   let pp_prec = Core.Term.pp_prec
   let to_string = Core.Term.to_string
   let vars_of = Core.Term.vars_of
-  let to_core t = Ok t
+
+  module Make (M : SourceM.S) = struct
+    let to_core t = M.return t
+  end
 end
 
 module Tmvar :
@@ -25,7 +28,12 @@ module Tmvar :
   type t = Core.Tmvar.t Located.t
   type repr = Core.Term.t
 
-  let to_core Located.{ elem; region } = Ok Core.Term.(var' ~region elem)
+  module Make (M : SourceM.S) = struct
+    let to_core Located.{ elem; region } =
+      M.return Core.Term.(var' ~region elem)
+    ;;
+  end
+
   let vars_of Located.{ elem; _ } = [ elem ]
 
   include Pretty.Make0 (struct
@@ -35,8 +43,8 @@ module Tmvar :
   end)
 end
 
-module Symbol : S with type t = Core.Term.t and type repr = Core.Knowledge.KTerm.t =
-struct
+module Symbol :
+  S with type t = Core.Term.t and type repr = Core.Knowledge.KTerm.t = struct
   type t = Core.Term.t
   type repr = Core.Knowledge.KTerm.t
 
@@ -45,11 +53,14 @@ struct
   let to_string = Core.Term.to_string
   let vars_of = Core.Term.vars_of
 
-  let to_core t =
-    match t with
-    | Core.Term.TSym (sym, _) -> Ok (Core.Knowledge.KTerm.KSymbol sym)
-    | TParam (nm, _) -> Ok (Core.Knowledge.KTerm.KParam nm)
-    | TWild(_,region) -> Error Err.(FactHasWildcard region)
-    | TVar (_, region) -> Error (Err.FactNotRangeRestricted region)
-  ;;
+  module Make (M : SourceM.S) = struct
+    let to_core t =
+      M.(
+        match t with
+        | Core.Term.TSym (sym, _) -> return (Core.Knowledge.KTerm.KSymbol sym)
+        | TParam (nm, _) -> return (Core.Knowledge.KTerm.KParam nm)
+        | TWild (_, region) -> err_fact_has_wildcard region
+        | TVar (_, region) -> err_fact_not_range_restricted region)
+    ;;
+  end
 end

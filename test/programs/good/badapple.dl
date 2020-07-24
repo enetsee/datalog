@@ -1,0 +1,21 @@
+type @pos extends symbol
+type @state extends symbol
+
+data init_state(id : @pos, state : @state)
+data neighbour(src: @pos, sink: @pos)
+
+/* Transitive closure of neighbour relation */
+neighbour_tc(?x,?y) 
+    :- neighbour(?x,?y)
+    ;  neighbour_tc(?x,?z), neighbour(?z,?y).
+
+bad_apple(?id,?t) 
+    :-  eq(?t,0) , init_state(?id,Rotten)
+    ;   sub(?t,1,?t_1) , rotten(?id,?t_1)
+    ;   sub(?t,1,?t_1) , neighbour(?id,?nid) , rotten(?nid,?t_1).
+
+can_go_bad(?id)
+    :- neighbour_tc(?id,?nid) , bad_apple(?nid,0).
+
+export bad_apple
+export can_go_bad

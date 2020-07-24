@@ -1,3 +1,14 @@
-disj_conj(?x,?y) :- first(?x) , second(?y) ; third(?x).
-disj_conj_explicit(?x,?y) :- (first(?x) , second(?y)) ; third(?x).
-conj_disj(?x,?y) :- first(?x) , (second(?y) ; third(?x)).
+data first(x: symbol)
+data second(x:symbol)
+data third(x:symbol)
+
+disj_conj(?x) :- first(?x) , second(?x) ; third(?x).
+
+disj_conj_explicit(?x) :- (first(?x) , second(?x)) ; third(?x).
+
+conj_disj(?x) :- first(?x) , (second(?x) ; third(?x)).
+
+
+export disj_conj 
+export disj_conj_explicit
+export conj_disj

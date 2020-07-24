@@ -110,7 +110,7 @@ let project { tys; equiv } ~flds =
   { tys; equiv }
 ;;
 
-module Make (M : Ty.MonadTy) = struct
+module Make (M : Ty.TyM) = struct
   module MTy = Ty.Make (M)
 
   (** Find the meet of all elements of an equivalence class  *)

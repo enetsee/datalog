@@ -1,40 +1,10 @@
 open Core_kernel
 open Reporting
 
-module type MonadCore = sig
-  include Adorn.MonadAdorn
-  include RangeRepair.MonadRepair with type 'a t := 'a t
-  include Typing.MonadTyping with type 'a t := 'a t
-
-  val with_tydefs : Ty.TRG.t -> 'a t -> 'a t
-  val get_typing_env : TypingEnv.t t
-  val set_typing_env : TypingEnv.t -> unit t
-  val err_neg_cycles : (Pred.t * Pred.t) list -> _ t
-  val err_unresolved_export : Name.t -> Region.t -> _ t
-  val err_wildcards_in_head : Reporting.Region.t list -> _ t
-  val err_empty_relations : Pred.t list -> _ t
-  val warn_unused_clauses : Reporting.Region.t list -> unit t
-end
-
-module Make (M : MonadCore) = struct
+module Make (M : CoreM.S) = struct
   include RangeRepair.Make (M)
   include Adorn.Make (M)
   include Typing.Make (M)
-
-  let check_wildcards_in_head prog =
-    let errs =
-      List.concat_map ~f:(fun cl ->
-          List.filter_map ~f:(function
-              | Term.TWild(_,region) -> Some region
-              | _ -> None)
-          @@ Lit.Raw.terms_of
-          @@ Clause.Raw.head_of cl)
-      @@ Program.Raw.clauses_of prog
-    in
-    match errs with
-    | [] -> M.return prog
-    | _ -> M.err_wildcards_in_head errs
-  ;;
 
   (** Eliminate unused clauses and issue warnings *)
   let elim_dead_clauses prog ~exports =
@@ -59,13 +29,26 @@ module Make (M : MonadCore) = struct
       >>= fun tyenv ->
       let preds =
         List.map ~f:(fun pr -> Pred.name_of pr, TypingEnv.empty_info)
-        @@ Program.Raw.preds_of prog
+        @@ Set.to_list
+        @@ Program.Raw.intensionals prog
       in
       set_typing_env @@ TypingEnv.add_preds tyenv ~preds
       >>= fun _ -> return prog)
   ;;
 
-  (** TODO: move this to `Source` *)
+  let add_data data params =
+    M.(
+      get_typing_env
+      >>= fun tyenv ->
+      set_typing_env
+      @@ TypingEnv.add_datas
+           ~datas:
+             (List.map data ~f:(fun (name, params) ->
+                  name, TTC.ttc @@ List.map ~f:snd params))
+      @@ TypingEnv.add_params ~params tyenv)
+  ;;
+
+  (** TODO: move this to `Source`?  *)
   let resolve_exports program exports =
     let lut =
       Name.Map.of_alist_exn
@@ -81,21 +64,29 @@ module Make (M : MonadCore) = struct
              | _ -> err_unresolved_export nm @@ Located.region_of nmloc))
   ;;
 
-  let to_stratified Module.{ program; exports; knowledge = kb_in; tydefs; _ } =
+  let to_stratified
+      Module.{ program; exports; knowledge = kb_in; tydefs; data; params }
+    =
     M.(
       resolve_exports program exports
       >>= fun exports ->
       initialize_typing program
-      >>= check_wildcards_in_head
       >>= elim_dead_clauses ~exports
       >>= fix_program ~exports
       >>= fun (repaired, kb_repair) ->
       let kb = Knowledge.Base.union kb_in kb_repair in
-      adorn_program repaired ~exports
-      >>= stratify
-      >>= fun stratified ->
       let trg = Ty.TRG.from_list tydefs in
-      with_tydefs trg @@ typing_of stratified
-      >>= fun _ -> get_typing_env >>= fun env -> return (stratified, kb, env))
+      with_tydefs
+        trg
+        (add_data data params
+        >>= fun _ ->
+        typing_of_knowledge_base kb_repair
+        >>= fun _ ->
+        adorn_program repaired ~exports
+        >>= stratify
+        >>= fun stratified ->
+        typing_of_program stratified
+        >>= fun _ -> get_typing_env >>= fun env -> return (stratified, kb, env)
+        ))
   ;;
 end

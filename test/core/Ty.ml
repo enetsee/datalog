@@ -3,7 +3,7 @@ module Env = struct
 end
 
 module M = struct
-  include Effect.MonadReader.Make (Env)
+  include Effect.MonadReader.Make_with_env (Env)
 
   let subtypes_of ty =
     map ask ~f:(fun trg ->

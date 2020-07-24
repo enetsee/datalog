@@ -63,9 +63,7 @@ let prg_dead_path =
       [ clause
           Lit.Raw.(lit pred_p Term.[ var "X" ])
           Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_qry [])
-          Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
+      ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
       ; clause
           Lit.Raw.(lit pred_s Term.[ var "X" ])
           Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
@@ -115,7 +113,9 @@ let prg_wild =
       [ clause
           Lit.Raw.(lit pred_p Term.[ var "X" ])
           Lit.Raw.[ lit pred_q Term.[ var "X" ] ]
-      ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ wild None ] ]
+      ; clause
+          Lit.Raw.(lit pred_qry [])
+          Lit.Raw.[ lit pred_p Term.[ wild None ] ]
       ]
 ;;
 
@@ -213,9 +213,7 @@ let prg_alias_head_closed =
       ; clause
           Lit.Raw.(lit pred_qry [])
           Lit.Raw.
-            [ lit pred_a Term.[ var "X" ]
-            ; lit pred_r Term.[ var "X"; int 1 ]
-            ]
+            [ lit pred_a Term.[ var "X" ]; lit pred_r Term.[ var "X"; int 1 ] ]
       ]
 ;;
 
@@ -321,10 +319,7 @@ let prg_indirection =
           Lit.Raw.[ lit pred_s Term.[ var "X" ] ]
       ; clause
           Lit.Raw.(lit pred_qry [])
-          Lit.Raw.
-            [ lit pred_p Term.[ int 1 ]
-            ; lit pred_s Term.[ int 2 ]
-            ]
+          Lit.Raw.[ lit pred_p Term.[ int 1 ]; lit pred_s Term.[ int 2 ] ]
       ]
 ;;
 
@@ -368,9 +363,7 @@ let prg_rec_closed =
       ; clause
           Lit.Raw.(lit pred_p Term.[ int 1 ])
           Lit.Raw.[ lit pred_a Term.[ var "Y" ]; lit pred_p Term.[ var "Y" ] ]
-      ; clause
-          Lit.Raw.(lit pred_qry [])
-          Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
+      ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
       ]
 ;;
 
@@ -415,9 +408,7 @@ let prg_rec_closed_indiff =
       ; clause
           Lit.Raw.(lit pred_p Term.[ var "X" ])
           Lit.Raw.[ lit pred_p Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_qry [])
-          Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
+      ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
       ]
 ;;
 

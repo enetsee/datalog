@@ -83,31 +83,36 @@ let collect_disj t =
 let dnf t = collect_disj @@ push_neg t
 let normalize t = split_disj @@ dnf t
 
-let unop_to_core region op mxs =
-  Result.(
-    mxs
-    >>= fun xs ->
-    match op, xs with
-    | OpSet.Body.Unary.Neg, [ lit ] -> return [ Core.Lit.Raw.neg lit ]
-    | _ -> fail Err.(ClauseNeg region))
-;;
+module Make (M : SourceM.S) = struct
+  module TermM = Atom.Term.Make (M)
 
-let binop_to_core region op xs ys =
-  Result.(
-    match op with
-    | OpSet.Body.Binary.Conj -> combine ~ok:List.append ~err:Fn.const xs ys
-    | Disj -> fail Err.(ClauseDisj region))
-;;
+  let unop_to_core region op mxs =
+    M.(
+      mxs
+      >>= fun xs ->
+      match op, xs with
+      | OpSet.Body.Unary.Neg, [ lit ] -> return [ Core.Lit.Raw.neg lit ]
+      | _ -> err_clause_neg region)
+  ;;
 
-let to_core subg =
-  let algebra subg =
-    Result.(
-      match subg with
-      | SubgoalF.SAtom { elem; _ } ->
-        map ~f:(fun cl -> [ cl ]) @@ Atom.Term.to_core elem
-      | SUnOp ({ elem; region }, mcls) -> unop_to_core region elem mcls
-      | SBinOp ({ elem; region }, mxs, mys) -> binop_to_core region elem mxs mys
-      | SNullOp _ -> fail Err.ClauseNullOp)
-  in
-  cata algebra subg
-;;
+  let binop_to_core region op mxs mys =
+    M.(
+      match op with
+      | OpSet.Body.Binary.Conj -> map2 ~f:List.append mxs mys
+      | Disj -> err_clause_disj region)
+  ;;
+
+  let to_core subg =
+    let algebra subg =
+      M.(
+        match subg with
+        | SubgoalF.SAtom { elem; _ } ->
+          map ~f:(fun cl -> [ cl ]) @@ TermM.to_core elem
+        | SUnOp ({ elem; region }, mcls) -> unop_to_core region elem mcls
+        | SBinOp ({ elem; region }, mxs, mys) ->
+          binop_to_core region elem mxs mys
+        | SNullOp op -> err_clause_null_op @@ Located.region_of op)
+    in
+    cata algebra subg
+  ;;
+end

@@ -88,7 +88,6 @@ let cycles =
 let raw_program = Core.Program.Raw.(Alcotest.testable pp equal)
 let adorned_program = Core.Program.Adorned.(Alcotest.testable pp equal)
 let stratified_program = Core.Program.Stratified.(Alcotest.testable pp equal)
-let err = Core.MonadCompile.Err.(Alcotest.testable pp equal)
 let violation = Core.Violation.(Alcotest.testable pp equal)
 let kb = Core.Knowledge.Base.(Alcotest.testable pp equal)
 let partition = Core.Partition.(Alcotest.testable pp equal)

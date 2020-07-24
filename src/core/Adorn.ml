@@ -70,13 +70,13 @@ let adorn_body body ~bound =
          lit' :: ls, bound')
 ;;
 
-module type MonadAdorn = sig
+module type AdornM = sig
   include Schedule.MonadSchedule
 
   val err_no_ordering : Binding.t -> Reporting.Region.t -> _ t
 end
 
-module Make (M : MonadAdorn) = struct
+module Make (M : AdornM) = struct
   module SM = Schedule.Make (M)
 
   (** wrapper around global constraint map *)

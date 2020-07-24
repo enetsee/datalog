@@ -24,16 +24,20 @@ module TermMinimal :
 
   type repr = Core.Lit.Raw.t
 
-  let to_core { pred_nm = Located.{ elem = name; region }; terms } =
-    Result.(
-      List.map ~f:Term.to_core terms
-      |> all
-      |> map ~f:(fun terms ->
-             Core.(
-               let arity = List.length terms in
-               let pred = Pred.pred name ~arity in
-               Lit.Raw.(lit pred terms ~region))))
-  ;;
+  module Make (M : SourceM.S) = struct
+    module TermM = Term.Make (M)
+
+    let to_core { pred_nm = Located.{ elem = name; region }; terms } =
+      M.(
+        List.map ~f:TermM.to_core terms
+        |> all
+        |> map ~f:(fun terms ->
+               Core.(
+                 let arity = List.length terms in
+                 let pred = Pred.pred name ~arity in
+                 Lit.Raw.(lit pred terms ~region))))
+    ;;
+  end
 end
 
 module TmvarMinimal :
@@ -47,16 +51,20 @@ module TmvarMinimal :
 
   type repr = Core.Lit.Raw.t
 
-  let to_core { pred_nm = Located.{ elem = name; region }; terms } =
-    Result.(
-      List.map ~f:Term.to_core terms
-      |> all
-      |> map ~f:(fun terms ->
-             let arity = List.length terms in
-             Core.(
-               let pred = Pred.pred name ~arity in
-               Lit.Raw.(lit pred terms ~region))))
-  ;;
+  module Make (M : SourceM.S) = struct
+    module TermM = Term.Make (M)
+
+    let to_core { pred_nm = Located.{ elem = name; region }; terms } =
+      M.(
+        List.map ~f:TermM.to_core terms
+        |> all
+        |> map ~f:(fun terms ->
+               let arity = List.length terms in
+               Core.(
+                 let pred = Pred.pred name ~arity in
+                 Lit.Raw.(lit pred terms ~region))))
+    ;;
+  end
 end
 
 module SymbolMinimal :
@@ -71,16 +79,20 @@ struct
 
   type repr = Core.Knowledge.t
 
-  let to_core { pred_nm = Located.{ elem = name; region }; terms } =
-    Result.(
-      List.map ~f:Term.to_core terms
-      |> all
-      >>= fun terms ->
-      let arity = List.length terms in
-      Core.(
-        let pred = Pred.pred name ~arity in
-        return @@ Knowledge.knowledge pred terms ~region))
-  ;;
+  module Make (M : SourceM.S) = struct
+    module TermM = Term.Make (M)
+
+    let to_core { pred_nm = Located.{ elem = name; region }; terms } =
+      M.(
+        List.map ~f:TermM.to_core terms
+        |> all
+        >>= fun terms ->
+        let arity = List.length terms in
+        Core.(
+          let pred = Pred.pred name ~arity in
+          return @@ Knowledge.knowledge pred terms ~region))
+    ;;
+  end
 end
 
 (** An `Atom.t` is an atomic formula that may appear in the head or body of a 

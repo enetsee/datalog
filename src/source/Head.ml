@@ -7,11 +7,15 @@ end
 module Make (Atom : Atom.S) : S with module Atom := Atom = struct
   include Subgoal.Make (OpSet.Head) (Atom)
 
-  let to_core t =
-    match proj t with
-    | SAtom { elem; _ } -> Atom.to_core elem
-    | _ -> Error Err.(HeadNotAtom (region t))
-  ;;
+  module Make (M : SourceM.S) = struct
+    module AtomM = Atom.Make (M)
+
+    let to_core t =
+      match proj t with
+      | SAtom { elem; _ } -> AtomM.to_core elem
+      | _ -> M.err_head_not_atom (region t)
+    ;;
+  end
 end
 
 module Term = Make (Atom.Term)

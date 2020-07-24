@@ -532,8 +532,7 @@ module ClientServer = struct
 
   let lit_check_client_sym =
     Core.(
-      Lit.Raw.(
-        lit p_check_client Term.[ sym @@ Symbol.text "PASSWORD123" ]))
+      Lit.Raw.(lit p_check_client Term.[ sym @@ Symbol.text "PASSWORD123" ]))
   ;;
 
   let p_check_server =
@@ -996,13 +995,7 @@ module SocialInsurance = struct
   (* -- Literals appearing ------------------------------------------------ *)
 
   let vx, vy, vz, int20, int1, int50 =
-    Core.Term.(
-      ( var "x"
-      , var "y"
-      , var "z"
-      , real 20.0
-      , real 0.1
-      , real 50.0 ))
+    Core.Term.(var "x", var "y", var "z", real 20.0, real 0.1, real 50.0)
   ;;
 
   let f = Core.Binding.from_list [ Free ]

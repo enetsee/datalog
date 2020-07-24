@@ -1,8 +1,12 @@
-pred link(?line: Int, ?station: Symbol, ?next:Symbol)
-pred station_connected(?station:Symbol, ?next:Symbol)
-pred line_connected(?line: Int, ?station:Symbol)
+type @line extends symbol
+type @station extends symbol
 
-station_connected(?s,?s) :- link(_,?s,_) ; link(_,_,?s).
+data link(line: @line, start: @station, end: @station)
+
+station_connected(?s,?t) :- link(_,?s,?t).
 station_connected(?s,?t) :- station_connected(?s,?u) , link(_,?u,?t).
 
 line_connected(?l,?s) :- station_connected(?s,?t) , link(?l,?t,_).
+
+export station_connected
+export line_connected

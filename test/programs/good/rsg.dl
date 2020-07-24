@@ -1,0 +1,9 @@
+
+data flat(x : symbol, y: symbol)
+data up(x : symbol, y: symbol)
+data down(x : symbol, y: symbol)
+
+
+rsg(?x,?y) :- flat(?x,?y) ; up(?x,?x1) , rsg(?y1, ?x1) , down(?y1,?y).
+
+export rsg

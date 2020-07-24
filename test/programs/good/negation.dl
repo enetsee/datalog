@@ -1,10 +1,13 @@
-type Node <: Symbol
-pred edge(?source:Node, ?sink:Node)
-pred connected(?source:Node, ?sink:Node)
-pred complement(?source:Node, ?sink:Node)
+type @node extends symbol
+
+data edge(source: @node, sink:@node)
 
 connected(?x,?y)
     :- edge(?x,?y)
-    ;  edge(?x,?z) , connected(?z,?y).
+    ;  connected(?x,?z), edge(?z,?y).
 
-complement(?x,?y) :- not connected(?x,?y).
+complement(?x) :- not connected(?x,?y).
+
+
+export connected
+export complement

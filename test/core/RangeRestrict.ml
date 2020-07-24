@@ -130,9 +130,7 @@ let prg_fixable_knowledge =
   Program.Raw.program
     Clause.Raw.
       [ clause Lit.Raw.(lit pred_p Term.[ var "X" ]) Lit.Raw.[ lit pred_q [] ]
-      ; clause
-          Lit.Raw.(lit pred_qry [])
-          Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
+      ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
       ]
 ;;
 
@@ -144,11 +142,10 @@ let fixable_knowledge_expected =
         [ clause
             Lit.Raw.(lit pred_p Term.[ var "X" ])
             Lit.Raw.[ lit pred_grd Term.[ var "X" ]; lit pred_q [] ]
-        ; clause
-            Lit.Raw.(lit pred_qry [])
-            Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
+        ; clause Lit.Raw.(lit pred_qry []) Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
         ]
-  , Knowledge.(Base.singleton @@ knowledge pred_grd KTerm.[ KSymbol (Symbol.int 1) ]) )
+  , Knowledge.(
+      Base.singleton @@ knowledge pred_grd KTerm.[ KSymbol (Symbol.int 1) ]) )
 ;;
 
 let fixable_knowledge =
@@ -169,9 +166,7 @@ let prg_fixable_multi =
       ; clause
           Lit.Raw.(lit pred_qry [])
           Lit.Raw.[ lit pred_r Term.[ var "X" ]; lit pred_p Term.[ var "X" ] ]
-      ; clause
-          Lit.Raw.(lit pred_qry2 [])
-          Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
+      ; clause Lit.Raw.(lit pred_qry2 []) Lit.Raw.[ lit pred_p Term.[ int 1 ] ]
       ]
 ;;
 
@@ -193,7 +188,8 @@ let fixable_multi_expected =
             Lit.Raw.(lit pred_grd Term.[ var "X" ])
             Lit.Raw.[ lit pred_r Term.[ var "X" ] ]
         ]
-  , Knowledge.(Base.singleton @@ knowledge pred_grd KTerm.[ KSymbol( Symbol.int 1) ]) )
+  , Knowledge.(
+      Base.singleton @@ knowledge pred_grd KTerm.[ KSymbol (Symbol.int 1) ]) )
 ;;
 
 let fixable_multi =

@@ -12,7 +12,7 @@ open Reporting
 type t =
   | TVar of Tmvar.t * (Region.t[@compare.ignore] [@equal.ignore])
   | TWild of Name.t option * (Region.t[@compare.ignore] [@equal.ignore])
-  | TSym of Symbol.t * (Region.t[@compare.ignore] [@equal.ignore])  
+  | TSym of Symbol.t * (Region.t[@compare.ignore] [@equal.ignore])
   | TParam of Name.t * (Region.t[@compare.ignore] [@equal.ignore])
 [@@deriving compare, sexp, eq, variants]
 
@@ -29,17 +29,11 @@ let text ?region str = sym ?region @@ Symbol.text str
 let real ?region f = sym ?region @@ Symbol.real f
 let int ?region n = sym ?region @@ Symbol.int n
 let bool ?region b = sym ?region @@ Symbol.bool b
-
 let date ?region d = sym ?region @@ Symbol.date d
-
 let span ?region unit_of_time = sym ?region @@ Symbol.span unit_of_time
+let wild ?(region = Region.empty) nm_opt = TWild (nm_opt, region)
+let param ?(region = Region.empty) name = TParam (name, region)
 
-
-let wild  ?(region = Region.empty) nm_opt = 
-    TWild(nm_opt,region)
-
-let param ?(region = Region.empty) name  = 
-  TParam(name,region)
 (* -- Query ----------------------------------------------------------------- *)
 
 let is_var = function
@@ -61,8 +55,6 @@ let is_param = function
   | TParam _ -> true
   | _ -> false
 ;;
-
-
 
 let lower_var = function
   | TVar (v, _) -> Some v
@@ -109,9 +101,9 @@ include Pretty.Make0 (struct
   let pp ppf = function
     | TVar (tv, _) -> Tmvar.pp ppf tv
     | TSym (sym, _) -> Symbol.pp ppf sym
-    | TWild(Some nm,_) -> Fmt.( (any "_") ++ Name.pp) ppf nm
+    | TWild (Some nm, _) -> Fmt.(any "_" ++ Name.pp) ppf nm
     | TWild _ -> Fmt.string ppf "_"
-    | TParam(nm,_) -> Fmt.( (any "#") ++ Name.pp) ppf nm
+    | TParam (nm, _) -> Fmt.(any "#" ++ Name.pp) ppf nm
   ;;
 
   let pp = `NoPrec pp

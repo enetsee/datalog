@@ -1,6 +1,6 @@
 
 (library
-  (name parse)
+  (name parser)
   (libraries core_kernel str fmt menhirLib lib reporting source)
   (inline_tests)
   (preprocess (pps ppx_jane ppx_deriving.map ppx_deriving.eq ppx_deriving.fold ppx_deriving.create))
@@ -18,14 +18,14 @@
 ;; a state number to a message, written to `parsing_errors.ml`
 ;; `--explain` causes conflict explanations to be written to `parser.conflicts`
 (rule
- (targets parsing_errors.ml)
- (deps parser.mly parser.messages)
+ (targets program_errors.ml)
+ (deps program.mly program.messages)
  (action
   (with-stdout-to %{targets}
    (run menhir
     --explain
     --strict
-    --unused-tokens parser.mly --compile-errors parser.messages))))
+    --unused-tokens program.mly --compile-errors program.messages))))
 
 ;; Run Menhir on `parser.mll` generating `parser.ml`
 ;; `--table` switch makes incremental API available
@@ -33,17 +33,18 @@
 ;;            to be considered errors
 ;; `--unused-tokens` suppresses warning about unused terminals
 (menhir
- (modules parser)
+ (modules program)
  (flags :standard --table --strict --unused-tokens --fixed-exception))
 
-;; Read the `parser.messages` file and produce a new .messages file that is 
+;; Read the `program.messages` file and produce a new .messages file that is 
 ;; identical, except the auto-generated comments have been re-generated
 (rule
- (with-stdout-to parser_updated.messages
-  (run menhir %{dep:parser.mly} --update-errors %{dep:parser.messages}))
+ (with-stdout-to program_updated.messages
+  (run menhir %{dep:program.mly} --update-errors %{dep:program.messages}))
 )
 
 ;; Diff old and new parser messages
 (rule
  (alias update_messages)
-  (action (diff parser.messages parser_updated.messages)))
+  (action (diff program.messages program_updated.messages)))
+

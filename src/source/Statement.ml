@@ -50,14 +50,13 @@ let param ?region name ty =
 
 let data ?region name attrs =
   let region =
-    match region with 
-    | Some region -> region 
-    | _ ->      (
-      match List.last attrs with
+    match region with
+    | Some region -> region
+    | _ ->
+      (match List.last attrs with
       | Some (_, ty) ->
         Region.merge Located.(region_of name) Located.(region_of ty)
-      | _ -> Located.(region_of name)
-    )
+      | _ -> Located.(region_of name))
   in
   SData { name; attrs; region }
 ;;
@@ -89,26 +88,33 @@ type repr =
   | RParam of Core.Name.t * Core.Ty.t
   | RExport of Core.Name.t Located.t
 
-let to_core = function
-  | SClause { head; body; region } ->
-    Result.combine
-      Head.Term.(to_core head)
-      Body.(to_core body)
-      ~ok:(fun head body -> RCls Core.Clause.Raw.{ head; body; region })
-      ~err:Fn.const
-  | SFact head -> Result.map ~f:(fun k -> RKnw k) @@ Head.Symbol.to_core head
-  | STy { name; defn; _ } ->
-    Result.return @@ RTy (Located.(elem_of name), Located.elem_of defn)
-  | SData { name; attrs; _ } ->
-    let name = Located.elem_of name
-    and typing =
-      List.map attrs ~f:(fun (nm, ty) -> Located.(elem_of nm, elem_of ty))
-    in
-    Result.return (RData (name, typing))
-  | SParam { name; ty; _ } ->
-    Result.return @@ RParam (Located.(elem_of name), Located.elem_of ty)
-  | SExport nm -> Result.return @@ RExport nm
-;;
+module Make (M : SourceM.S) = struct
+  module HeadTermM = Head.Term.Make (M)
+  module HeadSymM = Head.Symbol.Make (M)
+  module BodyM = Body.Make (M)
+
+  let to_core t =
+    M.(
+      match t with
+      | SClause { head; body; region } ->
+        map2
+          HeadTermM.(to_core head)
+          BodyM.(to_core body)
+          ~f:(fun head body -> RCls Core.Clause.Raw.{ head; body; region })
+      | SFact head -> map ~f:(fun k -> RKnw k) @@ HeadSymM.to_core head
+      | STy { name; defn; _ } ->
+        return @@ RTy (Located.(elem_of name), Located.elem_of defn)
+      | SData { name; attrs; _ } ->
+        let name = Located.elem_of name
+        and typing =
+          List.map attrs ~f:(fun (nm, ty) -> Located.(elem_of nm, elem_of ty))
+        in
+        return (RData (name, typing))
+      | SParam { name; ty; _ } ->
+        return @@ RParam (Located.(elem_of name), Located.elem_of ty)
+      | SExport nm -> return @@ RExport nm)
+  ;;
+end
 
 (* -- Pretty implementation ----------------------------------------------- *)
 
@@ -135,7 +141,9 @@ include Pretty.Make0 (struct
     | STy { name; defn; _ } ->
       Fmt.(
         hbox
-        @@ pair ~sep:(any "@;extends@;") (any "type @" ++ Located.pp Core.Name.pp)
+        @@ pair
+             ~sep:(any "@;extends@;")
+             (any "type @" ++ Located.pp Core.Name.pp)
         @@ Located.pp Core.Ty.pp)
         ppf
         (name, defn)

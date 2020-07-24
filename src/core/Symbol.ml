@@ -8,15 +8,13 @@ type t =
   | SBool of bool
   | SDate of Date.t
   | SSpan of Time.Span.t
-[@@deriving eq, compare, sexp,variants]
+[@@deriving eq, compare, sexp, variants]
 
 let text s = SText s
 let int n = SInt n
 let real f = SReal (string_of_float f)
 let bool n = SBool n
-
 let date d = SDate d
-
 let span uot = SSpan (Time.Span.of_unit_of_time uot)
 
 let type_of = function

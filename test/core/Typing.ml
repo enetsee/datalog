@@ -4,8 +4,13 @@ open Core
 (* -- MonadTyping ----------------------------------------------------------- *)
 
 module Err = struct
-  type t = unit
+  type t = Name.t * Reporting.Region.t
+
+  let equal (nm1, _) (nm2, _) = Name.equal nm1 nm2
+  let pp = Fmt.(pair ~sep:sp Name.pp Reporting.Region.pp)
 end
+
+let testable_err = Err.(Alcotest.testable pp equal)
 
 module Topic = struct
   type t = unit
@@ -19,7 +24,13 @@ module Topic = struct
 end
 
 module M = struct
-  include Effect.MonadRWSError.Make (Err) (Topic) (TypingEnv) (Ty.TRG)
+  include Effect.MonadRWSFail.Make (Err) (Topic) (TypingEnv) (Ty.TRG)
+
+  let err_unbound_param name region = fail (name, region)
+
+  let get_param_ty name =
+    map get ~f:(fun ty_env -> TypingEnv.find_param ty_env ~name)
+  ;;
 
   let subtypes_of ty =
     map ask ~f:(fun trg ->
@@ -43,6 +54,7 @@ module M = struct
 end
 
 module TypingM = Typing.Make (M)
+module RelationM = Relation.Make (M)
 
 (* -- Test helpers ---------------------------------------------------------- *)
 
@@ -57,7 +69,7 @@ let mk_meet trg expect lhs rhs =
       (expect, (lhs, rhs))
   in
   let f () =
-    Alcotest.(check @@ result Testable.typing unit)
+    Alcotest.(check @@ result Testable.typing testable_err)
       msg
       (Ok expect)
       M.(eval ~env:trg ~st:TypingEnv.empty @@ TypingM.meet lhs rhs)
@@ -124,7 +136,7 @@ let mk_restrict trg expect equiv rhs =
       (expect, (equiv, rhs))
   in
   let f () =
-    Alcotest.(check @@ result Testable.typing unit)
+    Alcotest.(check @@ result Testable.typing testable_err)
       msg
       (Ok expect)
       (M.eval ~env:trg ~st:TypingEnv.empty @@ TypingM.restrict rhs ~equiv)
@@ -134,14 +146,14 @@ let mk_restrict trg expect equiv rhs =
 
 let mk_step trg tyenv msg expect clauses =
   let f () =
-    Alcotest.(check @@ result Testable.typing unit)
+    Alcotest.(check @@ result Testable.typing testable_err)
       (Fmt.(to_to_string @@ vbox @@ pair ~sep:cut string Typing.pp)
          (msg, expect))
       (Ok expect)
       M.(
-        eval ~env:trg ~st:tyenv
-        @@ TypingM.interpret
-        @@ Relation.of_clauses clauses)
+        RelationM.of_clauses clauses
+        >>= TypingM.interpret
+        |> eval ~env:trg ~st:tyenv)
   in
   Alcotest.test_case msg `Quick f
 ;;
@@ -162,7 +174,9 @@ let mk_stratum trg tyenv msg expect stratum =
 
 let mk_program trg tyenv msg expect prog =
   let f () =
-    let _, _, st = M.(run ~env:trg ~st:tyenv @@ TypingM.typing_of prog) in
+    let _, _, st =
+      M.(run ~env:trg ~st:tyenv @@ TypingM.typing_of_program prog)
+    in
     Alcotest.(check Testable.typing_env)
       (Fmt.(to_to_string @@ vbox @@ pair ~sep:cut string TypingEnv.pp)
          (msg, expect))

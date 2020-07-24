@@ -1,0 +1,19 @@
+type @employee extends symbol
+type @regular extends @employee
+type @student extends @employee
+
+data regular(id : @regular)
+data student(id: @student)
+data age(id: @employee, age: real)
+
+employee(?id) :- regular(?id) ; student(?id).
+
+salary(?id,?x) :- age(?id,?n), mult(?n,20.0,?x) , employee(?id).
+
+socins(?id,?y) 
+    :- salary(?id,?x), mult(?x,0.1,?y), regular(?id) 
+    ;  eq(50.0,?y), student(?id).
+
+export employee
+export salary
+export socins

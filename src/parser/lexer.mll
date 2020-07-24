@@ -1,5 +1,5 @@
 {
-  open Parser
+  open Program
   open Lexing
   exception UnexpectedChar of string
   exception UnterminatedComment  
@@ -122,7 +122,7 @@ rule token = parse
 
   | name                    { NAME (lexeme lexbuf,current_loc lexbuf) }    
 
-  | eof                     { Parser.EOF }
+  | eof                     { Program.EOF }
   | _ 
     { raise (UnexpectedChar (Printf.sprintf "At offset %d: unexpected character.\n" (Lexing.lexeme_start lexbuf))) 
     }
