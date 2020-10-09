@@ -72,9 +72,9 @@ module Raw = Unstratified.Make (Lit.Raw) (Clause.Raw)
 module Adorned = struct
   include Unstratified.Make (Lit.Adorned) (Clause.Adorned)
 
-  let well_moded { clauses; _ } ~cstrs =
-    List.for_all clauses ~f:Clause.Adorned.(well_moded ~cstrs)
-  ;;
+  (* let well_moded { clauses; _ } ~cstrs =
+       List.for_all clauses ~f:Clause.Adorned.(well_moded ~cstrs)
+     ;; *)
 end
 
 module Stratified : sig

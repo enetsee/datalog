@@ -1,0 +1,14 @@
+(library
+ (name test_dependency)
+ (libraries
+    core_kernel fmt str
+  alcotest
+
+  core
+  effect
+  reporting
+  test_common
+  dependency
+
+ )
+ (synopsis "Tests for dependency analysis"))

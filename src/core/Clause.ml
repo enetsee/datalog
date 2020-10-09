@@ -85,13 +85,13 @@ module Raw = Make (Lit.Raw)
 module Adorned = struct
   include Make (Lit.Adorned)
 
-  let well_moded { body; _ } ~cstrs =
-    List.for_all body ~f:(fun lit ->
-        let cnstr =
-          Option.value ~default:Constraint.trivial
-          @@ Pred.Map.find cstrs
-          @@ Lit.Adorned.pred_of lit
-        in
-        Lit.Adorned.well_moded lit ~cnstr)
-  ;;
+  (* let well_moded { body; _ } ~cstrs =
+       List.for_all body ~f:(fun lit ->
+           let cnstr =
+             Option.value ~default:Constraint.trivial
+             @@ Pred.Map.find cstrs
+             @@ Lit.Adorned.pred_of lit
+           in
+           Lit.Adorned.well_moded lit ~cnstr)
+     ;; *)
 end

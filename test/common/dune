@@ -1,0 +1,15 @@
+(library
+ (name test_common)
+ (libraries
+    core_kernel fmt str
+  alcotest
+  partition
+  dataflow
+  constraint
+  relation
+  schedule
+  core
+  typecheck
+  reporting
+ )
+ (synopsis "Tests for lang"))

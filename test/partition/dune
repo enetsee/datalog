@@ -1,0 +1,9 @@
+(library
+ (name test_partition)
+ (libraries
+    core_kernel fmt str
+  alcotest
+  partition
+  
+ )
+ (synopsis "Tests for integer partitions"))

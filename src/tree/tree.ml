@@ -2,14 +2,18 @@ open Core_kernel
 open Lib
 
 module Minimal = struct
-  type 'a t = Node of 'a * 'a t list [@@deriving compare, eq, map, fold, sexp]
+  type 'a t =
+    { lbl : 'a
+    ; children : 'a t list
+    }
+  [@@deriving compare, eq, map, fold, sexp]
 
   let map t ~f = map f t
   let foldLeft t ~f ~init = fold f init t
-  let label (Node (lbl, _)) = lbl
-  let children (Node (_, cs)) = cs
-  let branch lbl forest = Node (lbl, forest)
-  let leaf lbl = Node (lbl, [])
+  let label { lbl; _ } = lbl
+  let children { children; _ } = children
+  let branch lbl children = { lbl; children }
+  let leaf lbl = branch lbl []
 
   let flatten t =
     let rec mapk f l k =
@@ -22,34 +26,31 @@ module Minimal = struct
       | [] -> k []
       | l :: r -> concatk r @@ fun r' -> k (l @ r')
     in
-    let rec aux (Node (x, ts)) k =
-      match ts with
-      | [] -> k [ [ x ] ]
-      | ts ->
-        mapk aux ts
-        @@ fun x1 -> concatk x1 @@ fun x2 -> mapk (fun xs k -> k (x :: xs)) x2 k
+    let rec aux { lbl; children } k =
+      match children with
+      | [] -> k [ [ lbl ] ]
+      | _ ->
+        mapk aux children
+        @@ fun x1 ->
+        concatk x1 @@ fun x2 -> mapk (fun xs k -> k (lbl :: xs)) x2 k
     in
     aux t (fun x -> x)
   ;;
 
   let leaves t =
     let rec aux accu = function
-      | Node (t, []) -> t :: accu
-      | Node (_, xs) -> List.fold_left ~init:accu ~f:aux xs
+      | { lbl; children = [] } -> lbl :: accu
+      | { children; _ } -> List.fold_left ~init:accu ~f:aux children
     in
     aux [] t
   ;;
 
-  let is_leaf (Node (_, ts)) =
-    match ts with
-    | [] -> true
-    | _ -> false
-  ;;
+  let is_leaf { children; _ } = List.is_empty children
 
   let unfold ~f b =
     let rec aux ~k b =
-      let a, bs = f b in
-      aux_forest bs ~k:(fun xs -> k @@ Node (a, xs))
+      let lbl, bs = f b in
+      aux_forest bs ~k:(fun children -> k { lbl; children })
     and aux_forest ~k = function
       | [] -> k []
       | next :: rest ->
@@ -58,6 +59,29 @@ module Minimal = struct
     in
     aux ~k:Fn.id b
   ;;
+
+  module Make (M : Monad.S) = struct
+    (** Monadic tree unfold *)
+    let unfoldM ~f b =
+      let rec aux ~k b =
+        M.(
+          f b
+          >>= fun (a, bs) ->
+          aux_forest bs ~k:(fun xs -> k @@ map ~f:(branch a) xs))
+      and aux_forest ~k xs =
+        M.(
+          match xs with
+          | [] -> k @@ return []
+          | next :: rest ->
+            aux_forest rest ~k:(fun rest' ->
+                aux next ~k:(fun next' ->
+                    next' >>= fun x -> rest' >>= fun xs -> return (x :: xs) |> k)))
+      in
+      aux ~k:Fn.id b
+    ;;
+  end
+
+  (** -- Pretty print ------------------------------------------------------- *)
 
   let with_pos xs =
     let rec aux accu = function
@@ -68,8 +92,8 @@ module Minimal = struct
     aux [] xs
   ;;
 
-  let rec pp_root indent pp_a ppf (Node (lbl, ts)) =
-    Fmt.pf ppf {|%a%a|} pp_a lbl (pp_children indent pp_a) ts
+  let rec pp_root indent pp_a ppf { lbl; children } =
+    Fmt.pf ppf {|%a%a|} pp_a lbl (pp_children indent pp_a) children
 
   and pp_children indent pp_a ppf ts =
     Fmt.(list (pp_child indent pp_a)) ppf (with_pos ts)
@@ -88,6 +112,21 @@ include Minimal
 include Functor.Make1 (Minimal)
 include Foldable.Make1 (Minimal)
 include Pretty.Make1 (Minimal)
+
+module Traversable = struct
+  module Make (M : sig
+    include Monad.S
+    include Applicative.S with type 'a t := 'a t
+  end) =
+  struct
+    let rec traverse { lbl; children } ~f =
+      M.map2
+        ~f:(fun lbl children -> { lbl; children })
+        (f lbl)
+        (M.all @@ List.map ~f:(traverse ~f) children)
+    ;;
+  end
+end
 
 module Zipper = struct
   type 'a t =

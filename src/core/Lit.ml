@@ -125,7 +125,8 @@ module Adorned = struct
 
   (** A literal is well moded when its terms are compatible 
       at least one possible mode constraint *)
-  let well_moded { bpatt; _ } ~cnstr = Binding.well_moded bpatt ~cnstr
+
+  (* let well_moded { bpatt; _ } ~cnstr = Binding.well_moded bpatt ~cnstr *)
 
   (* -- Lit implementation -------------------------------------------------- *)
   let pol_of { pol; _ } = pol

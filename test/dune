@@ -2,7 +2,9 @@
  (name run_tests)
  (libraries
   alcotest
-  test_core
+  test_adorn
+  test_dataflow
+  test_dependency
 ))
 
 

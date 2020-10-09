@@ -1,0 +1,13 @@
+(library
+ (name test_adorn)
+ (libraries
+    core_kernel fmt str
+  alcotest
+  adorn
+  core
+  effect
+  reporting
+  test_common
+  typecheck
+ )
+ (synopsis "Tests for clause adornment"))

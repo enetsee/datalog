@@ -1,0 +1,6 @@
+(library
+ (name test_typecheck)
+ (libraries
+    core_kernel fmt str alcotest effect core typecheck test_common
+ )
+ (synopsis "Tests for type checker"))

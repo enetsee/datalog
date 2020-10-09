@@ -1,0 +1,13 @@
+(library
+ (name test_dataflow)
+ (libraries
+    core_kernel fmt str
+  alcotest
+  adorn
+  core
+  effect
+  reporting
+  test_common
+  dataflow
+ )
+ (synopsis "Tests for dataflow analysis and repair"))
