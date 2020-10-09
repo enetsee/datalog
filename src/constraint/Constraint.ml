@@ -52,7 +52,6 @@ include Pretty.Make0 (struct
   let pp = `NoPrec pp
 end)
 
-
 (* -- Lattice --------------------------------------------------------------- *)
 let top = ill
 let bottom = trivial
