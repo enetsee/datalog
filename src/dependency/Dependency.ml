@@ -243,7 +243,7 @@ struct
     in
     let dead_idxs = dead_idxs deps queries in
     List.partition_map ~f:(fun (idx, cl) ->
-        if Int.Set.mem dead_idxs idx then `Snd cl else `Fst cl)
+        if Int.Set.mem dead_idxs idx then Either.Second cl else Either.First cl)
     @@ List.mapi ~f:Tuple2.create
     @@ Program.clauses_of prog
   ;;

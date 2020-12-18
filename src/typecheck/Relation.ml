@@ -1,7 +1,152 @@
 open Core_kernel
 open Reporting
 open Core
-open Relation__Algebra
+open Lib
+
+module Algebra = struct
+  exception ClauseHasNoBody of Region.t
+  exception NoClauses
+
+  module F = struct
+    type 'a t =
+      | RPred of Pred.t * (int * Ty.t) list
+      | RUnion of 'a * 'a
+      | RInter of 'a * 'a
+      | RProd of 'a * 'a
+      | RComp of 'a
+      | RProj of int list * 'a
+      | RRestr of (int * int) * 'a
+    [@@deriving map, compare, eq]
+
+    let pred ?(ty_idxs = []) pred = RPred (pred, ty_idxs)
+    let union a b = RUnion (a, b)
+    let inter a b = RInter (a, b)
+    let product a b = RProd (a, b)
+    let comp a = RComp a
+    let project t ~flds = RProj (flds, t)
+    let restrict t ~equiv = RRestr (equiv, t)
+
+    include Functor.Make1 (struct
+      type nonrec 'a t = 'a t
+
+      let map t ~f = map f t
+    end)
+
+    include Pretty.Make1 (struct
+      type nonrec 'a t = 'a t
+
+      let pp_binop prec pp_a prec' sep =
+        let g = Fmt.(hovbox @@ pair ~sep (pp_a prec') (pp_a prec')) in
+        if prec' < prec then Fmt.parens g else g
+      ;;
+
+      let pp_projset = Fmt.(braces @@ list ~sep:comma int)
+      let pp_eqs = Fmt.(hbox @@ parens @@ pair ~sep:(any "@;~@;") int int)
+
+      let pp_pred ppf pr = function
+        | [] -> Pred.pp ppf pr
+        | ty_idxs ->
+          Fmt.(
+            hbox
+            @@ pair Pred.pp
+            @@ parens
+            @@ list ~sep:comma
+            @@ pair ~sep:(any "@;:@;") int Ty.pp)
+            ppf
+            (pr, ty_idxs)
+      ;;
+
+      let pp prec pp_a ppf = function
+        | RPred (pr, ty_idxs) -> pp_pred ppf pr ty_idxs
+        | RUnion (a, b) -> (pp_binop prec pp_a 1 Fmt.(any "@;\\/@;")) ppf (a, b)
+        | RInter (a, b) -> (pp_binop prec pp_a 2 Fmt.(any "@;/\\@;")) ppf (a, b)
+        | RProd (a, b) -> (pp_binop prec pp_a 3 Fmt.(any "@;*@;")) ppf (a, b)
+        | RComp a ->
+          let prec' = 4 in
+          let fmt =
+            let g = Fmt.(hbox @@ prefix (any "not@;") @@ pp_a prec') in
+            if prec' < prec then Fmt.(parens g) else g
+          in
+          fmt ppf a
+        | RProj (s, a) ->
+          let prec' = 4 in
+          let fmt =
+            let g =
+              Fmt.(hbox @@ prefix (any "pi") @@ pair pp_projset @@ pp_a prec')
+            in
+            if prec' < prec then Fmt.(parens g) else g
+          in
+          fmt ppf (s, a)
+        | RRestr (eq, a) ->
+          let prec' = 4 in
+          let fmt =
+            let g =
+              Fmt.(hbox @@ prefix (any "sig") @@ pair pp_eqs @@ pp_a prec')
+            in
+            if prec' < prec then Fmt.(parens g) else g
+          in
+          fmt ppf (eq, a)
+      ;;
+
+      let pp = `WithPrec pp
+    end)
+
+    module Traversable = struct
+      module Make (M : sig
+        include Monad.S
+        include Applicative.S with type 'a t := 'a t
+      end) =
+      struct
+        let traverse t ~f =
+          match t with
+          | RPred (pr, ty_idxs) -> M.return @@ RPred (pr, ty_idxs)
+          | RUnion (a, b) -> M.map2 ~f:union (f a) (f b)
+          | RInter (a, b) -> M.map2 ~f:inter (f a) (f b)
+          | RProd (a, b) -> M.map2 ~f:product (f a) (f b)
+          | RComp a -> M.map ~f:comp @@ f a
+          | RProj (flds, a) -> M.map ~f:(project ~flds) @@ f a
+          | RRestr (equiv, a) -> M.map ~f:(restrict ~equiv) @@ f a
+        ;;
+      end
+    end
+  end
+
+  include Fix.Make (F)
+
+  (* -- Standard interfaces --------------------------------------------------- *)
+  let rec compare x y = F.compare compare (proj x) (proj y)
+  let rec equal x y = F.equal equal (proj x) (proj y)
+
+  include Pretty.Make0 (struct
+    type nonrec t = t
+
+    let rec pp prec ppf t = F.pp_prec prec pp ppf @@ proj t
+    let pp = `WithPrec pp
+  end)
+
+  (* -- Helpers --------------------------------------------------------------- *)
+
+  let pred ?ty_idxs pred = embed @@ F.pred pred ?ty_idxs
+  let union t1 t2 = embed @@ F.union t1 t2
+  let inter t1 t2 = embed @@ F.inter t1 t2
+  let product t1 t2 = embed @@ F.product t1 t2
+  let comp t = embed @@ F.comp t
+  let project t ~flds = embed @@ F.project t ~flds
+  let restrict t ~equiv = embed @@ F.restrict t ~equiv
+
+  let arity_of t =
+    let algebra = function
+      | F.RPred (p, _) -> Pred.arity_of p
+      | RProj (flds, _) -> List.length flds
+      | RRestr (_, n) -> n
+      | RComp n -> n
+      | RUnion (n, _) -> n
+      | RInter (n, _) -> n
+      | RProd (m, n) -> m + n
+    in
+    cata algebra t
+  ;;
+end
 
 module type MonadRelation = sig
   include Monad.S
@@ -16,8 +161,7 @@ module Make (M : MonadRelation) = struct
     let pr = Knowledge.pred k in
     M.(
       Knowledge.terms k
-      |> List.mapi ~f:(fun idx ->
-           function
+      |> List.mapi ~f:(fun idx -> function
            | Knowledge.KTerm.KSymbol sym -> return @@ (idx, Symbol.type_of sym)
            | KParam name ->
              get_param_ty name
@@ -25,7 +169,7 @@ module Make (M : MonadRelation) = struct
              | Some ty -> return (idx, ty)
              | _ -> err_unbound_param name Reporting.Region.empty))
       |> all
-      >>= fun ty_idxs -> return @@ pred pr ~ty_idxs)
+      >>= fun ty_idxs -> return @@ Algebra.pred pr ~ty_idxs)
   ;;
 
   (** 
@@ -41,7 +185,9 @@ module Make (M : MonadRelation) = struct
                |> all
                >>= (function
                | r :: rs ->
-                 return @@ (Knowledge.pred k, List.fold_left ~f:union ~init:r rs)
+                 return
+                 @@ ( Knowledge.pred k
+                    , List.fold_left ~f:Algebra.union ~init:r rs )
                | _ -> failwith "impossible"))
            | _ -> failwith "impossible")
     @@ List.group ~break:(fun k1 k2 ->
@@ -83,8 +229,7 @@ module Make (M : MonadRelation) = struct
     (* Construct relation *)
     M.(
       Lit.Adorned.(terms_of lit)
-      |> List.filter_mapi ~f:(fun idx ->
-           function
+      |> List.filter_mapi ~f:(fun idx -> function
            | Term.TSym (sym, _) -> Some (return (idx, Symbol.type_of sym))
            | TParam (nm, region) ->
              Some
@@ -96,11 +241,13 @@ module Make (M : MonadRelation) = struct
       |> all
       >>= fun ty_idxs ->
       let r =
-        (if Polarity.isPos @@ Lit.Adorned.pol_of lit then Fn.id else comp)
+        (if Polarity.isPos @@ Lit.Adorned.pol_of lit
+        then Fn.id
+        else Algebra.comp)
         @@ (if nvars = arity
            then Fn.id
-           else project ~flds:(List.map ~f:fst vars))
-        @@ pred pr ~ty_idxs
+           else Algebra.project ~flds:(List.map ~f:fst vars))
+        @@ Algebra.pred pr ~ty_idxs
       in
       return (st, r))
   ;;
@@ -116,14 +263,15 @@ module Make (M : MonadRelation) = struct
             M.(
               maccu
               >>= fun (st, accu) ->
-              of_lit lit st >>= fun (st', r) -> return (st', product accu r)))
-      | _ -> raise @@ ClauseHasNoBody region
+              of_lit lit st
+              >>= fun (st', r) -> return (st', Algebra.product accu r)))
+      | _ -> raise @@ Algebra.ClauseHasNoBody region
     in
     M.map
       ~f:(fun ((_, bound, equivs), r) ->
         ( bound
         , List.fold_right
-            ~f:(fun equiv accu -> restrict ~equiv accu)
+            ~f:(fun equiv accu -> Algebra.restrict ~equiv accu)
             ~init:r
             equivs ))
       mx
@@ -141,14 +289,14 @@ module Make (M : MonadRelation) = struct
             | Some (idx, _) -> idx
             | _ -> failwith "Not range restricted")
       in
-      return @@ project r ~flds)
+      return @@ Algebra.project r ~flds)
   ;;
 
   let of_clauses cls =
     match cls with
-    | [] -> raise NoClauses
+    | [] -> raise Algebra.NoClauses
     | x :: xs ->
       List.fold_left xs ~init:(of_clause x) ~f:(fun maccu cl ->
-          M.map2 ~f:union maccu @@ of_clause cl)
+          M.map2 ~f:Algebra.union maccu @@ of_clause cl)
   ;;
 end

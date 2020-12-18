@@ -6,7 +6,6 @@
   partition
   dataflow
   constraint
-  relation
   schedule
   core
   typecheck

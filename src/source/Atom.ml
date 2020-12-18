@@ -13,92 +13,10 @@ module type Minimal = sig
   include HasCoreRepr.S with type t := t
 end
 
-module TermMinimal :
-  Minimal with module Term = Term.Term and type repr = Core.Lit.Raw.t = struct
-  module Term = Term.Term
-
-  type t =
-    { pred_nm : Core.Name.t Located.t
-    ; terms : Core.Term.t list
-    }
-
-  type repr = Core.Lit.Raw.t
-
-  module Make (M : SourceM.S) = struct
-    module TermM = Term.Make (M)
-
-    let to_core { pred_nm = Located.{ elem = name; region }; terms } =
-      M.(
-        List.map ~f:TermM.to_core terms
-        |> all
-        |> map ~f:(fun terms ->
-               Core.(
-                 let arity = List.length terms in
-                 let pred = Pred.pred name ~arity in
-                 Lit.Raw.(lit pred terms ~region))))
-    ;;
-  end
-end
-
-module TmvarMinimal :
-  Minimal with module Term = Term.Tmvar and type repr = Core.Lit.Raw.t = struct
-  module Term = Term.Tmvar
-
-  type t =
-    { pred_nm : Core.Name.t Located.t
-    ; terms : Core.Tmvar.t Located.t list
-    }
-
-  type repr = Core.Lit.Raw.t
-
-  module Make (M : SourceM.S) = struct
-    module TermM = Term.Make (M)
-
-    let to_core { pred_nm = Located.{ elem = name; region }; terms } =
-      M.(
-        List.map ~f:TermM.to_core terms
-        |> all
-        |> map ~f:(fun terms ->
-               let arity = List.length terms in
-               Core.(
-                 let pred = Pred.pred name ~arity in
-                 Lit.Raw.(lit pred terms ~region))))
-    ;;
-  end
-end
-
-module SymbolMinimal :
-  Minimal with module Term = Term.Symbol and type repr = Core.Knowledge.t =
-struct
-  module Term = Term.Symbol
-
-  type t =
-    { pred_nm : Core.Name.t Located.t
-    ; terms : Core.Term.t list
-    }
-
-  type repr = Core.Knowledge.t
-
-  module Make (M : SourceM.S) = struct
-    module TermM = Term.Make (M)
-
-    let to_core { pred_nm = Located.{ elem = name; region }; terms } =
-      M.(
-        List.map ~f:TermM.to_core terms
-        |> all
-        >>= fun terms ->
-        let arity = List.length terms in
-        Core.(
-          let pred = Pred.pred name ~arity in
-          return @@ Knowledge.knowledge pred terms ~region))
-    ;;
-  end
-end
-
 (** An `Atom.t` is an atomic formula that may appear in the head or body of a 
     Datalog clause, query or fact Here the atom is abstracted over the type of 
     terms. 
-  *)
+*)
 module type S = sig
   include Minimal
   include Pretty.S0 with type t := t
@@ -136,11 +54,93 @@ struct
   end)
 end
 
+module TmvarMinimal :
+  Minimal with module Term = Term.Tmvar and type repr = Core.Lit.Raw.t = struct
+  module Term = Term.Tmvar
+
+  type t =
+    { pred_nm : Core.Name.t Located.t
+    ; terms : Core.Tmvar.t Located.t list
+    }
+
+  type repr = Core.Lit.Raw.t
+
+  module Make (M : SourceM.S) = struct
+    module TermM = Term.Make (M)
+
+    let to_core { pred_nm = Located.{ elem = name; region }; terms } =
+      M.(
+        List.map ~f:TermM.to_core terms
+        |> all
+        |> map ~f:(fun terms ->
+               let arity = List.length terms in
+               Core.(
+                 let pred = Pred.pred name ~arity in
+                 Lit.Raw.(lit pred terms ~region))))
+    ;;
+  end
+end
+
+module TermMinimal :
+  Minimal with module Term = Term.Term and type repr = Core.Lit.Raw.t = struct
+  module Term = Term.Term
+
+  type t =
+    { pred_nm : Core.Name.t Located.t
+    ; terms : Core.Term.t list
+    }
+
+  type repr = Core.Lit.Raw.t
+
+  module Make (M : SourceM.S) = struct
+    module TermM = Term.Make (M)
+
+    let to_core { pred_nm = Located.{ elem = name; region }; terms } =
+      M.(
+        List.map ~f:TermM.to_core terms
+        |> all
+        |> map ~f:(fun terms ->
+               Core.(
+                 let arity = List.length terms in
+                 let pred = Pred.pred name ~arity in
+                 Lit.Raw.(lit pred terms ~region))))
+    ;;
+  end
+end
+
+module SymbolMinimal :
+  Minimal with module Term = Term.Symbol and type repr = Core.Knowledge.t =
+struct
+  module Term = Term.Symbol
+
+  type t =
+    { pred_nm : Core.Name.t Located.t
+    ; terms : Core.Term.t list
+    }
+
+  type repr = Core.Knowledge.t
+
+  module Make (M : SourceM.S) = struct
+    module TermM = Term.Make (M)
+
+    let to_core { pred_nm = Located.{ elem = name; region }; terms } =
+      M.(
+        List.map ~f:TermM.to_core terms
+        |> all
+        >>= fun terms ->
+        let arity = List.length terms in
+        Core.(
+          let pred = Pred.pred name ~arity in
+          return @@ Knowledge.knowledge pred terms ~region))
+    ;;
+  end
+end
+
+(** Atomic formulae over full terms *)
+module Term = Make (TermMinimal)
+
 (** Atomic formulae over term variables  *)
 module Tmvar = Make (TmvarMinimal)
 
 (** Atomic formulae over symbols  *)
 module Symbol = Make (SymbolMinimal)
-
-(** Atomic formulae over full terms *)
-module Term = Make (TermMinimal)

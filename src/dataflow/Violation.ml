@@ -32,8 +32,7 @@ let of_clause Clause.Raw.{ head; body; _ } =
     @@ List.concat_map body ~f:(fun (Lit.Raw.{ pol; _ } as lit) ->
            if Polarity.isPos pol then Lit.Raw.vars_of lit else [])
   in
-  List.filter_mapi (Lit.Raw.terms_of head) ~f:(fun idx ->
-    function
+  List.filter_mapi (Lit.Raw.terms_of head) ~f:(fun idx -> function
     | Term.TVar (v, region) when Tmvar.Set.(not @@ mem body_vars v) ->
       let dest = Dest.DPred (head_pred, idx) in
       Some (violation ~region dest v)

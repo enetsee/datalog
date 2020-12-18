@@ -504,7 +504,7 @@ module BikeShop = struct
   ;;
 
   let rel_hasPartTC =
-    Relation.Algebra.(
+    Typecheck.Relation.Algebra.(
       union
         (project ~flds:[ 0; 1 ] @@ pred pr_hasPart)
         (project ~flds:[ 0; 3 ]
@@ -1156,7 +1156,7 @@ module SocialInsurance = struct
   ;;
 
   let rel_socins =
-    Relation.Algebra.(
+    Typecheck.Relation.Algebra.(
       union
         (project ~flds:[ 0; 3 ]
         @@ restrict ~equiv:(1, 2)

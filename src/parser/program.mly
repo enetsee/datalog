@@ -41,7 +41,7 @@
 
 (* -- Program --------------------------------------------------------------- *)
 
-program : stmts=list(statement) EOF { {stmts} }
+program : stmts=list(statement) EOF { Source.Program.{stmts} }
 
 (* -- Statements are either clause, queries, facts or declarations ---------- *)
 
