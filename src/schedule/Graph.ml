@@ -90,8 +90,7 @@ let expand pss =
 (** Helper to convert a binding pattern to a `Var.Set.t` *)
 let bound_by { head_vars; _ } ~bpatt =
   Var.Set.of_list
-  @@ List.filter_mapi ~f:(fun idx ->
-       function
+  @@ List.filter_mapi ~f:(fun idx -> function
        | Binding.Bound ->
          Some (snd @@ List.find_exn head_vars ~f:(fun (i, _) -> i = idx))
        | _ -> None)

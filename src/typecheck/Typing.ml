@@ -39,8 +39,8 @@ module Make (M : MonadTyping) = struct
   (** Abstract interpretation of a relation to obtain its typing *)
   let interpret rel =
     let rec aux t ~k =
-      match Relation__Algebra.proj t with
-      | Relation__Algebra.F.RPred (pr, ty_idxs) ->
+      match Relation.Algebra.proj t with
+      | Relation.Algebra.F.RPred (pr, ty_idxs) ->
         k @@ M.(get_typing_of Core.Pred.(name_of pr) >>= specialize ~ty_idxs)
       | RProj (flds, rel) ->
         aux rel ~k:(fun tym -> k @@ M.map ~f:Type.Typing.(project ~flds) tym)
@@ -58,7 +58,7 @@ module Make (M : MonadTyping) = struct
             aux rel2 ~k:(fun tym2 ->
                 k @@ M.(tym1 >>= fun ty1 -> tym2 >>= meet ty1)))
       | RComp rel ->
-        k @@ M.return @@ Type.Typing.top @@ Relation__Algebra.arity_of rel
+        k @@ M.return @@ Type.Typing.top @@ Relation.Algebra.arity_of rel
     in
     aux ~k:Fn.id rel
   ;;

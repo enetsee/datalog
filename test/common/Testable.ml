@@ -121,5 +121,5 @@ let trg : Type.Ty.Set.t Type.Ty.Map.t Alcotest.testable =
 
 let ttc = Type.TTC.(Alcotest.testable pp equal)
 let typing = Type.Typing.(Alcotest.testable pp equal)
-let relation = Relation.Algebra.(Alcotest.testable pp equal)
+let relation = Typecheck.Relation.Algebra.(Alcotest.testable pp equal)
 let typing_env = Typecheck.TypingEnv.(Alcotest.testable pp equal)

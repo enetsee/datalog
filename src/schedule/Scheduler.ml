@@ -22,8 +22,7 @@ module Make (M : ScheduleM.S) = struct
 
   (** Non-existential variables of a literal and their indices *)
   let vars lit =
-    List.filter_mapi ~f:(fun idx ->
-      function
+    List.filter_mapi ~f:(fun idx -> function
       | Term.TVar (v, _) -> Some (idx, Var.Named v)
       | _ -> None)
     @@ Lit.Raw.terms_of lit
