@@ -1,6 +1,13 @@
 (library
-  (name dataflow)
-  (libraries core_kernel str fmt qcheck reporting core lib)
-  (inline_tests)
-  (preprocess (pps ppx_jane ppx_variants_conv ppx_deriving.map ppx_deriving.show ppx_deriving.eq ppx_deriving.fold ppx_deriving.create))
-)
+ (name dataflow)
+ (libraries core_kernel str fmt qcheck reporting name core lib)
+ (inline_tests)
+ (preprocess
+  (pps
+   ppx_jane
+   ppx_variants_conv
+   ppx_deriving.map
+   ppx_deriving.show
+   ppx_deriving.eq
+   ppx_deriving.fold
+   ppx_deriving.create)))

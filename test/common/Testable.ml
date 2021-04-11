@@ -91,8 +91,8 @@ let stratified_program = Core.Program.Stratified.(Alcotest.testable pp equal)
 let violation = Dataflow.Violation.(Alcotest.testable pp equal)
 let kb = Core.Knowledge.Base.(Alcotest.testable pp equal)
 let partition = Partition.(Alcotest.testable pp equal)
-let ty = Core.Ty.(Alcotest.testable pp equal)
-let tyset = Core.Ty.Set.(Alcotest.testable (pp_set Core.Ty.pp) equal)
+let ty = Type.Ty.(Alcotest.testable pp equal)
+let tyset = Type.Ty.Set.(Alcotest.testable (pp_set Type.Ty.pp) equal)
 let cnstr = Constraint.(Alcotest.testable pp equal)
 let schedule = Schedule.Graph.(Alcotest.testable pp equal)
 
@@ -113,13 +113,13 @@ let orderings =
   Alcotest.testable pp eq
 ;;
 
-let trg : Core.Ty.Set.t Core.Ty.Map.t Alcotest.testable =
-  Core.Ty.Map.(
-    Alcotest.testable (pp_map Core.Ty.pp @@ pp_set Core.Ty.pp)
-    @@ equal Core.Ty.Set.equal)
+let trg : Type.Ty.Set.t Type.Ty.Map.t Alcotest.testable =
+  Type.Ty.Map.(
+    Alcotest.testable (pp_map Type.Ty.pp @@ pp_set Type.Ty.pp)
+    @@ equal Type.Ty.Set.equal)
 ;;
 
-let ttc = Core.TTC.(Alcotest.testable pp equal)
-let typing = Core.Typing.(Alcotest.testable pp equal)
+let ttc = Type.TTC.(Alcotest.testable pp equal)
+let typing = Type.Typing.(Alcotest.testable pp equal)
 let relation = Relation.Algebra.(Alcotest.testable pp equal)
 let typing_env = Typecheck.TypingEnv.(Alcotest.testable pp equal)

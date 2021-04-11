@@ -1,5 +1,5 @@
 open Core_kernel
-open Core
+open Type
 open Test_common
 
 module Env = struct

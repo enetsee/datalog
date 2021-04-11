@@ -21,10 +21,10 @@ let normalize { stmts } =
 type elems =
   { clauses : Core.Clause.Raw.t list
   ; knowledge : Core.Knowledge.t list
-  ; tydefs : (Core.Name.t * Core.Ty.t) list
-  ; data : (Core.Name.t * (Core.Name.t * Core.Ty.t) list) list
-  ; params : (Core.Name.t * Core.Ty.t) list
-  ; exports : Core.Name.t Located.t list
+  ; tydefs : (Name.t * Type.Ty.t) list
+  ; data : (Name.t * (Name.t * Type.Ty.t) list) list
+  ; params : (Name.t * Type.Ty.t) list
+  ; exports : Name.t Located.t list
   }
 
 let empty =

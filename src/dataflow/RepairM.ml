@@ -1,5 +1,4 @@
 open Core_kernel
-open Core
 
 module type S = sig
   include Monad.S

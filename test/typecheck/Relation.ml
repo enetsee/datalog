@@ -3,16 +3,16 @@ open Test_common
 (* -- Monad for relation translation ---------------------------------------- *)
 
 module Env = struct
-  type t = Core.Ty.t Core.Name.Map.t
+  type t = Type.Ty.t Name.Map.t
 
-  let empty = Core.Name.Map.empty
+  let empty = Name.Map.empty
 end
 
 module Err = struct
-  type t = Core.Name.t * Reporting.Region.t
+  type t = Name.t * Reporting.Region.t
 
-  let equal (nm, _) (nm', _) = Core.Name.equal nm nm'
-  let pp = Fmt.(pair ~sep:sp Core.Name.pp Reporting.Region.pp)
+  let equal (nm, _) (nm', _) = Name.equal nm nm'
+  let pp = Fmt.(pair ~sep:sp Name.pp Reporting.Region.pp)
 end
 
 let testable_err = Err.(Alcotest.testable pp equal)
@@ -27,10 +27,7 @@ module M = struct
   include Effect.ReaderT.Make_with_env (Env) (Fail)
 
   let err_unbound_param name region = lift @@ Fail.err_unbound_param name region
-
-  let get_param_ty name =
-    ask >>= fun env -> return @@ Core.Name.Map.find env name
-  ;;
+  let get_param_ty name = ask >>= fun env -> return @@ Name.Map.find env name
 end
 
 module RelM = Typecheck.Relation.Make (M)

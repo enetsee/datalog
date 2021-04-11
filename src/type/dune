@@ -1,22 +1,6 @@
 (library
- (name compiler)
- (libraries
-  core_kernel
-  str
-  fmt
-  qcheck
-  lib
-  reporting
-  effect
-  parser
-  name
-  source
-  type
-  core
-  partition
-  dataflow
-  adorn
-  typecheck)
+ (name type)
+ (libraries core_kernel str fmt qcheck lib name partition)
  (inline_tests)
  (preprocess
   (pps

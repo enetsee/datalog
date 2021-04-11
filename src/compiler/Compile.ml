@@ -1,6 +1,7 @@
 open Core_kernel
 open Parser
 open Core
+open Type
 open Reporting
 module P = Parse.Make (CompileM)
 module S = Source.Program.Make (CompileM)

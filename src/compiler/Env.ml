@@ -1,11 +1,12 @@
 open Core_kernel
-open Core
 
 type t =
   { reserved_names : Name.t list
-  ; trg : TRG.t
+  ; trg : Type.TRG.t
   ; guard_prefix : string
   }
 [@@deriving fields]
 
-let default = { reserved_names = []; guard_prefix = "guard"; trg = TRG.empty }
+let default =
+  { reserved_names = []; guard_prefix = "guard"; trg = Type.TRG.empty }
+;;

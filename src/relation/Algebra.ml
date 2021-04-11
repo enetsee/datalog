@@ -8,7 +8,7 @@ exception NoClauses
 
 module F = struct
   type 'a t =
-    | RPred of Pred.t * (int * Ty.t) list
+    | RPred of Pred.t * (int * Type.Ty.t) list
     | RUnion of 'a * 'a
     | RInter of 'a * 'a
     | RProd of 'a * 'a
@@ -50,7 +50,7 @@ module F = struct
           @@ pair Pred.pp
           @@ parens
           @@ list ~sep:comma
-          @@ pair ~sep:(any "@;:@;") int Ty.pp)
+          @@ pair ~sep:(any "@;:@;") int Type.Ty.pp)
           ppf
           (pr, ty_idxs)
     ;;

@@ -41,7 +41,7 @@
 
 (* -- Program --------------------------------------------------------------- *)
 
-program : stmts=list(statement) EOF { {stmts} }
+program : stmts=list(statement) EOF { Source.Program.{stmts} }
 
 (* -- Statements are either clause, queries, facts or declarations ---------- *)
 
@@ -130,7 +130,7 @@ atom_symbol :
 pred_name : 
   | n=NAME { 
     let (str,region) = n in 
-    Reporting.Located.locate ~region @@ Core.Name.from_string str
+    Reporting.Located.locate ~region @@ Name.from_string str
   }
 (* -- Term ------------------------------------------------------------------ *)
 
@@ -146,12 +146,12 @@ term :
   }
   | p=PARAMNAME { 
     let (str,region) = p in  
-    Core.Term.param  ~region @@ Core.Name.from_string str
+    Core.Term.param  ~region @@ Name.from_string str
   }
   | w=WILDCARD { 
     let (str_opt,region) = w in 
     
-     Core.Term.wild  ~region @@ Option.map ~f:Core.Name.from_string str_opt
+     Core.Term.wild  ~region @@ Option.map ~f:Name.from_string str_opt
   }
 
 
@@ -189,7 +189,7 @@ export_decl :
   | EXPORT nm=NAME { 
       let loc_name = 
         let (str,region) = nm in 
-        Reporting.Located.locate ~region @@ Core.Name.from_string str
+        Reporting.Located.locate ~region @@ Name.from_string str
       in 
       Statement.export loc_name
     }
@@ -198,7 +198,7 @@ param_decl :
   | start_=PARAM nm=PARAMNAME COLON ty=ty { 
     let loc_name = 
         let (str,region) = nm in 
-        Reporting.Located.locate ~region  @@ Core.Name.from_string str
+        Reporting.Located.locate ~region  @@ Name.from_string str
     in 
     let region = Reporting.Region.merge start_ ty.region in 
     Statement.param ~region loc_name ty 
@@ -222,18 +222,18 @@ ty_defn:
 
 
 ty :
-  | region=TYSYMBOL { Reporting.Located.locate ~region Core.Ty.Symbol }
-  | region=TYREAL   { Reporting.Located.locate ~region Core.Ty.Real }
-  | region=TYINT    { Reporting.Located.locate ~region Core.Ty.Int }
-  | region=TYBOOL   { Reporting.Located.locate ~region Core.Ty.Bool }
-  | region=TYDATE   { Reporting.Located.locate ~region Core.Ty.Date }
-  | region=TYSPAN   { Reporting.Located.locate ~region Core.Ty.Span }
-  | named=ty_name    { let (nm,region) = named in Reporting.Located.locate ~region @@ Core.Ty.Named nm }
+  | region=TYSYMBOL { Reporting.Located.locate ~region Type.Ty.Symbol }
+  | region=TYREAL   { Reporting.Located.locate ~region Type.Ty.Real }
+  | region=TYINT    { Reporting.Located.locate ~region Type.Ty.Int }
+  | region=TYBOOL   { Reporting.Located.locate ~region Type.Ty.Bool }
+  | region=TYDATE   { Reporting.Located.locate ~region Type.Ty.Date }
+  | region=TYSPAN   { Reporting.Located.locate ~region Type.Ty.Span }
+  | named=ty_name    { let (nm,region) = named in Reporting.Located.locate ~region @@ Type.Ty.Named nm }
 
 ty_name : 
   | nm = TYNAME {
     let (str,region) = nm in 
-    Core.Name.from_string str , region
+    Name.from_string str , region
   }
 
 data_decl : 
@@ -241,7 +241,7 @@ data_decl :
       let region = Reporting.Region.merge start_ end_ in
       let loc_name = 
         let (str,region) = nm in 
-        Reporting.Located.locate  ~region @@ Core.Name.from_string str
+        Reporting.Located.locate  ~region @@ Name.from_string str
       in 
       Statement.data ~region loc_name  attrs
   }
@@ -252,7 +252,7 @@ data_attribute:
 
     let loc_name = 
         let (str,region) = nm in 
-        Reporting.Located.locate ~region @@ Core.Name.from_string str
+        Reporting.Located.locate ~region @@ Name.from_string str
       in 
     loc_name,ty
   }

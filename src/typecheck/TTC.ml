@@ -45,20 +45,20 @@ class.
 (s1,...,sn | p) /\ (t1,...,tn | q) := (s1 /\ t1,...,sn /\ tn) (|) (p /\ q)
 (u1,...,un) (|) r := (u1',...,un') where ui'= {uj | i ∼ j}
 *)
-  let meet Core.TTC.{ tys = ts1; equiv = p1 } Core.TTC.{ tys = ts2; equiv = p2 }
+  let meet Type.TTC.{ tys = ts1; equiv = p1 } Type.TTC.{ tys = ts2; equiv = p2 }
     =
     let equiv = Partition.(join p1 p2) in
     M.(
       List.map2_exn ~f:MTy.meet ts1 ts2
       |> all
       >>= meet_within equiv
-      |> map ~f:(fun tys -> Core.TTC.{ tys; equiv }))
+      |> map ~f:(fun tys -> Type.TTC.{ tys; equiv }))
   ;;
 
   (** Given a list of types with their indicies, specialize the TTC based
   on this information and the by finding the meet of the types within
   their equivalence classes *)
-  let specialize (Core.TTC.{ tys; equiv } as t) ~ty_idxs =
+  let specialize (Type.TTC.{ tys; equiv } as t) ~ty_idxs =
     let lut = Int.Map.of_alist_exn ty_idxs in
     let tys' =
       List.mapi tys ~f:(fun idx ty ->

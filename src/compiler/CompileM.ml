@@ -1,5 +1,6 @@
 open Core_kernel
-open Core
+open Type
+open Core.Nature
 include Effect.MonadRWSFail.Make (Err) (Topic) (State) (Env)
 
 (* -- Errors ---------------------------------------------------------------- *)
@@ -41,7 +42,7 @@ let warn_no_exports () = warn Warn.no_exports
 
 let subtypes_of ty =
   map ~f:(fun trg ->
-      Option.value ~default:Ty.Set.empty @@ Core.TRG.subtypes_of ~ty trg)
+      Option.value ~default:Ty.Set.empty @@ TRG.subtypes_of ~ty trg)
   @@ reader Env.trg
 ;;
 
@@ -117,12 +118,12 @@ let get_pred_nature name =
     ~f:
       Option.(
         value_map
-          ~default:Nature.Logical
+          ~default:Logical
           ~f:Typecheck.TypingEnv.(fun { nature; _ } -> nature))
   @@ get_pred_info name
 ;;
 
-let get_pred_effects name = map ~f:Nature.effects_of @@ get_pred_nature name
+let get_pred_effects name = map ~f:effects_of @@ get_pred_nature name
 let guard_prefix = map ~f:(fun Env.{ guard_prefix; _ } -> guard_prefix) ask
 
 let fresh_predsym pfx =

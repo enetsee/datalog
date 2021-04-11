@@ -1,7 +1,11 @@
-
 (library
-  (name source)
-  (libraries core_kernel str fmt lib reporting core effect)
-  (inline_tests)
-  (preprocess (pps ppx_jane ppx_deriving.map ppx_deriving.eq ppx_deriving.fold ppx_deriving.create))
-)
+ (name source)
+ (libraries core_kernel str fmt lib reporting name core type effect)
+ (inline_tests)
+ (preprocess
+  (pps
+   ppx_jane
+   ppx_deriving.map
+   ppx_deriving.eq
+   ppx_deriving.fold
+   ppx_deriving.create)))

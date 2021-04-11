@@ -1,5 +1,4 @@
 open Core_kernel
-open Core
 open Reporting
 
 module type S = sig

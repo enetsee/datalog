@@ -3,9 +3,9 @@ open Core_kernel
 module Alice = struct
   let vx = Core.Term.var "X"
   let mk_lit pr = Core.Lit.Raw.(lit pr [ vx ])
-  let pr_a = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "a")
+  let pr_a = Core.Pred.(pred ~arity:1 @@ Name.from_string "a")
   let lit_a = mk_lit pr_a
-  let pr_b = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "b")
+  let pr_b = Core.Pred.(pred ~arity:1 @@ Name.from_string "b")
   let lit_b = mk_lit pr_b
   let pr_c = Core.(Pred.pred ~arity:1 @@ Name.from_string "c")
   let lit_c = mk_lit pr_c
@@ -128,28 +128,28 @@ end
 
 module BikeShop = struct
   (* -- Types used & subtyping relationships ------------------------------ *)
-  let nm_ty_cycle = Core.Name.from_string "cycle"
-  let nm_ty_bicycle = Core.Name.from_string "bicycle"
-  let nm_ty_unicycle = Core.Name.from_string "unicycle"
-  let nm_ty_pedals = Core.Name.from_string "pedals"
-  let nm_ty_saddle = Core.Name.from_string "saddle"
-  let nm_ty_wheel = Core.Name.from_string "wheel"
-  let nm_ty_spokes = Core.Name.from_string "spokes"
-  let nm_ty_tire = Core.Name.from_string "tire"
-  let nm_ty_tube = Core.Name.from_string "tube"
-  let ty_cycle = Core.Ty.named' nm_ty_cycle
-  let ty_bicycle = Core.Ty.named' nm_ty_bicycle
-  let ty_unicycle = Core.Ty.named' nm_ty_unicycle
-  let ty_pedals = Core.Ty.named' nm_ty_pedals
-  let ty_saddle = Core.Ty.named' nm_ty_saddle
-  let ty_wheel = Core.Ty.named' nm_ty_wheel
-  let ty_spokes = Core.Ty.named' nm_ty_spokes
-  let ty_tire = Core.Ty.named' nm_ty_tire
-  let ty_tube = Core.Ty.named' nm_ty_tube
+  let nm_ty_cycle = Name.from_string "cycle"
+  let nm_ty_bicycle = Name.from_string "bicycle"
+  let nm_ty_unicycle = Name.from_string "unicycle"
+  let nm_ty_pedals = Name.from_string "pedals"
+  let nm_ty_saddle = Name.from_string "saddle"
+  let nm_ty_wheel = Name.from_string "wheel"
+  let nm_ty_spokes = Name.from_string "spokes"
+  let nm_ty_tire = Name.from_string "tire"
+  let nm_ty_tube = Name.from_string "tube"
+  let ty_cycle = Type.Ty.named' nm_ty_cycle
+  let ty_bicycle = Type.Ty.named' nm_ty_bicycle
+  let ty_unicycle = Type.Ty.named' nm_ty_unicycle
+  let ty_pedals = Type.Ty.named' nm_ty_pedals
+  let ty_saddle = Type.Ty.named' nm_ty_saddle
+  let ty_wheel = Type.Ty.named' nm_ty_wheel
+  let ty_spokes = Type.Ty.named' nm_ty_spokes
+  let ty_tire = Type.Ty.named' nm_ty_tire
+  let ty_tube = Type.Ty.named' nm_ty_tube
 
   let subtys =
-    Core.Ty.
-      [ nm_ty_cycle, Core.Ty.Symbol
+    Type.Ty.
+      [ nm_ty_cycle, Type.Ty.Symbol
       ; nm_ty_bicycle, ty_cycle
       ; nm_ty_unicycle, ty_cycle
       ; nm_ty_pedals, Symbol
@@ -162,8 +162,8 @@ module BikeShop = struct
   ;;
 
   let closure =
-    Core.Ty.Map.of_alist_exn
-      Core.Ty.
+    Type.Ty.Map.of_alist_exn
+      Type.Ty.
         [ ( Symbol
           , Set.of_list
               [ Symbol
@@ -190,14 +190,14 @@ module BikeShop = struct
   ;;
 
   (* -- Names ------------------------------------------------------------- *)
-  let nm_cycle = Core.Name.from_string "cycle"
-  let nm_unicycle = Core.Name.from_string "unicycle"
-  let nm_bicycle = Core.Name.from_string "bicycle"
-  let nm_wheel = Core.Name.from_string "wheel"
-  let nm_tire = Core.Name.from_string "tire"
-  let nm_hasPart = Core.Name.from_string "hasPart"
-  let nm_hasPartTC = Core.Name.from_string "hasPart+"
-  let nm_query = Core.Name.from_string "query"
+  let nm_cycle = Name.from_string "cycle"
+  let nm_unicycle = Name.from_string "unicycle"
+  let nm_bicycle = Name.from_string "bicycle"
+  let nm_wheel = Name.from_string "wheel"
+  let nm_tire = Name.from_string "tire"
+  let nm_hasPart = Name.from_string "hasPart"
+  let nm_hasPartTC = Name.from_string "hasPart+"
+  let nm_query = Name.from_string "query"
 
   (* -- Predicates -------------------------------------------------------- *)
   let pr_cycle = Core.(Pred.pred ~arity:1 nm_cycle)
@@ -210,15 +210,15 @@ module BikeShop = struct
   let pr_query = Core.(Pred.pred ~arity:2 nm_query)
 
   (* -- TTCs -------------------------------------------------------------- *)
-  let ttc_cycle = Core.TTC.ttc [ ty_cycle ]
+  let ttc_cycle = Type.TTC.ttc [ ty_cycle ]
 
   let ttc_unicycle =
-    Core.TTC.ttc [ ty_unicycle; ty_saddle; ty_wheel; ty_pedals ]
+    Type.TTC.ttc [ ty_unicycle; ty_saddle; ty_wheel; ty_pedals ]
   ;;
 
-  let ttc_bicycle = Core.TTC.ttc [ ty_bicycle; ty_wheel; ty_wheel; ty_pedals ]
-  let ttc_wheel = Core.TTC.ttc [ ty_wheel; ty_tire; ty_spokes ]
-  let ttc_tire = Core.TTC.ttc [ ty_tire; ty_tube ]
+  let ttc_bicycle = Type.TTC.ttc [ ty_bicycle; ty_wheel; ty_wheel; ty_pedals ]
+  let ttc_wheel = Type.TTC.ttc [ ty_wheel; ty_tire; ty_spokes ]
+  let ttc_tire = Type.TTC.ttc [ ty_tire; ty_tube ]
 
   let datas =
     [ nm_cycle, ttc_cycle
@@ -232,8 +232,8 @@ module BikeShop = struct
   (* -- Typings ----------------------------------------------------------- *)
 
   let typing_hasPart =
-    Core.Typing.of_list
-      Core.TTC.
+    Type.Typing.of_list
+      Type.TTC.
         [ ttc [ ty_bicycle; ty_pedals ]
         ; ttc [ ty_bicycle; ty_wheel ]
         ; ttc [ ty_unicycle; ty_saddle ]
@@ -246,8 +246,8 @@ module BikeShop = struct
   ;;
 
   let typing_hasPart_2 =
-    Core.Typing.of_list
-      Core.TTC.
+    Type.Typing.of_list
+      Type.TTC.
         [ ttc [ ty_bicycle; ty_pedals; ty_bicycle; ty_pedals ]
         ; ttc [ ty_bicycle; ty_pedals; ty_bicycle; ty_wheel ]
         ; ttc [ ty_bicycle; ty_pedals; ty_unicycle; ty_saddle ]
@@ -319,8 +319,8 @@ module BikeShop = struct
     let equiv =
       Partition.(of_list Int.Set.[ singleton 0; of_list [ 1; 2 ]; singleton 3 ])
     in
-    Core.Typing.of_list
-      Core.TTC.
+    Type.Typing.of_list
+      Type.TTC.
         [ ttc [ ty_bicycle; ty_wheel; ty_wheel; ty_tire ] ~equiv
         ; ttc [ ty_bicycle; ty_wheel; ty_wheel; ty_spokes ] ~equiv
         ; ttc [ ty_unicycle; ty_wheel; ty_wheel; ty_tire ] ~equiv
@@ -330,8 +330,8 @@ module BikeShop = struct
   ;;
 
   let typing_hasPart_2_eq_1_2_proj_0_4 =
-    Core.Typing.of_list
-      Core.TTC.
+    Type.Typing.of_list
+      Type.TTC.
         [ ttc [ ty_bicycle; ty_tire ]
         ; ttc [ ty_bicycle; ty_spokes ]
         ; ttc [ ty_unicycle; ty_tire ]
@@ -341,8 +341,8 @@ module BikeShop = struct
   ;;
 
   let typing_hasPartTC =
-    Core.Typing.of_list
-      Core.TTC.
+    Type.Typing.of_list
+      Type.TTC.
         [ ttc [ ty_bicycle; ty_pedals ]
         ; ttc [ ty_bicycle; ty_wheel ]
         ; ttc [ ty_bicycle; ty_tire ]
@@ -362,8 +362,8 @@ module BikeShop = struct
   ;;
 
   let typing_query =
-    Core.Typing.of_list
-      Core.TTC.
+    Type.Typing.of_list
+      Type.TTC.
         [ ttc [ ty_wheel; ty_tire ]
         ; ttc [ ty_wheel; ty_spokes ]
         ; ttc [ ty_wheel; ty_tube ]
@@ -554,7 +554,7 @@ module ClientServer = struct
 
   let ti_hash =
     Typecheck.TypingEnv.
-      { typing = Core.Typing.of_schema Core.Ty.[ Symbol; Symbol ]
+      { typing = Type.Typing.of_schema Type.Ty.[ Symbol; Symbol ]
       ; cstr = Constraint.(of_list Atomic.[ of_list [ 0 ] ])
       ; nature = Core.Nature.Extralogical []
       }
@@ -565,7 +565,7 @@ module ClientServer = struct
 
   let ti_rainbow =
     Typecheck.TypingEnv.
-      { typing = Core.Typing.of_schema Core.Ty.[ Symbol; Symbol ]
+      { typing = Type.Typing.of_schema Type.Ty.[ Symbol; Symbol ]
       ; cstr = Constraint.(of_list Atomic.[ of_list [ 1 ] ])
       ; nature = Core.Nature.Extralogical []
       }
@@ -758,27 +758,27 @@ end
 module Negation = struct
   let vx = Core.Term.var "X"
   let mk_lit pr = Core.Lit.Raw.(lit pr [ vx ])
-  let pr_a = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "a")
+  let pr_a = Core.Pred.(pred ~arity:1 @@ Name.from_string "a")
   let lit_a = mk_lit pr_a
-  let pr_b = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "b")
+  let pr_b = Core.Pred.(pred ~arity:1 @@ Name.from_string "b")
   let lit_b = mk_lit pr_b
-  let pr_c = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "c")
+  let pr_c = Core.Pred.(pred ~arity:1 @@ Name.from_string "c")
   let lit_c = mk_lit pr_c
-  let pr_d = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "d")
+  let pr_d = Core.Pred.(pred ~arity:1 @@ Name.from_string "d")
   let lit_d = mk_lit pr_d
-  let pr_e = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "e")
+  let pr_e = Core.Pred.(pred ~arity:1 @@ Name.from_string "e")
   let lit_e = mk_lit pr_e
-  let pr_s = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "s")
+  let pr_s = Core.Pred.(pred ~arity:1 @@ Name.from_string "s")
   let lit_s = mk_lit pr_s
-  let pr_t = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "t")
+  let pr_t = Core.Pred.(pred ~arity:1 @@ Name.from_string "t")
   let lit_t = mk_lit pr_t
-  let pr_u = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "u")
+  let pr_u = Core.Pred.(pred ~arity:1 @@ Name.from_string "u")
   let lit_u = mk_lit pr_u
-  let pr_v = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "v")
+  let pr_v = Core.Pred.(pred ~arity:1 @@ Name.from_string "v")
   let lit_v = mk_lit pr_v
-  let pr_w = Core.Pred.(pred ~arity:1 @@ Core.Name.from_string "w")
+  let pr_w = Core.Pred.(pred ~arity:1 @@ Name.from_string "w")
   let lit_w = mk_lit pr_w
-  let pr_qry = Core.Pred.(pred ~arity:0 @@ Core.Name.from_string "query")
+  let pr_qry = Core.Pred.(pred ~arity:0 @@ Name.from_string "query")
   let lit_qry = Core.Lit.Raw.lit pr_qry []
 
   let cls_raw =
@@ -833,11 +833,11 @@ end
 
 module RSG = struct
   (* -- Names ------------------------------------------------------------- *)
-  let nm_flat = Core.Name.from_string "flat"
-  let nm_up = Core.Name.from_string "up"
-  let nm_down = Core.Name.from_string "down"
-  let nm_rsg = Core.Name.from_string "rsg"
-  let nm_qry = Core.Name.from_string "query"
+  let nm_flat = Name.from_string "flat"
+  let nm_up = Name.from_string "up"
+  let nm_down = Name.from_string "down"
+  let nm_rsg = Name.from_string "rsg"
+  let nm_qry = Name.from_string "query"
 
   (* -- Predicates -------------------------------------------------------- *)
   let pr_rsg = Core.(Pred.pred ~arity:2 nm_rsg)
@@ -847,9 +847,9 @@ module RSG = struct
   let pr_down = Core.(Pred.pred ~arity:2 nm_down)
 
   (* -- TTCs -------------------------------------------------------------- *)
-  let ttc_flat = Core.TTC.ttc Core.Ty.[ Symbol; Symbol ]
-  let ttc_up = Core.TTC.ttc Core.Ty.[ Symbol; Symbol ]
-  let ttc_down = Core.TTC.ttc Core.Ty.[ Symbol; Symbol ]
+  let ttc_flat = Type.TTC.ttc Type.Ty.[ Symbol; Symbol ]
+  let ttc_up = Type.TTC.ttc Type.Ty.[ Symbol; Symbol ]
+  let ttc_down = Type.TTC.ttc Type.Ty.[ Symbol; Symbol ]
   let datas = [ nm_flat, ttc_flat; nm_up, ttc_up; nm_down, ttc_down ]
 
   let tyenv =
@@ -916,20 +916,20 @@ module RSG = struct
 end
 
 module SocialInsurance = struct
-  let ty_employee = Core.Ty.(named "employee")
-  let ty_regular = Core.Ty.(named "regular")
-  let ty_student = Core.Ty.(named "student")
+  let ty_employee = Type.Ty.(named "employee")
+  let ty_regular = Type.Ty.(named "regular")
+  let ty_student = Type.Ty.(named "student")
 
   let subtys =
-    [ ty_employee, Core.Ty.Symbol
+    [ ty_employee, Type.Ty.Symbol
     ; ty_regular, ty_employee
     ; ty_student, ty_employee
     ]
   ;;
 
   let trg =
-    Core.Ty.Map.of_alist_exn
-      Core.Ty.
+    Type.Ty.Map.of_alist_exn
+      Type.Ty.
         [ Symbol, Set.of_list [ Symbol; ty_employee; ty_regular; ty_student ]
         ; ty_employee, Set.of_list [ ty_employee; ty_regular; ty_student ]
         ; ty_regular, Set.singleton ty_regular
@@ -939,15 +939,15 @@ module SocialInsurance = struct
 
   (* -- Names ------------------------------------------------------------- *)
 
-  let nm_regular = Core.Name.from_string "regular"
-  let nm_student = Core.Name.from_string "student"
-  let nm_age = Core.Name.from_string "age"
-  let nm_employee = Core.Name.from_string "employee"
-  let nm_salary = Core.Name.from_string "salary"
-  let nm_socins = Core.Name.from_string "socins"
-  let nm_mult = Core.Name.from_string "mult"
-  let nm_eq = Core.Name.from_string "eq"
-  let nm_query = Core.Name.from_string "query"
+  let nm_regular = Name.from_string "regular"
+  let nm_student = Name.from_string "student"
+  let nm_age = Name.from_string "age"
+  let nm_employee = Name.from_string "employee"
+  let nm_salary = Name.from_string "salary"
+  let nm_socins = Name.from_string "socins"
+  let nm_mult = Name.from_string "mult"
+  let nm_eq = Name.from_string "eq"
+  let nm_query = Name.from_string "query"
 
   (* -- Predicates -------------------------------------------------------- *)
   let pr_regular = Core.(Pred.pred ~arity:1 nm_regular)
@@ -962,9 +962,9 @@ module SocialInsurance = struct
 
   (* -- TTCs -------------------------------------------------------------- *)
 
-  let ttc_regular = Core.TTC.ttc [ ty_regular ]
-  let ttc_student = Core.TTC.ttc [ ty_student ]
-  let ttc_age = Core.TTC.ttc [ ty_employee; Core.Ty.Real ]
+  let ttc_regular = Type.TTC.ttc [ ty_regular ]
+  let ttc_student = Type.TTC.ttc [ ty_student ]
+  let ttc_age = Type.TTC.ttc [ ty_employee; Type.Ty.Real ]
 
   let datas =
     [ nm_regular, ttc_regular; nm_student, ttc_student; nm_age, ttc_age ]
@@ -972,37 +972,37 @@ module SocialInsurance = struct
 
   (* -- Typings ----------------------------------------------------------- *)
   let typing_mult =
-    Core.Typing.singleton
-    @@ Core.TTC.ttc
-         Core.Ty.[ Number; Number; Number ]
+    Type.Typing.singleton
+    @@ Type.TTC.ttc
+         Type.Ty.[ Number; Number; Number ]
          ~equiv:Partition.(singleton @@ Int.Set.of_list [ 0; 1; 2 ])
   ;;
 
   let typing_eq =
-    Core.Typing.singleton
-    @@ Core.TTC.ttc
-         Core.Ty.[ Top; Top ]
+    Type.Typing.singleton
+    @@ Type.TTC.ttc
+         Type.Ty.[ Top; Top ]
          ~equiv:Partition.(singleton @@ Int.Set.of_list [ 0; 1 ])
   ;;
 
   let typing_employee =
-    Core.Typing.of_list Core.TTC.[ ttc [ ty_regular ]; ttc [ ty_student ] ]
+    Type.Typing.of_list Type.TTC.[ ttc [ ty_regular ]; ttc [ ty_student ] ]
   ;;
 
   let typing_salary =
-    Core.Typing.of_list
-      Core.TTC.
-        [ ttc [ ty_regular; Core.Ty.Real ]; ttc [ ty_student; Core.Ty.Real ] ]
+    Type.Typing.of_list
+      Type.TTC.
+        [ ttc [ ty_regular; Type.Ty.Real ]; ttc [ ty_student; Type.Ty.Real ] ]
   ;;
 
   let typing_socins =
-    Core.Typing.of_list
-      Core.TTC.
-        [ ttc [ ty_regular; Core.Ty.Real ]; ttc [ ty_student; Core.Ty.Real ] ]
+    Type.Typing.of_list
+      Type.TTC.
+        [ ttc [ ty_regular; Type.Ty.Real ]; ttc [ ty_student; Type.Ty.Real ] ]
   ;;
 
   let typing_query =
-    Core.Typing.of_list Core.TTC.[ ttc [ ty_student; Core.Ty.Real ] ]
+    Type.Typing.of_list Type.TTC.[ ttc [ ty_student; Type.Ty.Real ] ]
   ;;
 
   (* -- Extralogical predicate information -------------------------------- *)
@@ -1167,12 +1167,12 @@ module SocialInsurance = struct
                 (product
                    (pred pr_salary)
                    (project ~flds:[ 1; 2 ]
-                   @@ pred pr_mult ~ty_idxs:[ 0, Core.Ty.Real ]))
+                   @@ pred pr_mult ~ty_idxs:[ 0, Type.Ty.Real ]))
                 (pred pr_employee))
              (comp @@ pred pr_student))
         (project ~flds:[ 1; 0 ]
         @@ product
-             (project ~flds:[ 1 ] @@ pred pr_eq ~ty_idxs:[ 0, Core.Ty.Real ])
+             (project ~flds:[ 1 ] @@ pred pr_eq ~ty_idxs:[ 0, Type.Ty.Real ])
              (pred pr_student)))
   ;;
 

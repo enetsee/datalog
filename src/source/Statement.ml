@@ -10,21 +10,21 @@ type t =
       }
   | SFact of Head.Symbol.t
   | STy of
-      { name : Core.Name.t Located.t
-      ; defn : Core.Ty.t Located.t
+      { name : Name.t Located.t
+      ; defn : Type.Ty.t Located.t
       ; region : Region.t
       }
   | SData of
-      { name : Core.Name.t Located.t
-      ; attrs : (Core.Name.t Located.t * Core.Ty.t Located.t) list
+      { name : Name.t Located.t
+      ; attrs : (Name.t Located.t * Type.Ty.t Located.t) list
       ; region : Region.t
       }
   | SParam of
-      { name : Core.Name.t Located.t
-      ; ty : Core.Ty.t Located.t
+      { name : Name.t Located.t
+      ; ty : Type.Ty.t Located.t
       ; region : Region.t
       }
-  | SExport of Core.Name.t Located.t
+  | SExport of Name.t Located.t
 
 (* -- Helpers --------------------------------------------------------------- *)
 let clause ?region head body =
@@ -83,10 +83,10 @@ let normalize = function
 type repr =
   | RCls of Core.Clause.Raw.t
   | RKnw of Core.Knowledge.t
-  | RTy of Core.Name.t * Core.Ty.t
-  | RData of Core.Name.t * (Core.Name.t * Core.Ty.t) list
-  | RParam of Core.Name.t * Core.Ty.t
-  | RExport of Core.Name.t Located.t
+  | RTy of Name.t * Type.Ty.t
+  | RData of Name.t * (Name.t * Type.Ty.t) list
+  | RParam of Name.t * Type.Ty.t
+  | RExport of Name.t Located.t
 
 module Make (M : SourceM.S) = struct
   module HeadTermM = Head.Term.Make (M)
@@ -123,8 +123,7 @@ include Pretty.Make0 (struct
 
   let pp_attr ppf (v, ty) =
     Fmt.(
-      hbox
-      @@ pair ~sep:(any " : ") (Located.pp Core.Name.pp) (Located.pp Core.Ty.pp))
+      hbox @@ pair ~sep:(any " : ") (Located.pp Name.pp) (Located.pp Type.Ty.pp))
       ppf
       (v, ty)
   ;;
@@ -141,10 +140,8 @@ include Pretty.Make0 (struct
     | STy { name; defn; _ } ->
       Fmt.(
         hbox
-        @@ pair
-             ~sep:(any "@;extends@;")
-             (any "type @" ++ Located.pp Core.Name.pp)
-        @@ Located.pp Core.Ty.pp)
+        @@ pair ~sep:(any "@;extends@;") (any "type @" ++ Located.pp Name.pp)
+        @@ Located.pp Type.Ty.pp)
         ppf
         (name, defn)
     | SData { name; attrs; _ } ->
@@ -152,19 +149,19 @@ include Pretty.Make0 (struct
         hovbox
         @@ prefix (any "data@;")
         @@ pair
-             (Located.pp Core.Name.pp)
+             (Located.pp Name.pp)
              (hovbox @@ parens @@ list ~sep:comma pp_attr))
         ppf
         (name, attrs)
     | SParam { name; ty; _ } ->
       Fmt.(
         hovbox
-        @@ pair ~sep:(any "@;:@;") (any "param $" ++ Located.pp Core.Name.pp)
-        @@ Located.pp Core.Ty.pp)
+        @@ pair ~sep:(any "@;:@;") (any "param $" ++ Located.pp Name.pp)
+        @@ Located.pp Type.Ty.pp)
         ppf
         (name, ty)
     | SExport pred ->
-      Fmt.(prefix (any "export ") @@ Located.pp Core.Name.pp) ppf pred
+      Fmt.(prefix (any "export ") @@ Located.pp Name.pp) ppf pred
   ;;
 
   let pp = `NoPrec pp

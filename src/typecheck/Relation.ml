@@ -7,7 +7,7 @@ module type MonadRelation = sig
   include Monad.S
   include Applicative.S with type 'a t := 'a t
 
-  val get_param_ty : Name.t -> Ty.t option t
+  val get_param_ty : Name.t -> Type.Ty.t option t
   val err_unbound_param : Name.t -> Region.t -> _ t
 end
 
@@ -16,8 +16,7 @@ module Make (M : MonadRelation) = struct
     let pr = Knowledge.pred k in
     M.(
       Knowledge.terms k
-      |> List.mapi ~f:(fun idx ->
-           function
+      |> List.mapi ~f:(fun idx -> function
            | Knowledge.KTerm.KSymbol sym -> return @@ (idx, Symbol.type_of sym)
            | KParam name ->
              get_param_ty name
@@ -60,9 +59,10 @@ module Make (M : MonadRelation) = struct
     and vars =
       List.filter_mapi
         Lit.Adorned.(terms_of lit)
-        ~f:(fun idx -> function
-          | Term.TVar (v, _) -> Some (idx, v)
-          | _ -> None)
+        ~f:
+          (fun idx -> function
+            | Term.TVar (v, _) -> Some (idx, v)
+            | _ -> None)
     in
     let nvars = List.length vars
     and arity = Pred.arity_of pr in
@@ -83,8 +83,7 @@ module Make (M : MonadRelation) = struct
     (* Construct relation *)
     M.(
       Lit.Adorned.(terms_of lit)
-      |> List.filter_mapi ~f:(fun idx ->
-           function
+      |> List.filter_mapi ~f:(fun idx -> function
            | Term.TSym (sym, _) -> Some (return (idx, Symbol.type_of sym))
            | TParam (nm, region) ->
              Some

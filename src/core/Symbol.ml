@@ -1,5 +1,6 @@
 open Core_kernel
 open Lib
+open Type
 
 type t =
   | SText of string

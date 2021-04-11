@@ -1,6 +1,7 @@
 open Core_kernel
 open Lib
 open Reporting
+open Type
 
 module Minimal = struct
   type t =

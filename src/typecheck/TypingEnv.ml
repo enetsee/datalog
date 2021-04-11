@@ -8,19 +8,22 @@ exception UnboundParam of Name.t
 exception UnboundData of Name.t
 
 type pred_info =
-  { typing : Typing.t
+  { typing : Type.Typing.t
   ; nature : Nature.t
   ; cstr : Constraint.t
   }
 [@@deriving eq, compare]
 
 let empty_info =
-  { typing = Typing.empty; nature = Nature.Logical; cstr = Constraint.trivial }
+  { typing = Type.Typing.empty
+  ; nature = Nature.Logical
+  ; cstr = Constraint.trivial
+  }
 ;;
 
 type binding =
-  | BParam of Ty.t
-  | BData of TTC.t
+  | BParam of Type.Ty.t
+  | BData of Type.TTC.t
   | BPred of pred_info
 [@@deriving eq, compare]
 
@@ -30,15 +33,15 @@ include Pretty.Make0 (struct
   type nonrec t = t
 
   let arr = Fmt.any "@;:@;"
-  let pp_param_binding = Fmt.(hbox @@ pair ~sep:arr Name.pp Ty.pp)
-  let pp_data_binding = Fmt.(hbox @@ pair ~sep:arr Name.pp TTC.pp)
+  let pp_param_binding = Fmt.(hbox @@ pair ~sep:arr Name.pp Type.Ty.pp)
+  let pp_data_binding = Fmt.(hbox @@ pair ~sep:arr Name.pp Type.TTC.pp)
 
   let pp_pred_binding ppf (name, { typing; nature; cstr }) =
     match nature, cstr with
     | Nature.Logical, _ when Constraint.is_trivial cstr ->
-      Fmt.(hovbox @@ pair ~sep:arr Name.pp Typing.pp) ppf (name, typing)
+      Fmt.(hovbox @@ pair ~sep:arr Name.pp Type.Typing.pp) ppf (name, typing)
     | Logical, _ ->
-      Fmt.(hovbox @@ pair ~sep:arr (pair Name.pp Constraint.pp) Typing.pp)
+      Fmt.(hovbox @@ pair ~sep:arr (pair Name.pp Constraint.pp) Type.Typing.pp)
         ppf
         ((name, cstr), typing)
     | Extralogical effs, _ when Constraint.is_trivial cstr ->
@@ -47,7 +50,7 @@ include Pretty.Make0 (struct
         @@ pair
              ~sep:(any "@;:@;")
              (pair Name.pp @@ brackets @@ list ~sep:comma Eff.pp)
-             Typing.pp)
+             Type.Typing.pp)
         ppf
         ((name, effs), typing)
     | Extralogical effs, _ ->
@@ -57,7 +60,7 @@ include Pretty.Make0 (struct
              ~sep:(any "@;:@;")
              (pair Name.pp
              @@ pair (brackets @@ list ~sep:comma Eff.pp) Constraint.pp)
-             Typing.pp)
+             Type.Typing.pp)
         ppf
         ((name, (effs, cstr)), typing)
   ;;

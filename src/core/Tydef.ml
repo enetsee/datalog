@@ -1,4 +1,5 @@
 open Lib
+open Type
 
 type t = Subty of Ty.t
 

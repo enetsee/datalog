@@ -4,8 +4,8 @@ module type MonadTyping = sig
   include Ty.MonadTy
   include Relation.MonadRelation with type 'a t := 'a t
 
-  val get_typing_of : Core.Name.t -> Core.Typing.t t
-  val set_typing_of : Core.Name.t -> Core.Typing.t -> unit t
+  val get_typing_of : Name.t -> Type.Typing.t t
+  val set_typing_of : Name.t -> Type.Typing.t -> unit t
 end
 
 module Make (M : MonadTyping) = struct
@@ -14,14 +14,14 @@ module Make (M : MonadTyping) = struct
 
   (**  T1 /\\ T2 = { t1 /\\ t2 | t1 in T1, t2 in T2, not degenerate t1 /\\ t2 } *)
   let meet t1 t2 =
-    let xs, ys = Core.Typing.(to_list t1, to_list t2) in
-    M.map ~f:Core.Typing.of_list
+    let xs, ys = Type.Typing.(to_list t1, to_list t2) in
+    M.map ~f:Type.Typing.of_list
     @@ M.all
     @@ List.(xs >>= fun x -> ys >>= fun y -> return @@ TTCM.meet x y)
   ;;
 
   let restrict t ~equiv =
-    Core.(
+    Type.(
       meet t
       @@ Option.value_map
            Typing.(arity_of t)
@@ -30,10 +30,10 @@ module Make (M : MonadTyping) = struct
   ;;
 
   let specialize t ~ty_idxs =
-    M.map ~f:Core.Typing.of_list
+    M.map ~f:Type.Typing.of_list
     @@ M.all
     @@ List.map ~f:(TTCM.specialize ~ty_idxs)
-    @@ Core.Typing.to_list t
+    @@ Type.Typing.to_list t
   ;;
 
   (** Abstract interpretation of a relation to obtain its typing *)
@@ -43,22 +43,22 @@ module Make (M : MonadTyping) = struct
       | Relation__Algebra.F.RPred (pr, ty_idxs) ->
         k @@ M.(get_typing_of Core.Pred.(name_of pr) >>= specialize ~ty_idxs)
       | RProj (flds, rel) ->
-        aux rel ~k:(fun tym -> k @@ M.map ~f:Core.Typing.(project ~flds) tym)
+        aux rel ~k:(fun tym -> k @@ M.map ~f:Type.Typing.(project ~flds) tym)
       | RRestr (equiv, rel) ->
         aux rel ~k:(fun tym -> k @@ M.bind ~f:(restrict ~equiv) tym)
       | RUnion (rel1, rel2) ->
         aux rel1 ~k:(fun tym1 ->
-            aux rel2 ~k:(fun tym2 -> k @@ M.map2 ~f:Core.Typing.join tym1 tym2))
+            aux rel2 ~k:(fun tym2 -> k @@ M.map2 ~f:Type.Typing.join tym1 tym2))
       | RProd (rel1, rel2) ->
         aux rel1 ~k:(fun tym1 ->
             aux rel2 ~k:(fun tym2 ->
-                k @@ M.map2 ~f:Core.Typing.product tym1 tym2))
+                k @@ M.map2 ~f:Type.Typing.product tym1 tym2))
       | RInter (rel1, rel2) ->
         aux rel1 ~k:(fun tym1 ->
             aux rel2 ~k:(fun tym2 ->
                 k @@ M.(tym1 >>= fun ty1 -> tym2 >>= meet ty1)))
       | RComp rel ->
-        k @@ M.return @@ Core.Typing.top @@ Relation__Algebra.arity_of rel
+        k @@ M.return @@ Type.Typing.top @@ Relation__Algebra.arity_of rel
     in
     aux ~k:Fn.id rel
   ;;
@@ -120,11 +120,11 @@ module Make (M : MonadTyping) = struct
             >>= fun typing_in ->
             interpret rel
             >>= fun typing_out ->
-            if Core.Typing.equal typing_in typing_out
+            if Type.Typing.equal typing_in typing_out
             then aux rest
             else
               set_typing_of nm typing_out
-              >>= fun _ -> aux (rest @ ((pred, rel) :: next pred)))
+              >>= fun _ -> aux (rest @ (pred, rel) :: next pred))
       in
       aux init)
   ;;

@@ -1,7 +1,9 @@
 (library
  (name test_common)
  (libraries
-    core_kernel fmt str
+  core_kernel
+  fmt
+  str
   alcotest
   partition
   dataflow
@@ -9,7 +11,8 @@
   relation
   schedule
   core
+  name
+  type
   typecheck
-  reporting
- )
+  reporting)
  (synopsis "Tests for lang"))

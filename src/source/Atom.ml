@@ -6,7 +6,7 @@ module type Minimal = sig
   module Term : Term.S
 
   type t =
-    { pred_nm : Core.Name.t Located.t
+    { pred_nm : Name.t Located.t
     ; terms : Term.t list
     }
 
@@ -18,7 +18,7 @@ module TermMinimal :
   module Term = Term.Term
 
   type t =
-    { pred_nm : Core.Name.t Located.t
+    { pred_nm : Name.t Located.t
     ; terms : Core.Term.t list
     }
 
@@ -45,7 +45,7 @@ module TmvarMinimal :
   module Term = Term.Tmvar
 
   type t =
-    { pred_nm : Core.Name.t Located.t
+    { pred_nm : Name.t Located.t
     ; terms : Core.Tmvar.t Located.t list
     }
 
@@ -73,7 +73,7 @@ struct
   module Term = Term.Symbol
 
   type t =
-    { pred_nm : Core.Name.t Located.t
+    { pred_nm : Name.t Located.t
     ; terms : Core.Term.t list
     }
 
@@ -104,7 +104,7 @@ module type S = sig
   include Pretty.S0 with type t := t
   include Core.HasVars.S with type t := t
 
-  val atom : Core.Name.t Located.t -> Term.t list -> t
+  val atom : Name.t Located.t -> Term.t list -> t
 end
 
 module Make (M : Minimal) : S with module Term = M.Term and type repr = M.repr =
@@ -124,10 +124,7 @@ struct
 
     let pp ppf { pred_nm; terms } =
       Fmt.(
-        hovbox
-        @@ pair (Located.pp Core.Name.pp)
-        @@ parens
-        @@ list ~sep:comma Term.pp)
+        hovbox @@ pair (Located.pp Name.pp) @@ parens @@ list ~sep:comma Term.pp)
         ppf
         (pred_nm, terms)
     ;;
